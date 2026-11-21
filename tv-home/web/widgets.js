@@ -2349,6 +2349,21 @@
   };
   CR.screentime = R.screentime;
 
+  // Breathe: a slow breathing guide. A soft disc grows while "In" shows and shrinks while "Out" shows (4 s in,
+  // 6 s out, ten seconds a breath). The page's stylesheet does all the moving (widgets.css, .cw-br): transform
+  // and opacity only, so this code never runs again after the first draw. Nothing to set up, nothing asked.
+  // On the Lighter home and when the TV asks for less motion the disc stands still and the words are left out.
+  R.breathe = function (root, o, b) {
+    var q = op(o), label = q.label || "Breathe", row = b.w >= 300 && b.h < 220, tall = b.h >= 220, fs = "font-size:29px;";
+    var s = Math.max(70, Math.min(row ? b.h - 48 : b.w - 48, tall ? b.h - 48 - 56 : b.h - 48));
+    // the ring and the disc are svg (circles), so they count as part of the drawing; the disc is the one that moves
+    var shape = function (cls, at) { var v = svg("0 0 100 100", "100%", "100%", [S("circle", at)], ""); v.setAttribute("class", "cw-svg " + cls); return v; };
+    var stage = E("div", "cw-br", "width:" + px(s) + ";height:" + px(s) + ";flex:none", [shape("cw-br-ring", { cx: 50, cy: 50, r: 48.5, fill: "none", stroke: "var(--on)", "stroke-width": 3 }), shape("cw-br-disc", { cx: 50, cy: 50, r: 50, fill: "var(--on)" }),
+      E("div", "cw-br-w cw-br-in", fs, ["In"]), E("div", "cw-br-w cw-br-out", fs, ["Out"])]);
+    var words = E("div", "", fs + "line-height:1.2;font-weight:680;color:var(--ink);text-align:center;" + WRAP + (row ? "margin-left:24px" : "margin-top:12px"), [label]);
+    root.style.justifyContent = "center"; root.style.alignItems = "center";
+    add(root, row ? E("div", "cw-row", "align-items:center;justify-content:center;max-width:100%", [stage, fitT(words)]) : [stage, tall ? fitT(words) : null]);
+  };
   // ---------------- one widget, a stack, the API ----------------
   function one(o, b, env) {
     var sh = shell(o, b, env), root = sh.root, st = o.style || {};

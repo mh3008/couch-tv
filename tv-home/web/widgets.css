@@ -402,3 +402,24 @@ html.lighter .cwd-artbg { -webkit-filter: none; filter: none; opacity: 0.18; }
 .cw-ah.cw-strip > .cw-row > svg { width: 34px !important; height: 34px !important; }
 .cw-ah.cw-strip > .cw-row > .cw-col { margin-left: 0 !important; margin-top: 6px; -webkit-align-items: center; align-items: center; max-width: 100%; }
 .cw-ah.cw-strip .cw-e1 { text-align: center; font-size: 24px; line-height: 1.2; }
+
+/* Breathe (widgets.js R.breathe): a breathing guide. The disc grows while "In" shows (4 s) and shrinks while "Out" shows (6 s),
+   ten seconds a breath. Only transform and opacity move, so the GPU does it all and the page does none; nothing is blurred or
+   filtered. The Lighter home and a TV set to reduce motion get the disc standing still, with no words. */
+.cw-br { position: relative; }
+.cw-br-ring { position: absolute; left: 0; top: 0; display: block; opacity: 0.35; }
+.cw-br-disc { position: absolute; left: 0; top: 0; display: block; opacity: 0.4; -webkit-transform: scale(0.8); transform: scale(0.8);
+  will-change: transform; -webkit-animation: cw-br-grow 10s infinite; animation: cw-br-grow 10s infinite; }
+.cw-br-w { position: absolute; left: 0; top: 0; right: 0; bottom: 0; display: -webkit-box; display: -webkit-flex; display: flex; -webkit-align-items: center; align-items: center;
+  -webkit-justify-content: center; justify-content: center; font-weight: 700; color: var(--ink); opacity: 0; will-change: opacity; }
+.cw-br-in { -webkit-animation: cw-br-in 10s infinite; animation: cw-br-in 10s infinite; }
+.cw-br-out { -webkit-animation: cw-br-out 10s infinite; animation: cw-br-out 10s infinite; }
+html.lighter .cw-br-disc, html.lighter .cw-br-w { -webkit-animation: none !important; animation: none !important; will-change: auto !important; }
+html.lighter .cw-br-w { display: none; }
+@-webkit-keyframes cw-br-grow { 0% { -webkit-transform: scale(0.55); } 40% { -webkit-transform: scale(1); } 100% { -webkit-transform: scale(0.55); } }
+@keyframes cw-br-grow { 0% { transform: scale(0.55); } 40% { transform: scale(1); } 100% { transform: scale(0.55); } }
+@-webkit-keyframes cw-br-in { 0% { opacity: 1; } 34% { opacity: 1; } 40% { opacity: 0; } 94% { opacity: 0; } 100% { opacity: 1; } }
+@keyframes cw-br-in { 0% { opacity: 1; } 34% { opacity: 1; } 40% { opacity: 0; } 94% { opacity: 0; } 100% { opacity: 1; } }
+@-webkit-keyframes cw-br-out { 0% { opacity: 0; } 34% { opacity: 0; } 40% { opacity: 1; } 94% { opacity: 1; } 100% { opacity: 0; } }
+@keyframes cw-br-out { 0% { opacity: 0; } 34% { opacity: 0; } 40% { opacity: 1; } 94% { opacity: 1; } 100% { opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .cw-br-disc, .cw-br-w { -webkit-animation: none !important; animation: none !important; will-change: auto !important; } .cw-br-w { display: none; } }
