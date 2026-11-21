@@ -366,10 +366,10 @@
   var PHOTO_KINDS = ["photo", "slideshow", "memory", "keep", "upnext", "camera", "app"];
   var PANEL_CLS = { glass: "cw-glass", solid: "cw-solid", colour: "cw-tint", paper: "cw-paper", none: "cw-bare" };
   // the tile colour each kind has when its style does not pick one (the mockups' colours)
-  var TILE = { analog: "#f4f1ea", wordclock: "#0a6fd8", countdown: "#18793f", weather: "#1b64b5", bigtemp: "#ffb340", hourly: "#1b64b5", week: "#1b64b5",
+  var TILE = { analog: "#f4f1ea", wordclock: "#0a6fd8", countdown: "#18793f", xmastree: "#12382a", weather: "#1b64b5", bigtemp: "#ffb340", hourly: "#1b64b5", week: "#1b64b5",
     uv: "#ff9f0a", surf: "#0a6e8a", screentime: "#5e5ce6", note: "#ffd60a", timer: "#1d1b18" };
   var GRAD = { weather: "linear-gradient(180deg,#1b64b5,#2f7fd2)", hourly: "linear-gradient(180deg,#1b64b5,#2f7fd2)", week: "linear-gradient(180deg,#1b64b5,#2f7fd2)",
-    bigtemp: "linear-gradient(160deg,#ffb340,#ff7a45)", countdown: "linear-gradient(160deg,#1f9150,#146b37)", uv: "linear-gradient(160deg,#ff9f0a,#ff6a3d)",
+    bigtemp: "linear-gradient(160deg,#ffb340,#ff7a45)", countdown: "linear-gradient(160deg,#1f9150,#146b37)", xmastree: "linear-gradient(170deg,#143f2e,#0c2a20)", uv: "linear-gradient(160deg,#ff9f0a,#ff6a3d)",
     surf: "linear-gradient(170deg,#0a6e8a,#0f9fb5)", screentime: "linear-gradient(160deg,#5e5ce6,#8e44ef)" };
   var FONT = { inter: '"Inter", sans-serif', antonio: '"Antonio", "Arial Narrow", sans-serif', rounded: '"Nunito", "Inter", sans-serif', cormorant: '"Cormorant Garamond", Georgia, serif', jost: '"Jost", "Inter", sans-serif' };
   var CORNER = { square: 12, soft: 28, round: 36, pill: 999 };
@@ -572,6 +572,65 @@
     var tiny = b.h < 200, fs = clamp(Math.min((b.h - (tiny ? 84 : 110)) * 0.95, (b.w - 48) / (String(num).length * 0.62)), 44, 200);
     add(root, [b.w < 300 ? E("div", "cw-t23 cw-ell", "font-weight:700;color:var(--sub)", [label]) : lab(q.icon || "calendar", label, "rgba(255,255,255,.9)"), E("div", "cw-grow"), n === 0 ? null : E("div", "cw-big", "font-size:" + px(fs), [String(num)]), tiny && n ? null : E("div", "cw-t29 cw-ell", "font-weight:650", [u])]);
     var lb = root.querySelector(".cw-lab"); if (lb && root.classList.contains("cw-tint")) lb.style.color = "var(--sub)";
+  };
+  // Christmas tree: an advent tree. From 1 December one more light comes on each day (24 of them, spread
+  // over the tree), on the 25th every light is on, the tree glows and the star lights up. The rest of the
+  // year it is a bare tree (the lights are there, dim) counting the days to the next Christmas, so it is
+  // never empty. One small drawing with no animation; the count comes from the TV's own date.
+  var TREE_COL = ["#ff5a52", "#ffd60a", "#5ac8fa", "#ff7ab6", "#ff9f0a", "#fff3c4"];
+  var TREE_ROWS = [[26, 90, 38, 60, 2], [26, 90, 38, 80, 3], [56, 145, 58, 110, 3], [56, 145, 58, 134, 5], [98, 205, 82, 160, 3], [98, 205, 82, 182, 4], [98, 205, 82, 198, 4]];
+  // the 24 places for a light: [x, y]; the order they come on is a fixed shuffle (day * 11 mod 24) so the tree fills evenly
+  var TREE_SLOTS = (function () {
+    var out = [];
+    TREE_ROWS.forEach(function (r) {
+      var hw = r[2] * (r[3] - r[0]) / (r[1] - r[0]), i;
+      for (i = 0; i < r[4]; i++) out.push([Math.round(100 + ((i + 0.5) / r[4] - 0.5) * 2 * hw * 0.8), r[3]]);
+    });
+    return out;
+  })();
+  function starPoints(cx, cy, ro, ri) {
+    var p = [], i, a;
+    for (i = 0; i < 10; i++) { a = -Math.PI / 2 + i * Math.PI / 5; p.push(Math.round((cx + Math.cos(a) * (i % 2 ? ri : ro)) * 10) / 10 + "," + Math.round((cy + Math.sin(a) * (i % 2 ? ri : ro)) * 10) / 10); }
+    return p.join(" ");
+  }
+  // where the tree is today: how many lights are on (0 to 24), the star, and the days to the next Christmas
+  function treeDay() {
+    var t = now(), day = t.getMonth() === 11 ? t.getDate() : 0;
+    return { lit: day >= 1 && day <= 25 ? Math.min(day, 24) : 0, star: day === 25, n: daysTo(12, 25) };
+  }
+  function treeSvg(lit, star, css) {
+    var kids = [], glow = star;
+    if (glow) [[98, 0.05], [80, 0.06], [62, 0.07]].forEach(function (g) { kids.push(S("circle", { cx: 100, cy: 130, r: g[0], fill: "#ffd60a", opacity: g[1] })); });   // soft rings, kept inside the picture
+    kids.push(S("rect", { x: 90, y: 203, width: 20, height: 26, rx: 3, fill: "#7a4a2a" }),
+      S("polygon", { points: "100,98 18,205 182,205", fill: "#1f7a46" }), S("polygon", { points: "100,56 42,145 158,145", fill: "#2a9a5a" }), S("polygon", { points: "100,26 62,90 138,90", fill: "#36b36c" }));
+    TREE_SLOTS.forEach(function (p, k) {
+      var on = (k * 11) % 24 < lit;
+      if (on) kids.push(S("circle", { cx: p[0], cy: p[1], r: glow ? 12 : 10, fill: TREE_COL[k % 6], opacity: 0.3 }), S("circle", { cx: p[0], cy: p[1], r: 5.5, fill: TREE_COL[k % 6] }));
+      else kids.push(S("circle", { cx: p[0], cy: p[1], r: 4, fill: "#0d3a22", opacity: 0.8 }));
+    });
+    if (star) kids.push(S("circle", { cx: 100, cy: 15, r: 22, fill: "#ffd60a", opacity: 0.3 }));
+    kids.push(S("polygon", { points: starPoints(100, 15, 15, 6.5), fill: star ? "#ffe45c" : "#5d6b5f" }));
+    return svg("0 -10 200 242", "100%", "100%", kids, css);
+  }
+  function treeWords(q, n, today) {
+    var unit = q.unit === "days" ? "days" : "sleeps", one = unit === "days" ? "day to go" : "sleep to go";
+    return today ? "It's today!" : n === 1 ? one : unit + " to go";
+  }
+  R.xmastree = function (root, o, b, env) {
+    var q = op(o), d = env.demo ? { lit: 14, star: false, n: 11 } : treeDay(), today = d.n === 0, label = q.label || "Christmas";
+    var tiny = b.h < 200, fs = clamp(Math.min((b.h - 330) * 0.5 + 64, 96), 52, 96);
+    if (tiny && b.w < 300) {
+      // a tile: the tree over the number
+      root.style.padding = "14px"; root.style.justifyContent = "center";
+      return add(root, [treeSvg(d.lit, d.star, "flex:1;min-height:0"), E("div", "cw-big", "white-space:nowrap;font-size:" + px(36) + ";margin-top:4px", [today ? "Today" : String(d.n)])]);
+    }
+    if (tiny) {
+      // a wide tile: the tree on the left, the number and its words on the right
+      return add(root, E("div", "cw-row", "height:100%;align-items:center;justify-content:space-around", [treeSvg(d.lit, d.star, "width:30%;height:100%;flex:none"),
+        E("div", "cw-col", "min-width:0;align-items:center", [E("div", "cw-t23 cw-ell", "font-weight:700;color:var(--sub)", [label]), today ? null : E("div", "cw-big", "white-space:nowrap;font-size:" + px(56), [String(d.n)]), E("div", "cw-t25 cw-ell", "font-weight:650", [treeWords(q, d.n, today)])])]));
+    }
+    add(root, [E("div", "cw-t23 cw-ell", "font-weight:700;color:var(--sub);flex:none", [label]), treeSvg(d.lit, d.star, "flex:1;min-height:0;margin:6px 0"),
+      today ? null : E("div", "cw-big", "flex:none;white-space:nowrap;font-size:" + px(fs), [String(d.n)]), E("div", "cw-t29 cw-ell", "flex:none;font-weight:650", [treeWords(q, d.n, today)])]);
   };
   R.date = function (root, o, b, env) {
     var q = op(o), show = q.show || "date", d = now(), w = weather(env), short = b.w < 560 || q.dfmt === "short";
