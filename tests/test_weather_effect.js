@@ -86,7 +86,7 @@ W.setForced("snow"); W.setAmount("light");
 W.setColour("grey"); assert.strictEqual(drawn().fill, 20, "grey snow: still 20 flakes");
 W.setColour("soft"); { const n = drawn(); assert.strictEqual(n.fill, 20); assert.strictEqual(n.stroke, 20, "soft: an edge on every flake"); }
 W.setColour("purple"); assert.strictEqual(drawn().stroke, 0, "an unknown colour is plain white, no edge");
-W.setForced(null); W.setAmount("medium");
+W.setColour("white"); W.setForced("rain"); W.setAmount("medium");   // back to the fixed rain the checks below use
 
 // paused (an app is open) nothing is drawn; switched off, no frame is asked for at all
 W.pause();
