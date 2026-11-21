@@ -111,9 +111,14 @@
   }
 
   // Draws (or clears) the current weather: called when the weather, or a setting that gates it, changes.
+  // nothing to draw: the canvas is taken off the page (display none), so the compositor doesn't carry a
+  // transparent full-screen layer every frame (measured: half the page's main-thread time with no effect on)
+  function showCanvas(on) { if (canvas && canvas.style) canvas.style.display = on ? "" : "none"; }
+
   function applyType() {
     stopLoop();
     if (ctx) ctx.clearRect(0, 0, W, H);
+    showCanvas(false);
     if (lightingEl) lightingEl.classList.remove("has-weather-tint", "wx-rain-tint", "wx-snow-tint", "wx-fog-tint", "wx-storm-tint");
     if (!canvas || !ctx || currentType === "clear" || !enabled || lighterMode) return;
 
@@ -144,6 +149,7 @@
 
   function startLoop() {
     if (running || isPaused || currentType === "clear" || !enabled || lighterMode) return;
+    showCanvas(true);
     running = true;
     lastTime = Date.now();
     rafId = root.requestAnimationFrame(renderLoop);

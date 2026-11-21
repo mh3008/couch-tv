@@ -78,6 +78,7 @@ console.log("Running weather effect browser tests...");
   for (const h of [{ weather_effect: "off" }, {}, { weather_effect: "off", ambient_weather: true }]) {
     const p = await load(design(h));
     ok(await most(p) === 0, "nothing drawn with " + JSON.stringify(h));
+    ok(await p.evaluate(() => getComputedStyle(document.getElementById("weather-canvas")).display) === "none", "and the empty canvas is off the page (no layer to composite)");
     await p.close();
   }
 }
@@ -134,7 +135,8 @@ console.log("Running weather effect browser tests...");
   for (const fx of ["rain", "snow"]) for (const amt of ["light", "medium", "heavy"]) res[fx + "-" + amt] = await measure({ weather_effect: fx, weather_amount: amt });
   console.log("  cost at 4x slower CPU (frames a second, main thread busy %):", JSON.stringify(res));
   ok(res["rain-heavy"].fps >= 50 && res["snow-heavy"].fps >= 50, "heavy rain and snow: the page still draws " + res["rain-heavy"].fps + " / " + res["snow-heavy"].fps + " frames a second (off: " + off.fps + ")");
-  ok(res["rain-heavy"].busy - off.busy < 15, "heavy rain adds " + (res["rain-heavy"].busy - off.busy).toFixed(1) + " points of main thread time (" + off.busy + "% to " + res["rain-heavy"].busy + "%)");
+  ok(off.busy < 10, "effect off: the canvas is off the page, main thread " + off.busy + "% (it was ~15% with an empty full-screen canvas)");
+  ok(res["rain-heavy"].busy < 35, "heavy rain: main thread " + res["rain-heavy"].busy + "% (off: " + off.busy + "%)");
 }
 
 await browser.close();
