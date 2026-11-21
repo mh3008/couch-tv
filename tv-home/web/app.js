@@ -129,6 +129,8 @@
   var IDLE_PHOTO_STEPS = [0, 5, 10, 15, 30, 60];
   var IDLE_PHOTO_SECONDS = 0, idlePhotoTimer = null, idlePhotoActive = false;
   var WX_AMBIENT = true, WX_SUN_GRADE = true;
+  // a design's rain and snow: always "rain" or "snow" (else null: the live weather), and how much of it
+  var WX_FORCED = null, WX_AMOUNT = "medium";
   // Now playing (#31), on unless switched off; the navigation sound: system, soft or off (#32)
   var NP_ON = true, KW_ON = true, SOUND_STYLE = "system", START_FOCUS = "people";
   // Keep watching follows the app the remote is on (home.shelf_follows_app), off unless switched on
@@ -498,7 +500,11 @@
     WX_SHOW = ST.wx_show !== false;
     WX_F = (ST.wx_unit || HOME.wx_unit) === "f";   // Home settings, else home.wx_unit in config.json
     WX_EVERY = [15, 30, 60].indexOf(ST.wx_every) >= 0 ? ST.wx_every : 30;
-    WX_AMBIENT = typeof ST.ambient_weather === "boolean" ? ST.ambient_weather : HOME.ambient_weather === true;   // off unless chosen
+    // off unless chosen: Home settings, Weather, else the design (weather_effect, or the older ambient_weather)
+    var wxFx = HOME.weather_effect;
+    WX_AMBIENT = typeof ST.ambient_weather === "boolean" ? ST.ambient_weather : wxFx ? wxFx !== "off" : HOME.ambient_weather === true;
+    WX_FORCED = wxFx === "rain" || wxFx === "snow" ? wxFx : null;
+    WX_AMOUNT = HOME.weather_amount || "medium";
     WX_SUN_GRADE = typeof ST.ambient_sun_grade === "boolean" ? ST.ambient_sun_grade : HOME.ambient_sun_grade === true;
     var mine = TV_ID || CFG.default_tv;
     TVCFG = (CFG.tvs || []).filter(function (t) { return t.id === mine; })[0] || (CFG.tvs || [])[0] || {};
@@ -1890,12 +1896,16 @@
   }
 
   // The ambient weather effects follow the settings: off unless chosen, never under Lighter home or
-  // on an old engine (the slow boxes Lighter home is for), and not while an app or Settings is up.
+  // on an old engine (the slow boxes Lighter home is for), not when the TV asks for less motion, and
+  // not while an app or Settings is up. A design's always-rain or always-snow needs no weather reading.
   function ambientSync() {
     var a = window.AmbientWeather;
     if (!a) return;
+    var calm = false;
+    try { calm = !!(window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches); } catch (e) {}
     a.setLighter(LIGHTER || OLD_ENGINE);
-    a.setEnabled(WX_AMBIENT && WX_SHOW && !LOOP);
+    if (a.setForced) { a.setForced(WX_FORCED); a.setAmount(WX_AMOUNT); }
+    a.setEnabled(WX_AMBIENT && (WX_SHOW || !!WX_FORCED) && !LOOP && !calm);
     a.setSunGradeEnabled(WX_SUN_GRADE && !LIGHTER && !OLD_ENGINE && !LOOP);
     updateAmbientWeather();
   }

@@ -16,10 +16,18 @@
   var lighterMode = false;
 
   var currentType = "clear"; // "rain", "snow", "fog", "storm", "clear"
+  var weatherType = "clear"; // what the live weather says; currentType follows it unless a design fixes the type
+  var forcedType = null;     // a design's fixed "rain" or "snow" (design.home.weather_effect), whatever the weather
   var particles = [];
   var fogNodes = [];
-  var MAX_RAIN = 65;
-  var MAX_SNOW = 40;
+  // how many drops and flakes for each amount (design.home.weather_amount). medium is what the home
+  // always drew. The pool is made once at the heavy size, so changing the amount never allocates
+  // while drawing.
+  var AMOUNTS = { light: { rain: 30, snow: 20 }, medium: { rain: 65, snow: 40 }, heavy: { rain: 110, snow: 70 } };
+  var POOL = 110;
+  var amount = "medium";
+  var MAX_RAIN = AMOUNTS.medium.rain;
+  var MAX_SNOW = AMOUNTS.medium.snow;
   var MAX_FOG = 4;
 
   var W = 1920;
@@ -49,7 +57,7 @@
   function initParticlePool() {
     particles = [];
     var i;
-    for (i = 0; i < MAX_RAIN; i++) {
+    for (i = 0; i < POOL; i++) {
       particles.push({
         x: Math.random() * (W + 200) - 100,
         y: Math.random() * H,
@@ -122,8 +130,10 @@
   }
 
   function setWeatherType(type) {
-    if (currentType === type) return;
-    currentType = type;
+    weatherType = type;
+    var want = forcedType || type;
+    if (currentType === want) return;
+    currentType = want;
     applyType();
   }
 
@@ -373,6 +383,30 @@
       if (val === lighterMode) return;
       lighterMode = val;
       applyType();
+    },
+
+    // a design's fixed type: "rain" or "snow" draws that whatever the weather; anything else follows
+    // the live weather again
+    setForced: function (type) {
+      type = type === "rain" || type === "snow" ? type : null;
+      if (type === forcedType) return;
+      forcedType = type;
+      currentType = forcedType || weatherType;
+      applyType();
+    },
+
+    // "light", "medium" (the default) or "heavy": how many drops and flakes are drawn
+    setAmount: function (val) {
+      val = AMOUNTS[val] ? val : "medium";
+      if (val === amount) return;
+      amount = val;
+      MAX_RAIN = AMOUNTS[val].rain;
+      MAX_SNOW = AMOUNTS[val].snow;
+      applyType();
+    },
+
+    getAmount: function () {
+      return amount;
     },
 
     getType: function () {

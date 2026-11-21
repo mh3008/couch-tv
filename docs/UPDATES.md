@@ -6,6 +6,15 @@ The newest release is **0.13.8**. The TV apps come from [the Releases page](http
 
 ## November 2026
 
+### 21 November 2026: a design picks its rain and snow (next release)
+
+A couch-tv Studio design (or `home` in config.json) can now say what weather effect it wants and how much of it. Nothing changes for anyone else: off unless chosen, as before.
+
+- **`weather_effect`:** `off`, `auto` (the live weather, what `ambient_weather: true` always did), or `rain` / `snow` all the time, whatever the weather. A winter design can snow on a sunny day; a cosy rainy-window design can always rain.
+- **`weather_amount`:** `light`, `medium` (what the home always drew) or `heavy`. The speed meter counts them as 22, 34 and 46, and a design too heavy for the TV has heavy made light before the effect is switched off.
+- **Less motion:** the effects no longer run when the TV asks for reduced motion.
+- **Same rules:** Home settings, Weather, Ambient weather effects still wins; the effects stop while an app or Settings is open and never run under Lighter home or on an old WebView.
+
 ### 20 November 2026: Hisense Google TV comes back on couch-tv after a restart (option C, next release)
 
 On a Hisense Google TV ("SmartTV 4K", Android 11), Hisense's framework stops every outside app at standby and refuses to start one in the background until the TV wakes. The only exception is a list the TV empties about 25 seconds after each boot. So the TV woke on the Google home, and Home from inside an app showed the Google home for a few seconds first (#202). Checked on one real TV, three restarts in a row. [TROUBLESHOOTING.md](TROUBLESHOOTING.md#hisense-google-tv-the-google-home-after-every-restart-or-wake) explains how it works.

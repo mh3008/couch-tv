@@ -31,7 +31,7 @@
   var appsKey = "", clockKey = "", observer = null, gridObserver = null;
 
   // the look settings a design may carry (design.home); Home settings on the TV still win
-  var HOME_KEYS = ["scenes", "scene_seconds", "glass", "glass_icons", "glass_amount", "clock_style", "ambient_weather",
+  var HOME_KEYS = ["scenes", "scene_seconds", "glass", "glass_icons", "glass_amount", "clock_style", "ambient_weather", "weather_effect", "weather_amount",
     "ambient_sun_grade", "video_url", "dock", "moving_tiles", "lighter", "keep_watching", "now_playing", "dock_size", "clock"];
   var FONTS = {
     inter: '"Inter", sans-serif',
@@ -533,7 +533,14 @@
     }
     return out;
   }
-  var HOME_PICK = { glass: ["on", "lite", "off"], clock_style: ["frosted", "liquid"], dock: ["classic", "mac"], clock: ["12h", "24h"] };
+  // the rain and snow effects are on when a design says so either way (weather_effect wins over the older
+  // ambient_weather); light costs less than medium (the 34 the effects always cost), heavy more
+  var WX_COST = { light: 22, medium: 34, heavy: 46 };
+  function weatherOn(h) { return h.weather_effect ? h.weather_effect !== "off" : !!h.ambient_weather; }
+  // weather_effect: off, auto (the live weather: rain, snow, fog, storm), or always rain / always snow;
+  // weather_amount: how many drops and flakes. ambient_weather: true is the older way to say "auto"
+  var HOME_PICK = { glass: ["on", "lite", "off"], clock_style: ["frosted", "liquid"], dock: ["classic", "mac"], clock: ["12h", "24h"],
+    weather_effect: ["off", "auto", "rain", "snow"], weather_amount: ["light", "medium", "heavy"] };
   var HOME_BOOL = ["glass_icons", "ambient_weather", "ambient_sun_grade", "moving_tiles", "lighter", "keep_watching", "now_playing"];
   function sanitize(raw) {
     NOTES = [];
@@ -790,7 +797,7 @@
     if (!obj(E.clock).hidden && obj(E.clock).style !== "solid") out.push(["Glass clock", 4, "glassclock"]);
     if (home.clock_style === "liquid") out.push(["Liquid glass clock", 6, "liquid"]);
     if ((home.glass_amount || 0) > 2) out.push(["Glass level " + home.glass_amount, (home.glass_amount - 2) * 3, "glassamount"]);
-    if (home.ambient_weather) out.push(["Rain and snow effects", 34, "weatherfx"]);
+    if (weatherOn(home)) out.push(["Rain and snow effects" + (home.weather_amount && home.weather_amount !== "medium" ? " (" + home.weather_amount + ")" : ""), WX_COST[home.weather_amount] || WX_COST.medium, "weatherfx"]);
     if (home.ambient_sun_grade) out.push(["Sunlight colour", 4, "sungrade"]);
     if (home.moving_tiles) out.push(["Moving tiles", 4, "moving"]);
     if (home.video_url) out.push(["Video background", 40, "video"]);
@@ -877,7 +884,8 @@
     // the whole design: past what a TV can draw smoothly, the heaviest extras go first
     var h = d.home || {};
     var steps = [
-      [function () { return h.ambient_weather; }, function () { delete h.ambient_weather; }, "Rain and snow effects were switched off: too slow with everything else."],
+      [function () { return weatherOn(h) && h.weather_amount === "heavy"; }, function () { h.weather_amount = "light"; }, "Heavy rain and snow were made light: too slow with everything else."],
+      [function () { return weatherOn(h); }, function () { delete h.ambient_weather; h.weather_effect = "off"; delete h.weather_amount; }, "Rain and snow effects were switched off: too slow with everything else."],
       [function () { return d.background && d.background.video; }, function () { delete d.background.video; }, "The video background was switched off: too slow with everything else. Its still picture stays."],
       [function () { return h.clock_style === "liquid"; }, function () { delete h.clock_style; }, "The liquid clock went back to frosted glass: too slow with everything else."],
       [function () { return (h.glass_amount || 0) > 2; }, function () { h.glass_amount = 2; }, "The glass level was brought down to 2."],
