@@ -2349,6 +2349,31 @@
   };
   CR.screentime = R.screentime;
 
+  // Whose turn: a rota for a chore (the dishes, the bins, feeding the cat, who picks the film). A design names up to
+  // eight people (first names, words only), and whether the turn changes every "day" (the default) or every
+  // "week" (Monday to Sunday). Worked out from the TV's own date, so it is right at midnight and nothing is asked.
+  // The turn goes round in the order the names are written; opts.shift (0 to 7) moves who starts, so the right
+  // person has it today. Today's person leads; the next few follow.
+  function rotaOf(q, t0, env) {
+    var names = env.demo ? ["Alex", "Sam", "Jo", "Max"] : q.turns || [], weekly = q.every === "week";
+    if (!names.length) return null;
+    var n = Math.floor(Date.UTC(t0.getFullYear(), t0.getMonth(), t0.getDate()) / 86400000), k = weekly ? Math.floor((n + 3) / 7) : n, shift = q.shift || 0, order = [];
+    for (var i = 0; i < Math.min(names.length, 4); i++) order.push(names[((k + shift + i) % names.length + names.length) % names.length]);
+    return { weekly: weekly, order: order, label: q.label || (env.demo ? "Dishes" : "Whose turn") };
+  }
+  function rotaWhen(i, weekly) {
+    return weekly ? (i === 0 ? "This week" : i === 1 ? "Next week" : "In " + i + " weeks") : (i === 0 ? "Today" : i === 1 ? "Tomorrow" : "In " + i + " days");
+  }
+  R.rota = function (root, o, b, env) {
+    var q = op(o), V = rotaOf(q, now(), env), a = alignOf(o);
+    if (!V) return empty(root, b, "people", "Add names in couch-tv Studio", "Who takes turns, picked in Studio");
+    var big = b.h >= 300 ? 56 : b.h >= 200 ? 44 : 38, rows = clamp(Math.floor((b.h - 250) / 50), 0, 3), kids = [], i;
+    // a 2x2 tile has no room for the icon: the chore, the name, and when
+    kids.push(b.w < 300 ? line(V.label, 25, "font-weight:650;color:var(--sub)", a) : webHead("people", V.label, a), b.w < 300 ? null : line(rotaWhen(0, V.weekly), 25, "color:var(--sub);margin-top:10px", a, 2),
+      line(V.order[0], big, "font-weight:740;color:var(--on)", a), b.w < 300 ? line(rotaWhen(0, V.weekly), 25, "color:var(--sub)", a, 2) : null);
+    for (i = 1; i <= rows && i < V.order.length; i++) kids.push(line(rotaWhen(i, V.weekly) + ": " + V.order[i], 25, "color:var(--sub);margin-top:" + (i === 1 ? 14 : 6) + "px", a, 2 + i));
+    webBody(root, a, kids);
+  };
   // ---------------- one widget, a stack, the API ----------------
   function one(o, b, env) {
     var sh = shell(o, b, env), root = sh.root, st = o.style || {};

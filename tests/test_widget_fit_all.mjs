@@ -280,6 +280,8 @@ const CHECKS = String(function (root, tag, mode) {
         const env = STATES[st] ? STATES[st]() : STATES.tv();
         const o = { id: "t", kind, w: w * 100 - 40, h: h * 100 - 40 };
         if (!STATES[st]) o.opts = { align: st };
+        // the rota is given people to take turns; the long state gets long names
+        if (kind === "rota" && st !== "designer" && st !== "unset") o.opts = Object.assign({}, o.opts, { turns: st === "long" ? ["Alexandrina Wilhelmina", "Maximilian Bartholomew", "Anna", "Ben"] : ["Anna", "Ben", "Cleo", "Dan"] });
         let el;
         try { el = W.render(o, env); } catch (e) { out.push(kind + " " + id + " " + st + ": throws " + e.message); continue; }
         el.style.position = "absolute"; el.style.left = "80px"; el.style.top = "60px";
