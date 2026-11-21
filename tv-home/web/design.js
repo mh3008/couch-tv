@@ -31,7 +31,7 @@
   var appsKey = "", clockKey = "", observer = null, gridObserver = null;
 
   // the look settings a design may carry (design.home); Home settings on the TV still win
-  var HOME_KEYS = ["scenes", "scene_seconds", "glass", "glass_icons", "glass_amount", "clock_style", "ambient_weather", "weather_effect", "weather_amount",
+  var HOME_KEYS = ["scenes", "scene_seconds", "glass", "glass_icons", "glass_amount", "clock_style", "ambient_weather", "weather_effect", "weather_amount", "weather_colour",
     "ambient_sun_grade", "video_url", "dock", "moving_tiles", "lighter", "keep_watching", "now_playing", "dock_size", "clock"];
   var FONTS = {
     inter: '"Inter", sans-serif',
@@ -538,9 +538,11 @@
   var WX_COST = { light: 22, medium: 34, heavy: 46 };
   function weatherOn(h) { return h.weather_effect ? h.weather_effect !== "off" : !!h.ambient_weather; }
   // weather_effect: off, auto (the live weather: rain, snow, fog, storm), or always rain / always snow;
-  // weather_amount: how many drops and flakes. ambient_weather: true is the older way to say "auto"
+  // weather_amount: how many drops and flakes; weather_colour: the snow's colour (soft = a grey edge, for pale photos).
+  // ambient_weather: true is the older way to say "auto"
   var HOME_PICK = { glass: ["on", "lite", "off"], clock_style: ["frosted", "liquid"], dock: ["classic", "mac"], clock: ["12h", "24h"],
-    weather_effect: ["off", "auto", "rain", "snow"], weather_amount: ["light", "medium", "heavy"] };
+    weather_effect: ["off", "auto", "rain", "snow"], weather_amount: ["light", "medium", "heavy"],
+    weather_colour: ["white", "ice", "silver", "soft", "grey"] };
   var HOME_BOOL = ["glass_icons", "ambient_weather", "ambient_sun_grade", "moving_tiles", "lighter", "keep_watching", "now_playing"];
   function sanitize(raw) {
     NOTES = [];

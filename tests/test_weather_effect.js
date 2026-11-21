@@ -81,6 +81,13 @@ W.setForced("rain");
 W.setWeather(null, null);
 assert.strictEqual(W.getType(), "rain", "no weather reading at all: a fixed rain still rains");
 
+// the snow's colour: grey flakes are drawn grey, "soft" adds an edge (one stroke per flake), unknown is white
+W.setForced("snow"); W.setAmount("light");
+W.setColour("grey"); assert.strictEqual(drawn().fill, 20, "grey snow: still 20 flakes");
+W.setColour("soft"); { const n = drawn(); assert.strictEqual(n.fill, 20); assert.strictEqual(n.stroke, 20, "soft: an edge on every flake"); }
+W.setColour("purple"); assert.strictEqual(drawn().stroke, 0, "an unknown colour is plain white, no edge");
+W.setForced(null); W.setAmount("medium");
+
 // paused (an app is open) nothing is drawn; switched off, no frame is asked for at all
 W.pause();
 assert.strictEqual(frame, null, "paused: no frames");
@@ -114,6 +121,10 @@ for (const bad of ["hail", "RAIN", "", 3, true, null, ["rain"], { a: 1 }, "rain;
   assert.strictEqual(home({ weather_effect: bad }).weather_effect, undefined, "refused effect: " + JSON.stringify(bad));
   assert.strictEqual(home({ weather_amount: bad }).weather_amount, undefined, "refused amount: " + JSON.stringify(bad));
 }
+
+// the snow's colour: the listed ones are kept, anything else dropped
+for (const col of ["white", "ice", "silver", "soft", "grey"]) assert.strictEqual(home({ weather_colour: col }).weather_colour, col, col + " is kept");
+for (const bad of ["red", "#fff", "rgba(0,0,0,1)", 5, null, "grey;}body{display:none"]) assert.strictEqual(home({ weather_colour: bad }).weather_colour, undefined, "refused colour: " + JSON.stringify(bad));
 
 // cost: light < medium (the 34 the effects always cost) < heavy; off costs nothing
 const wx = (h) => D.cost({ home: h }).filter((i) => i[2] === "weatherfx").reduce((n, i) => n + i[1], 0);

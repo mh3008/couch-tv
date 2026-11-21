@@ -26,6 +26,11 @@
   var AMOUNTS = { light: { rain: 30, snow: 20 }, medium: { rain: 65, snow: 40 }, heavy: { rain: 110, snow: 70 } };
   var POOL = 110;
   var amount = "medium";
+  // the snow's colour (design.home.weather_colour): white, a cool ice blue or silver show on dark photos; for pale photos
+  // (a white flake disappears over a white sky or snow) "soft" is white with a grey edge and "grey" is snow as it looks
+  // against a bright overcast sky
+  var SNOW_RGB = { white: "245, 250, 255", ice: "196, 226, 245", silver: "206, 211, 218", soft: "250, 252, 255", grey: "112, 121, 132" };
+  var snowColour = "white";
   var MAX_RAIN = AMOUNTS.medium.rain;
   var MAX_SNOW = AMOUNTS.medium.snow;
   var MAX_FOG = 4;
@@ -233,8 +238,10 @@
 
         ctx.beginPath();
         ctx.arc(sp.x, sp.y, sp.radius, 0, Math.PI * 2);
-        ctx.fillStyle = "rgba(245, 250, 255, " + sp.alpha.toFixed(3) + ")";
+        ctx.fillStyle = "rgba(" + SNOW_RGB[snowColour] + ", " + sp.alpha.toFixed(3) + ")";
         ctx.fill();
+        // a soft grey edge, so a flake still shows over a pale sky or snow (weather_colour "soft")
+        if (snowColour === "soft") { ctx.lineWidth = 2; ctx.strokeStyle = "rgba(70, 80, 92, " + Math.min(1, sp.alpha * 1.1).toFixed(3) + ")"; ctx.stroke(); }
       }
     } else if (currentType === "fog") {
       for (var f = 0; f < fogNodes.length; f++) {
@@ -402,6 +409,14 @@
       amount = val;
       MAX_RAIN = AMOUNTS[val].rain;
       MAX_SNOW = AMOUNTS[val].snow;
+      applyType();
+    },
+
+    // "white" (the default), "ice", "silver" or "soft" (white with a grey edge): the snowflakes' colour
+    setColour: function (val) {
+      val = SNOW_RGB[val] ? val : "white";
+      if (val === snowColour) return;
+      snowColour = val;
       applyType();
     },
 
