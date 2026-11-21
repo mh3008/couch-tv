@@ -131,6 +131,23 @@
   var WX_AMBIENT = true, WX_SUN_GRADE = true;
   // a design's rain and snow: always "rain" or "snow" (else null: the live weather), and how much of it
   var WX_FORCED = null, WX_AMOUNT = "medium", WX_COLOUR = "white", WX_BOLD = false;
+  // the Settings choice for rain and snow (null: the design decides), in the order OK steps through them
+  var WX_CHOICES = ["off", "auto", "rain", "snow"], WX_SETTING = null;
+  // Settings → Weather → rain and snow (st.weather_effect off / auto / rain / snow) wins over the design; an older
+  // saved on/off (st.ambient_weather) still counts: on = follow the weather, off = off. Then the design's
+  // weather_effect, then its older ambient_weather ("ambient": on, in the old faint look)
+  function wxPick(st, home) {
+    var setting = WX_CHOICES.indexOf(st.weather_effect) >= 0 ? st.weather_effect
+      : typeof st.ambient_weather === "boolean" ? (st.ambient_weather ? "auto" : "off") : null;
+    return { setting: setting, fx: setting || home.weather_effect || (home.ambient_weather === true ? "ambient" : "off") };
+  }
+  // what the engine is told: on or off, a fixed rain or snow, and the bolder look (anything picked in Settings
+  // or by a design's weather_effect; only the design's older ambient_weather keeps the faint one)
+  function wxLook(fx) {
+    return { on: fx !== "off", forced: fx === "rain" || fx === "snow" ? fx : null, bold: fx !== "off" && fx !== "ambient" };
+  }
+  function wxApply(fx) { var l = wxLook(fx); WX_AMBIENT = l.on; WX_FORCED = l.forced; WX_BOLD = l.bold; }
+  function wxChoice() { return WX_SETTING || (!WX_AMBIENT ? "off" : WX_FORCED || "auto"); }
   // Now playing (#31), on unless switched off; the navigation sound: system, soft or off (#32)
   var NP_ON = true, KW_ON = true, SOUND_STYLE = "system", START_FOCUS = "people";
   // Keep watching follows the app the remote is on (home.shelf_follows_app), off unless switched on
@@ -501,11 +518,10 @@
     WX_F = (ST.wx_unit || HOME.wx_unit) === "f";   // Home settings, else home.wx_unit in config.json
     WX_EVERY = [15, 30, 60].indexOf(ST.wx_every) >= 0 ? ST.wx_every : 30;
     // off unless chosen: Home settings, Weather, else the design (weather_effect, or the older ambient_weather)
-    var wxFx = HOME.weather_effect;
-    WX_AMBIENT = typeof ST.ambient_weather === "boolean" ? ST.ambient_weather : wxFx ? wxFx !== "off" : HOME.ambient_weather === true;
-    WX_FORCED = wxFx === "rain" || wxFx === "snow" ? wxFx : null;
+    var wxp = wxPick(ST, HOME);   // Settings, else the design (wxPick)
+    WX_SETTING = wxp.setting;
     WX_AMOUNT = HOME.weather_amount || "medium";
-    WX_BOLD = !!wxFx && wxFx !== "off";   // a design that picked weather_effect gets the bolder rain and snow
+    wxApply(wxp.fx);
     WX_COLOUR = HOME.weather_colour || "white";
     WX_SUN_GRADE = typeof ST.ambient_sun_grade === "boolean" ? ST.ambient_sun_grade : HOME.ambient_sun_grade === true;
     var mine = TV_ID || CFG.default_tv;
@@ -4890,8 +4906,10 @@
         else updateAmbientWeather();
         clock();
       } },
-      { kind: "toggle", key: "wx-ambient", label: t("wx_ambient"), sub: t("wx_ambient_sub"), value: WX_AMBIENT ? t("on") : t("off"), act: function () {
-        WX_AMBIENT = !WX_AMBIENT; ST.ambient_weather = WX_AMBIENT; saveSettings();
+      { kind: "cycle", key: "wx-ambient", label: t("wx_ambient"), sub: t("wx_ambient_sub"), value: wxChoice() === "off" ? t("off") : t("wx_fx_" + wxChoice()), act: function () {
+        WX_SETTING = WX_CHOICES[(WX_CHOICES.indexOf(wxChoice()) + 1) % WX_CHOICES.length];
+        ST.weather_effect = WX_SETTING; delete ST.ambient_weather; saveSettings();
+        wxApply(WX_SETTING);
         ambientSync();
       } },
       { kind: "toggle", key: "wx-sun-grade", label: t("wx_sun_grade"), sub: t("wx_sun_grade_sub"), value: WX_SUN_GRADE ? t("on") : t("off"), act: function () {

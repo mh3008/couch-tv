@@ -176,4 +176,35 @@ assert.strictEqual(calm.clean.home.weather_effect, "snow");
 const merged = D.home({}, { v: 1, home: { weather_effect: "snow", weather_amount: "light" } }, {});
 assert.ok(merged.weather_effect === undefined || merged.weather_effect === "snow", "home() passes weather_effect on (or holds the whole design back until it is accepted)");
 
+// ---------------- Settings → Weather → rain and snow (app.js wxPick / wxLook) ----------------
+// a choice of four: off, follow the weather, always rain, always snow. Settings wins over the design;
+// an older saved on/off still counts; anything picked in Settings gets the bolder look
+{
+  const app = fs.readFileSync(path.join(web, "app.js"), "utf8");
+  const grab = (re, what) => { const m = app.match(re); assert.ok(m, what + " is in app.js"); return m[0]; };
+  const src = grab(/var WX_CHOICES = \[[^\]]*\][^\n]*/, "WX_CHOICES") + "\n" +
+    grab(/function wxPick\(st, home\) \{[\s\S]*?\n  \}/, "wxPick") + "\n" + grab(/function wxLook\(fx\) \{[\s\S]*?\n  \}/, "wxLook");
+  const { WX_CHOICES, wxPick, wxLook } = new Function(src + "; return { WX_CHOICES, wxPick, wxLook };")();
+  assert.deepStrictEqual(WX_CHOICES, ["off", "auto", "rain", "snow"], "OK steps Off, Follow the weather, Always rain, Always snow");
+  const look = (st, home) => { const p = wxPick(st, home || {}); return Object.assign({ setting: p.setting, fx: p.fx }, wxLook(p.fx)); };
+  const want = {
+    off: { on: false, forced: null, bold: false }, auto: { on: true, forced: null, bold: true },
+    rain: { on: true, forced: "rain", bold: true }, snow: { on: true, forced: "snow", bold: true }
+  };
+  for (const c of WX_CHOICES) {
+    const l = look({ weather_effect: c }, { weather_effect: c === "snow" ? "rain" : "snow", ambient_weather: true });
+    assert.strictEqual(l.setting, c, "Settings " + c + " is the choice");
+    assert.deepStrictEqual({ on: l.on, forced: l.forced, bold: l.bold }, want[c], "Settings " + c + " wins over the design: " + JSON.stringify(l));
+  }
+  // an older saved toggle: on = follow the weather (bold, picked in Settings), off = off, both over the design
+  assert.deepStrictEqual(look({ ambient_weather: true }, { weather_effect: "snow" }), Object.assign({ setting: "auto", fx: "auto" }, want.auto), "old saved on: follow the weather");
+  assert.deepStrictEqual(look({ ambient_weather: false }, { weather_effect: "snow" }), Object.assign({ setting: "off", fx: "off" }, want.off), "old saved off: off");
+  assert.strictEqual(look({ weather_effect: "rain", ambient_weather: false }).fx, "rain", "the new key wins over an old saved toggle");
+  // nothing in Settings: the design decides, and only its older ambient_weather keeps the faint look
+  assert.deepStrictEqual(look({}, { weather_effect: "snow" }), Object.assign({ setting: null, fx: "snow" }, want.snow), "no Settings choice: the design's snow");
+  assert.deepStrictEqual(look({}, { ambient_weather: true }), { setting: null, fx: "ambient", on: true, forced: null, bold: false }, "design ambient_weather only: on, the old look");
+  assert.deepStrictEqual(look({}, {}), Object.assign({ setting: null, fx: "off" }, want.off), "nothing anywhere: off");
+  assert.strictEqual(look({ weather_effect: "lava" }, { weather_effect: "rain" }).setting, null, "an unknown saved choice is ignored");
+}
+
 console.log("weather effect tests passed");

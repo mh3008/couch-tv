@@ -45,7 +45,7 @@ async function load(d, opts = {}) {
   page.on("pageerror", (e) => page.errors.push(String(e)));
   if (opts.cdp) await opts.cdp(page);
   await page.goto(BASE + "?mock=1&reset=1");
-  await page.evaluate((x) => { localStorage.clear(); localStorage.setItem("tvdesigner.design", JSON.stringify(x)); }, d);
+  await page.evaluate(([x, st]) => { localStorage.clear(); localStorage.setItem("tvdesigner.design", JSON.stringify(x)); if (st) localStorage.setItem("mock:tvhome.settings", JSON.stringify({ s: st, updated: Date.now() })); }, [d, opts.st || null]);
   await page.goto(BASE + "?mock=1&design=local");
   await page.waitForFunction(() => document.documentElement.classList.contains("cd"));
   await page.waitForTimeout(1500);
@@ -127,6 +127,47 @@ console.log("Running weather effect browser tests...");
   const lighter = await load(design({ weather_effect: "rain", lighter: true }));
   ok(await most(lighter) === 0, "Lighter home: no rain");
   await lighter.close();
+}
+
+{ // 6. Home settings → Weather → rain and snow: Off, Follow the weather, Always rain, Always snow. It wins over the
+  // design, anything picked there gets the bolder look, and an older saved on/off still counts
+  const bold = (page) => page.evaluate(() => window.AmbientWeather.isBold());
+  const cases = [["off", { weather_effect: "rain" }, null], ["auto", { weather_effect: "rain" }, "clear"], ["rain", { weather_effect: "snow" }, "rain"], ["snow", { weather_effect: "rain" }, "snow"]];
+  for (const [c, home, type] of cases) {
+    const p = await load(design(home), { st: { weather_effect: c } });
+    const s = await state(p), lit = await most(p);
+    if (c === "off") ok(lit === 0 && !(await bold(p)), "Settings Off over a design's rain: nothing drawn");
+    else ok(s.type === type && (type === "clear" ? lit === 0 : lit > 0) && await bold(p), "Settings " + c + " over a design's " + home.weather_effect + ": " + s.type + ", " + lit + " pixels, bold");
+    ok(!p.errors.length, "no page errors: " + p.errors.join(" | "));
+    await p.close();
+  }
+  { // an older saved toggle: on = follow the weather (mock.js's clear day: nothing to draw, even with a design's snow), off = off
+    const on = await load(design({ weather_effect: "snow" }), { st: { ambient_weather: true } });
+    ok((await state(on)).type === "clear" && await most(on) === 0 && await bold(on), "old saved on: follows the weather over the design's snow (clear sky, nothing drawn)");
+    await on.close();
+    const off = await load(design({ weather_effect: "snow" }), { st: { ambient_weather: false } });
+    ok(await most(off) === 0 && !(await bold(off)), "old saved off: nothing drawn");
+    await off.close();
+  }
+  { // with the remote: Settings → Weather, OK steps Off → Follow the weather → Always rain → Always snow, Back to the home: snow
+    const p = await load(design({}));
+    ok(await most(p) === 0, "nothing set anywhere: no rain or snow");
+    const key = async (k, n) => { for (let i = 0; i < (n || 1); i++) { await p.keyboard.press(k); await p.waitForTimeout(250); } };
+    await p.evaluate(() => window.tv.settingsKey()); await p.waitForTimeout(300); await key("Enter");   // the gear menu, then Home settings
+    await key("ArrowDown", 2); await key("ArrowRight"); await key("ArrowDown");                         // Weather, its rows, Rain and snow
+    const row = () => p.evaluate(() => { const f = document.querySelector("#set-rows .srow.focus"); return f ? f.textContent : ""; });
+    const seen = [await row()];
+    for (let i = 0; i < 3; i++) { await key("Enter"); seen.push(await row()); }
+    ok(/Off/.test(seen[0]) && /Follow the weather/.test(seen[1]) && /Always rain/.test(seen[2]) && /Always snow/.test(seen[3]), "OK steps the row: " + seen.map((x) => x.replace(/^.*?(Off|Follow the weather|Always rain|Always snow).*$/, "$1")).join(" → "));
+    await p.screenshot({ path: path.join(SHOTS, "settings-always-snow.png") });
+    const saved = await p.evaluate(() => JSON.parse(localStorage.getItem("mock:tvhome.settings")).s);
+    ok(saved.weather_effect === "snow" && saved.ambient_weather === undefined, "saved as weather_effect: snow (the old toggle key dropped)");
+    await key("Escape", 2); await p.waitForTimeout(1500);
+    const s = await state(p);
+    ok(s.type === "snow" && await most(p) > 0 && await bold(p), "back on the home: snow falling, bold (" + s.type + ")");
+    ok(!p.errors.length, "no page errors: " + p.errors.join(" | "));
+    await p.close();
+  }
 }
 
 { // 5. the cost at 4x slower CPU (the throttle Chrome's own tools use for a slow phone)
