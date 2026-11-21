@@ -366,10 +366,10 @@
   var PHOTO_KINDS = ["photo", "slideshow", "memory", "keep", "upnext", "camera", "app"];
   var PANEL_CLS = { glass: "cw-glass", solid: "cw-solid", colour: "cw-tint", paper: "cw-paper", none: "cw-bare" };
   // the tile colour each kind has when its style does not pick one (the mockups' colours)
-  var TILE = { analog: "#f4f1ea", wordclock: "#0a6fd8", countdown: "#18793f", weather: "#1b64b5", bigtemp: "#ffb340", hourly: "#1b64b5", week: "#1b64b5",
+  var TILE = { analog: "#f4f1ea", wordclock: "#0a6fd8", countdown: "#18793f", together: "#8e1a3a", weather: "#1b64b5", bigtemp: "#ffb340", hourly: "#1b64b5", week: "#1b64b5",
     uv: "#ff9f0a", surf: "#0a6e8a", screentime: "#5e5ce6", note: "#ffd60a", timer: "#1d1b18" };
   var GRAD = { weather: "linear-gradient(180deg,#1b64b5,#2f7fd2)", hourly: "linear-gradient(180deg,#1b64b5,#2f7fd2)", week: "linear-gradient(180deg,#1b64b5,#2f7fd2)",
-    bigtemp: "linear-gradient(160deg,#ffb340,#ff7a45)", countdown: "linear-gradient(160deg,#1f9150,#146b37)", uv: "linear-gradient(160deg,#ff9f0a,#ff6a3d)",
+    bigtemp: "linear-gradient(160deg,#ffb340,#ff7a45)", countdown: "linear-gradient(160deg,#1f9150,#146b37)", together: "linear-gradient(160deg,#b02548,#7d1733)", uv: "linear-gradient(160deg,#ff9f0a,#ff6a3d)",
     surf: "linear-gradient(170deg,#0a6e8a,#0f9fb5)", screentime: "linear-gradient(160deg,#5e5ce6,#8e44ef)" };
   var FONT = { inter: '"Inter", sans-serif', antonio: '"Antonio", "Arial Narrow", sans-serif', rounded: '"Nunito", "Inter", sans-serif', cormorant: '"Cormorant Garamond", Georgia, serif', jost: '"Jost", "Inter", sans-serif' };
   var CORNER = { square: 12, soft: 28, round: 36, pill: 999 };
@@ -572,6 +572,56 @@
     var tiny = b.h < 200, fs = clamp(Math.min((b.h - (tiny ? 84 : 110)) * 0.95, (b.w - 48) / (String(num).length * 0.62)), 44, 200);
     add(root, [b.w < 300 ? E("div", "cw-t23 cw-ell", "font-weight:700;color:var(--sub)", [label]) : lab(q.icon || "calendar", label, "rgba(255,255,255,.9)"), E("div", "cw-grow"), n === 0 ? null : E("div", "cw-big", "font-size:" + px(fs), [String(num)]), tiny && n ? null : E("div", "cw-t29 cw-ell", "font-weight:650", [u])]);
     var lb = root.querySelector(".cw-lab"); if (lb && root.classList.contains("cw-tint")) lb.style.color = "var(--sub)";
+  };
+  // Days together: the days, and the years, months and days, since a date the design names (the day a couple
+  // got together, a first home, a pet's adoption). Worked out from the TV's own date, so nothing is asked and
+  // it is right at midnight. A date in the future counts down to it. Until the design gives a date it asks for one.
+  function daysIn(y, m) { return new Date(y, m, 0).getDate(); }   // m is 1 to 12
+  function tidyDays(n) { return String(n).replace(/\B(?=(\d{3})+(?!\d))/g, ","); }
+  function togetherSince(y, m, d, today) {
+    var ty = today.getFullYear(), tm = today.getMonth(), td = today.getDate(), t0 = new Date(ty, tm, td);
+    d = Math.min(d, daysIn(y, m));
+    var s0 = new Date(y, m - 1, d), total = Math.round((t0 - s0) / 86400000);
+    if (total < 0) return { future: true, days: -total };
+    var mt = (ty - y) * 12 + (tm - (m - 1)), anchor = new Date(y, m - 1 + mt, Math.min(d, daysIn(y, m + mt)));
+    if (anchor > t0) { mt--; anchor = new Date(y, m - 1 + mt, Math.min(d, daysIn(y, m + mt))); }
+    return { future: false, days: total, years: Math.floor(mt / 12), months: mt % 12, rest: Math.round((t0 - anchor) / 86400000) };
+  }
+  function plural(n, one, many) { return n + " " + (n === 1 ? one : many); }   // a no-break space: a long line breaks between the parts, never inside one
+  function togetherWords(t) {
+    var parts = [];
+    if (t.years) parts.push(plural(t.years, "year", "years"));
+    if (t.months) parts.push(plural(t.months, "month", "months"));
+    if (t.rest) parts.push(plural(t.rest, "day", "days"));
+    return parts.length ? parts.join(", ") : "";
+  }
+  function heartSvg(css) {
+    return svg("0 0 24 22", "100%", "100%", [S("path", { d: "M12 21C5 15.5 1.5 11.8 1.5 7.4A5.4 5.4 0 0 1 12 5.2 5.4 5.4 0 0 1 22.5 7.4C22.5 11.8 19 15.5 12 21Z", fill: "#ffb3c6" }),
+      S("path", { d: "M5.2 6.6A3 3 0 0 1 8.4 4.3", fill: "none", stroke: "#fff", "stroke-width": 1.3, "stroke-linecap": "round", opacity: 0.8 })], css);
+  }
+  R.together = function (root, o, b, env) {
+    var q = op(o), t0 = now(), t;
+    if (env.demo) { var dd = new Date(t0.getFullYear() - 2, t0.getMonth() - 3, t0.getDate() - 11); t = togetherSince(dd.getFullYear(), dd.getMonth() + 1, dd.getDate(), t0); }
+    else if (!q.year) return empty(root, b, "heart", "Set your day in couch-tv Studio", "The date you got together");
+    else t = togetherSince(q.year, q.month || 1, q.day || 1, t0);
+    var label = q.label || "Together", words = t.future ? "days to go" : t.days === 1 ? "day together" : "days together", ymd = t.future || (!t.years && !t.months) ? "" : togetherWords(t);   // under a month the days say it all
+    var big = t.future ? t.days : t.days, glad = !t.future && t.years >= 1 && !t.months && !t.rest;
+    if (!t.future && !t.days) { big = "Day one"; words = ""; }
+    var num = typeof big === "number" ? tidyDays(big) : big, tiny = b.h < 200;
+    if (tiny && b.w < 300) {
+      root.style.padding = "14px"; root.style.justifyContent = "center";
+      return add(root, [heartSvg("width:44px;height:40px;flex:none"), E("div", "cw-big", "white-space:nowrap;margin-top:4px;font-size:" + px(fitPx(num, b.w - 28, 44)), [num]), E("div", "cw-t23 cw-ell", "font-weight:650", [t.future ? "to go" : "days"])]);
+    }
+    if (tiny) {
+      return add(root, E("div", "cw-row", "height:100%;align-items:center;justify-content:space-around", [heartSvg("width:84px;height:76px;flex:none"),
+        E("div", "cw-col", "min-width:0;align-items:center", [E("div", "cw-t23 cw-ell", "font-weight:700;color:var(--sub)", [glad ? "Happy anniversary" : label]), E("div", "cw-big", "white-space:nowrap;font-size:" + px(fitPx(num, b.w * 0.42, 56)), [num]), E("div", "cw-t23 cw-ell", "font-weight:650", [words || label])])]));
+    }
+    var wide = b.w >= 560, fs = fitPx(num, wide ? b.w * 0.4 : b.w - 48, clamp(b.h * 0.3, 52, 120));
+    var text = E("div", "cw-col", "min-width:0;align-items:center;" + (wide ? "margin-left:36px" : ""), [E("div", "cw-t23 cw-ell", "font-weight:700;color:var(--sub)", [glad ? "Happy anniversary" : label]),
+      E("div", "cw-big", "white-space:nowrap;font-size:" + px(fs), [num]), words ? E("div", "cw-t29 cw-ell", "font-weight:650", [words]) : null,
+      ymd ? fitT(E("div", "cw-t25", WRAP + "margin-top:6px;color:var(--sub);text-align:center", [ymd])) : null]);
+    add(root, wide ? E("div", "cw-row", "height:100%;align-items:center;justify-content:center", [heartSvg("width:" + px(clamp(b.h * 0.5, 80, 190)) + ";height:" + px(clamp(b.h * 0.46, 74, 174)) + ";flex:none"), text])
+      : [E("div", "cw-grow"), heartSvg("height:" + px(clamp(b.h * 0.2, 54, 110)) + ";flex:none;width:100%;margin-bottom:6px"), text, E("div", "cw-grow")]);
   };
   R.date = function (root, o, b, env) {
     var q = op(o), show = q.show || "date", d = now(), w = weather(env), short = b.w < 560 || q.dfmt === "short";
