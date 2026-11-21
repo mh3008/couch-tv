@@ -280,6 +280,8 @@ const CHECKS = String(function (root, tag, mode) {
         const env = STATES[st] ? STATES[st]() : STATES.tv();
         const o = { id: "t", kind, w: w * 100 - 40, h: h * 100 - 40 };
         if (!STATES[st]) o.opts = { align: st };
+        // a widget that shows what the design names (the birthdays) is given people to show; the long state gets long names
+        if (kind === "birthdays" && st !== "designer" && st !== "unset") { const nm = st === "long" ? ["Alexandrina Wilhelmina", "Maximilian Bartholomew", "Anna", "Ben", "Cleo"] : ["Anna", "Ben", "Cleo", "Dan", "Eve"]; o.opts = Object.assign({}, o.opts, { birthdays: nm.map((name, i) => ({ name, month: 1 + i * 2, day: 3 + i * 5, year: i % 2 ? 1990 + i : undefined })) }); }
         let el;
         try { el = W.render(o, env); } catch (e) { out.push(kind + " " + id + " " + st + ": throws " + e.message); continue; }
         el.style.position = "absolute"; el.style.left = "80px"; el.style.top = "60px";

@@ -350,7 +350,7 @@
   // a style from fixed lists and plain colours, and a few options per kind, each on an allow list.
   // A design never carries a widget's data: the TV reads its own (the clock, its weather, its photos,
   // its apps, Home Assistant) or says plainly what is missing. No link, no number typed as words.
-  var WKINDS = ["clock", "tallclock", "glassclock", "analog", "flipclock", "wordclock", "solar", "worldclock", "countdown", "date", "month", "timer",
+  var WKINDS = ["clock", "tallclock", "glassclock", "analog", "flipclock", "wordclock", "solar", "worldclock", "countdown", "birthdays", "date", "month", "timer",
     "weather", "bigtemp", "hourly", "week", "rain", "uv", "sun", "moon", "air", "surf",
     "photo", "slideshow", "mosaic", "artframe", "memory",
     "keep", "keeprow", "upnext", "picks",
@@ -363,7 +363,7 @@
   // which panel each kind has when its style does not say (glass, solid, colour, paper, none)
   var WPANEL = { clock: "none", tallclock: "none", glassclock: "none", flipclock: "none", date: "none", welcome: "none", quote: "none", quick: "none",
     photo: "none", slideshow: "none", mosaic: "none", artframe: "none", memory: "none", keep: "none", keeprow: "none", upnext: "none", picks: "none",
-    app: "none", appgrid: "none", camera: "none", stack: "none", analog: "colour", wordclock: "colour", countdown: "colour", weather: "colour",
+    app: "none", appgrid: "none", camera: "none", stack: "none", analog: "colour", wordclock: "colour", countdown: "colour", birthdays: "colour", weather: "colour",
     bigtemp: "colour", hourly: "colour", week: "colour", uv: "colour", surf: "colour", screentime: "colour", note: "colour", word: "paper",
     worldclock: "solid", moon: "solid", timer: "solid", stocks: "solid", battery: "solid", ask: "glass", agent: "glass" };
   // the kinds the remote stops on (they do something with OK); the rest are to look at (GRID.md Focus 6)
@@ -391,6 +391,18 @@
     align: function (v) { return SAN.pick(v, ["left", "center", "right"]); },
     show: function (v) { return SAN.pick(v, ["date", "weather", "both"]); }, dfmt: function (v) { return SAN.pick(v, DATE_KEYS); },
     cities: function (v) { return SAN.list(v, 4, tzOk); },
+    // the birthdays: up to eight people, each a first name (words only, one line), a month and a day, and a year if they want "turns 21";
+    // a person without a real name, month and day is left out
+    birthdays: function (v) {
+      return SAN.list(v, 8, function (p) {
+        p = obj(p);
+        var name = SAN.w(p.name, 20), m = SAN.n(p.month, 1, 12, true), d = SAN.n(p.day, 1, 31, true), y = SAN.n(p.year, 1900, 2100, true), out;
+        if (!name || m === undefined || d === undefined) return undefined;
+        out = { name: name.split(String.fromCharCode(10)).join(" "), month: m, day: d };
+        if (y !== undefined) out.year = y;
+        return out;
+      });
+    },
     month: function (v) { return SAN.n(v, 1, 12, true); }, day: function (v) { return SAN.n(v, 1, 31, true); },
     unit: function (v) { return SAN.pick(v, ["sleeps", "days", "weeks"]); }, icon: iconName,
     // apps in a dock, row, folder or app tile: catalogue ids (app-catalogue.js). An old design's package
@@ -428,7 +440,7 @@
   var WEB_FEEDS = ["abc", "abc-justin", "abc-sport", "abc-business", "sbs", "guardian", "bbc", "rnz"];
   var WOPT = {
     clock: "format ampm seconds date align", tallclock: "format align", glassclock: "format scene", analog: "seconds", flipclock: "format",
-    wordclock: "", solar: "", worldclock: "label cities", countdown: "label month day unit icon", date: "show dfmt align place", month: "", timer: "label",
+    wordclock: "", solar: "", worldclock: "label cities", countdown: "label month day unit icon", birthdays: "label birthdays align", date: "show dfmt align place", month: "", timer: "label",
     weather: "place hilo night", bigtemp: "place", hourly: "place", week: "place", rain: "label", uv: "label", sun: "label", moon: "", air: "label", surf: "label",
     photo: "image fit caption sub", slideshow: "seconds_each caption sub", mosaic: "count", artframe: "image mat caption sub", memory: "align",
     keep: "", keeprow: "label shows", upnext: "apps sport", picks: "label align",
@@ -650,6 +662,7 @@
       if (o.type === "widget") [o].concat(o.items || []).forEach(function (wd) {
         var op = wd.opts || {};
         ["kicker", "label", "text", "sub", "caption", "bin_a", "bin_b"].forEach(function (k) { if (typeof op[k] === "string") out.push({ id: o.id, t: op[k], drop: function () { delete op[k]; } }); });
+        (op.birthdays || []).forEach(function (p) { if (p && typeof p.name === "string") out.push({ id: o.id, t: p.name, drop: function () { op.birthdays = op.birthdays.filter(function (x) { return x !== p; }); } }); });
         (op.controls || []).forEach(function (c) { if (typeof c.name === "string") out.push({ id: o.id, t: c.name, drop: function () { delete c.name; } }); });
       });
       if (o.type === "group") (o.controls || []).forEach(function (c) {

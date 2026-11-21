@@ -366,7 +366,7 @@
   var PHOTO_KINDS = ["photo", "slideshow", "memory", "keep", "upnext", "camera", "app"];
   var PANEL_CLS = { glass: "cw-glass", solid: "cw-solid", colour: "cw-tint", paper: "cw-paper", none: "cw-bare" };
   // the tile colour each kind has when its style does not pick one (the mockups' colours)
-  var TILE = { analog: "#f4f1ea", wordclock: "#0a6fd8", countdown: "#18793f", weather: "#1b64b5", bigtemp: "#ffb340", hourly: "#1b64b5", week: "#1b64b5",
+  var TILE = { analog: "#f4f1ea", wordclock: "#0a6fd8", countdown: "#18793f", birthdays: "#5a3590", weather: "#1b64b5", bigtemp: "#ffb340", hourly: "#1b64b5", week: "#1b64b5",
     uv: "#ff9f0a", surf: "#0a6e8a", screentime: "#5e5ce6", note: "#ffd60a", timer: "#1d1b18" };
   var GRAD = { weather: "linear-gradient(180deg,#1b64b5,#2f7fd2)", hourly: "linear-gradient(180deg,#1b64b5,#2f7fd2)", week: "linear-gradient(180deg,#1b64b5,#2f7fd2)",
     bigtemp: "linear-gradient(160deg,#ffb340,#ff7a45)", countdown: "linear-gradient(160deg,#1f9150,#146b37)", uv: "linear-gradient(160deg,#ff9f0a,#ff6a3d)",
@@ -572,6 +572,51 @@
     var tiny = b.h < 200, fs = clamp(Math.min((b.h - (tiny ? 84 : 110)) * 0.95, (b.w - 48) / (String(num).length * 0.62)), 44, 200);
     add(root, [b.w < 300 ? E("div", "cw-t23 cw-ell", "font-weight:700;color:var(--sub)", [label]) : lab(q.icon || "calendar", label, "rgba(255,255,255,.9)"), E("div", "cw-grow"), n === 0 ? null : E("div", "cw-big", "font-size:" + px(fs), [String(num)]), tiny && n ? null : E("div", "cw-t29 cw-ell", "font-weight:650", [u])]);
     var lb = root.querySelector(".cw-lab"); if (lb && root.classList.contains("cw-tint")) lb.style.color = "var(--sub)";
+  };
+  // Birthdays: the next birthdays of the people a design names (up to eight, each a first name, a month and
+  // a day, and a year if they want "turns 21"). Worked out from the TV's own date, so nothing is asked and it
+  // is right at midnight. The one coming up leads; on the day it says "Happy birthday". A 29 February birthday
+  // is kept on 28 February in a year that has no 29th.
+  function leapYear(y) { return (y % 4 === 0 && y % 100 !== 0) || y % 400 === 0; }
+  function nextBirthday(p, t0) {
+    var y = t0.getFullYear(), tt = new Date(y, t0.getMonth(), t0.getDate()), ty = y, d, target;
+    for (var k = 0; k < 2; k++) {
+      d = p.month === 2 && p.day === 29 && !leapYear(ty) ? 28 : p.day;
+      target = new Date(ty, p.month - 1, d);
+      if (target >= tt) break;
+      ty++;
+    }
+    var n = Math.round((target - tt) / 86400000), age = p.year ? ty - p.year : 0;
+    return { name: p.name, n: n, date: target, age: age > 0 && age < 130 ? age : 0 };
+  }
+  function upcomingBirthdays(list, t0) {
+    return (Object.prototype.toString.call(list) === "[object Array]" ? list : []).map(function (p, i) { var r = nextBirthday(p, t0); r.i = i; return r; })
+      .sort(function (a, b) { return a.n - b.n || a.i - b.i; });
+  }
+  // sample people for a preview or the gallery: the next one is in three days, so the widget never shows empty
+  function demoBirthdays(t0) {
+    var at = function (n) { var d = new Date(t0.getFullYear(), t0.getMonth(), t0.getDate() + n); return { month: d.getMonth() + 1, day: d.getDate() }; }, a = at(3), b = at(12), c = at(30), e = at(75);
+    return [{ name: "Mum", month: a.month, day: a.day }, { name: "Sam", month: b.month, day: b.day, year: t0.getFullYear() - 21 }, { name: "Nan", month: c.month, day: c.day }, { name: "Alex", month: e.month, day: e.day }];
+  }
+  function birthdayWhen(n) { return n === 0 ? "Today" : n === 1 ? "Tomorrow" : "In " + n + " days"; }
+  function birthdaySub(r) { return shortDate(r.date) + (r.age ? ". Turns " + r.age : ""); }
+  function birthdaysOf(root, o, b, env) {
+    var q = op(o), t0 = now(), people = env.demo ? demoBirthdays(t0) : q.birthdays;
+    if (!people || !people.length) { empty(root, b, "party", "Add birthdays in couch-tv Studio", "Names and days, picked in Studio"); return null; }
+    return { list: upcomingBirthdays(people, t0), label: q.label || "" };
+  }
+  function birthdayRow(r, wide, first, a) {
+    var sub = wide ? (r.n === 0 ? "Happy birthday. " : "") + birthdaySub(r) : (r.n === 0 ? "Happy birthday" : birthdayWhen(r.n)) + ". " + birthdaySub(r);   // the wide row has a chip for how soon
+    return dropT(E("div", "cw-row", "justify-content:space-between;align-items:center;min-width:0;flex:none;" + (first ? "" : "margin-top:14px"), [
+      E("div", "cw-col", "min-width:0;flex:1;text-align:" + (wide ? "left" : a), [fitT(E("div", "", WRAP + "font-size:29px;line-height:1.2;font-weight:680;" + (r.n === 0 ? "color:var(--on)" : ""), [r.name])),
+        fitT(E("div", "", WRAP + "font-size:24px;line-height:1.25;color:var(--sub)", [sub]))]),
+      wide ? E("div", "cw-chip" + (r.n === 0 ? " on" : ""), "height:44px;font-size:23px;margin-left:12px;padding:0 16px;flex:none;white-space:nowrap", [birthdayWhen(r.n)]) : null]), first ? 1 : 2);
+  }
+  R.birthdays = function (root, o, b, env) {
+    var V = birthdaysOf(root, o, b, env), a = alignOf(o);
+    if (!V) return;
+    var wide = b.w >= 560, rows = clamp(Math.floor((b.h - 100) / (wide ? 66 : 80)), 1, 6);
+    webBody(root, a, [webHead("party", V.label || "Birthdays", a), E("div", "", "height:14px;flex:none")].concat(V.list.slice(0, rows).map(function (r, i) { return birthdayRow(r, wide, i === 0, a); })));
   };
   R.date = function (root, o, b, env) {
     var q = op(o), show = q.show || "date", d = now(), w = weather(env), short = b.w < 560 || q.dfmt === "short";
@@ -2348,6 +2393,14 @@
     }))]));
   };
   CR.screentime = R.screentime;
+  // a box under 200 px tall: the next one's name, how soon, and when
+  CR.birthdays = function (root, o, b, env) {
+    var V = birthdaysOf(root, o, b, env), a = alignOf(o), r;
+    if (!V) return;
+    r = V.list[0];
+    if (b.w < 300) { root.style.padding = "14px"; root.style.justifyContent = "center"; return add(root, [ic("party", 32, "currentColor"), fitT(E("div", "cw-ell", "font-size:30px;font-weight:700;margin-top:4px;max-width:100%", [r.name])), fitT(E("div", "", WRAP + "font-size:24px;color:var(--sub)", [birthdayWhen(r.n)]))]); }
+    webBody(root, a, [line(r.n === 0 ? "Happy birthday" : birthdayWhen(r.n), 27, "color:var(--sub)", a, 3), line(r.name, 44, "font-weight:740", a), line(birthdaySub(r), 23, "color:var(--sub);margin-top:2px", a, 3)]);
+  };
 
   // ---------------- one widget, a stack, the API ----------------
   function one(o, b, env) {
