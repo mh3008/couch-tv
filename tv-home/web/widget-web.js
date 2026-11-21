@@ -265,7 +265,7 @@
   // name, the date and how many days off in a row it makes are kept. A country Nager does not list
   // answers 404, which the widget says plainly.
   var NAGER = "https://date.nager.at/api/v3/NextPublicHolidays/";
-  var HOLIDAYS_DEFAULT = "AU";   // like the news, scores and markets defaults: couch-tv's own people
+  var HOLIDAYS_DEFAULT = "AU";   // like the news, scores and markets defaults: couch-tv's own people, and only the very last resort
   function ccOf(v) { v = typeof v === "string" ? v.trim().toUpperCase() : ""; return /^[A-Z]{2}$/.test(v) ? v : ""; }
   function regionOf(v) { v = typeof v === "string" ? v.trim().toUpperCase() : ""; return /^[A-Z0-9]{1,3}$/.test(v) ? v : ""; }
   // the TV's town tells us the country by its time zone (the one thing every saved town has, with or
@@ -292,9 +292,31 @@
     }
     return { cc: cc, region: region };
   }
-  // which country and region a widget asks for: its own options first, then this TV's town
+  // a town with no time zone we know falls back to the TV's own language setting (navigator.language: "en-GB" is GB, "pt_BR" and
+  // "pt-br" are BR, "zh-Hans-CN" is CN). A bare language names a country only where it is not ambiguous ("de" is Germany; "en", "es", "pt",
+  // "nl" and "ar" name no one country, so they are skipped); a locale's region always wins over the language
+  var BARE_CC = { de: "DE", fr: "FR", it: "IT", ja: "JP", ko: "KR", pl: "PL", cs: "CZ", sk: "SK", tr: "TR", ro: "RO", sv: "SE", da: "DK", fi: "FI", nb: "NO", nn: "NO", no: "NO",
+    el: "GR", hu: "HU", vi: "VN", th: "TH", id: "ID", uk: "UA", ru: "RU", he: "IL", iw: "IL", bg: "BG", hr: "HR", sl: "SI", et: "EE", lv: "LV", lt: "LT", is: "IS" };
+  function localeCc(v) {
+    var parts = String(typeof v === "string" ? v : "").trim().replace(/_/g, "-").split("-"), i, p;
+    if (!/^[A-Za-z]{2,3}$/.test(parts[0] || "")) return "";
+    for (i = 1; i < parts.length; i++) {
+      p = parts[i];
+      if (p.length === 1) break;   // "u-ca-gregory": extensions start here, no region after them
+      if (/^[A-Za-z]{2}$/.test(p)) return p.toUpperCase();
+    }
+    return BARE_CC[parts[0].toLowerCase()] || "";
+  }
+  // then couch-tv's own language, when it names a country (the languages list in i18n.js: Italiano is Italy). Dutch and Arabic carry a country
+  // there only for the place search (Belgium, Saudi Arabia), so those two say nothing here
+  function uiCc(home) {
+    var lang = String((home || {}).lang || "").toLowerCase();
+    return lang === "nl" || lang === "ar" ? "" : ccOf((home || {}).uicc);
+  }
+  // which country and region a widget asks for: its own options first, then this TV's town (its time zone), then the TV's locale,
+  // then couch-tv's language, and Australia only when nothing else says
   function holidayPlace(opts, home) {
-    var h = homeOf(home), cc = ccOf((opts || {}).country) || h.cc || HOLIDAYS_DEFAULT;
+    var h = homeOf(home), cc = ccOf((opts || {}).country) || h.cc || ccOf(localeCc((home || {}).locale)) || uiCc(home) || HOLIDAYS_DEFAULT;
     return { cc: cc, region: regionOf((opts || {}).region) || (cc === h.cc ? h.region : "") };
   }
   // whole days since 1 Jan 1970 for a "YYYY-MM-DD" (pure arithmetic, no Date: the same in every WebView)
@@ -540,7 +562,7 @@
     LEAGUES: LEAGUES, LEAGUE_DEFAULT: LEAGUE_DEFAULT, leagueOf: leagueOf, parseScores: parseScores, scoreOrder: scoreOrder, kickoff: kickoff,
     SYMBOL: SYMBOL, TICKERS_DEFAULT: TICKERS_DEFAULT, TICKER_NAMES: TICKER_NAMES, tickersOf: tickersOf, parseSpark: parseSpark, price: price, change: change,
     routeKey: routeKey, routeUrl: routeUrl, parseRoute: parseRoute, leaveBy: leaveBy, picks: picks, PAUSABLE: PAUSABLE, pausedOf: pausedOf,
-    holidayPlace: holidayPlace, parseHolidays: parseHolidays, demoHolidays: demoHolidays, holidayDate: holidayDate, daysAway: daysAway, awayWords: awayWords, runWords: runWords, dayNum: dayNum, isoOf: isoOf,
+    holidayPlace: holidayPlace, localeCc: localeCc, parseHolidays: parseHolidays, demoHolidays: demoHolidays, holidayDate: holidayDate, daysAway: daysAway, awayWords: awayWords, runWords: runWords, dayNum: dayNum, isoOf: isoOf,
     loader: function (h) { return Loader(h); }
   };
   root.CouchWidgetWeb = API;

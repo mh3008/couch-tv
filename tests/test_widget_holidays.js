@@ -46,6 +46,36 @@ ok(same(pl({}, { timezone: "America/New_York" }), "US", "") && same(pl({}, { tim
 ok(same(pl({ country: "nz" }, { timezone: "Australia/Perth", place: "Perth" }), "NZ", "") && same(pl({ country: "US", region: "ca" }, { timezone: "Australia/Perth" }), "US", "CA"), "the design's country wins, and the TV's state is not carried to another country");
 ok(same(pl({ country: "x1", region: "toolong" }, { timezone: "Europe/Paris" }), "FR", ""), "a bad country or region is ignored");
 
+// the fallback when the town has no zone we know: the town's zone, then the TV's locale, then couch-tv's language, Australia last
+const lc = (v) => WW.localeCc(v);
+ok(lc("en-GB") === "GB" && lc("en-US") === "US" && lc("pt-BR") === "BR" && lc("de-AT") === "AT" && lc("fr-CA") === "CA", "a locale's region is the country (en-GB, en-US, pt-BR, de-AT, fr-CA)");
+ok(lc("pt_BR") === "BR" && lc("en_gb") === "GB" && lc("EN-us") === "US" && lc("pt-br") === "BR" && lc(" en-NZ ") === "NZ", "underscores, lower case, upper case and spaces are all fine");
+ok(lc("zh-Hans-CN") === "CN" && lc("sr-Latn-RS") === "RS" && lc("ar-SA-u-ca-gregory-nu-latn") === "SA" && lc("es-419") === "" && lc("en-u-ca-gregory-AU") === "", "a script in the middle is skipped, a region after an extension is not read, a number region is no country");
+ok(lc("de") === "DE" && lc("DE") === "DE" && lc("fr") === "FR" && lc("ja") === "JP" && lc("sv") === "SE" && lc("pl") === "PL", "a bare language that names one country (de, fr, ja, sv, pl)");
+ok(["en", "es", "pt", "nl", "ar", "zh"].every((x) => lc(x) === ""), "a bare en, es, pt, nl, ar or zh names no one country, so nothing");
+ok(lc("") === "" && lc(null) === "" && lc(undefined) === "" && lc(42) === "" && lc("x") === "" && lc("-GB") === "" && lc("123-GB") === "" && lc("en-GBR") === "", "nothing, a number, one letter or nonsense gives nothing");
+// 1. the town's zone wins over everything below it
+ok(same(pl({}, { timezone: "Europe/Paris", locale: "en-GB", lang: "it", uicc: "IT" }), "FR", ""), "1. the town's time zone first (France), even with a British locale and Italian language");
+ok(same(pl({}, { timezone: "Australia/Perth", place: "Perth", locale: "en-GB" }), "AU", "WA"), "1. and an Australian town keeps its state");
+// 2. the locale, when the town gives no country
+ok(same(pl({}, { locale: "en-GB" }), "GB", "") && same(pl({}, { timezone: "auto", locale: "en-US", lang: "en", uicc: "" }), "US", "") && same(pl({}, { timezone: "Asia/Nowhere", locale: "pt_BR" }), "BR", ""), "2. no zone we know: the locale (en-GB, en-US, pt_BR)");
+ok(same(pl({}, { locale: "de", lang: "it", uicc: "IT" }), "DE", "") && same(pl({}, { place: "Leeds", locale: "en-GB" }), "GB", ""), "2. a bare de is Germany, and beats the language setting");
+ok(same(pl({}, { locale: "en-GB", timezone: "" }), "GB", "") && same(pl({ country: "nz" }, { locale: "en-GB" }), "NZ", ""), "a design's own country still wins over the locale");
+// 3. couch-tv's own language, when the locale names no country
+ok(same(pl({}, { locale: "en", lang: "it", uicc: "IT" }), "IT", "") && same(pl({}, { locale: "", lang: "pl", uicc: "PL" }), "PL", "") && same(pl({}, { lang: "pt", uicc: "BR" }), "BR", ""), "3. no locale country: the couch-tv language's country (Italiano, Polski, Português)");
+ok(same(pl({}, { locale: "en", lang: "nl", uicc: "BE" }), "AU", "") && same(pl({}, { locale: "en", lang: "ar", uicc: "SA" }), "AU", ""), "3. Dutch and Arabic carry a country only for the town search, so they do not count");
+ok(same(pl({}, { locale: "en", lang: "en", uicc: "" }), "AU", "") && same(pl({}, { locale: "en", lang: "es", uicc: "" }), "AU", "") && same(pl({}, { locale: "en", uicc: "ITA" }), "AU", "") && same(pl({}, { locale: "en", uicc: "I1" }), "AU", ""), "3. a bare English or Spanish (no country) and a bad code say nothing");
+// 4. Australia only last
+ok(same(pl({}, {}), "AU", "") && same(pl({}, { locale: "en", lang: "en", uicc: "" }), "AU", "") && same(pl({}, { locale: "xx-" }), "AU", ""), "4. nothing at all: Australia, last of all");
+ok(same(pl({}, { locale: "en-GB" }), "GB", "") && same(pl({ region: "eng" }, { locale: "en-GB" }), "GB", "") === false, "a state or region is never carried from a locale: only the design (or an Australian town) names one");
+const rg = pl({ region: "eng" }, { locale: "en-GB" });
+ok(rg.cc === "GB" && rg.region === "ENG", "the design's own region is kept with a locale country");
+// the loader's key follows the same choice, so a British TV asks for GB and shares one request with other GB widgets
+const keyOf = (w, home) => WW.SOURCES.holidays.key(w, { home: () => home });
+ok(keyOf({ opts: {} }, { locale: "en-GB" }) === "GB:" && keyOf({ opts: {} }, {}) === "AU:" && keyOf({ opts: {} }, { timezone: "Europe/Rome", locale: "en-GB" }) === "IT:", "the request key (and so the one ask to Nager.Date) follows: GB for a British locale, AU for nothing, IT for a Rome zone");
+const appSrc = require("fs").readFileSync(require("path").join(__dirname, "../tv-home/web/app.js"), "utf8"), hh = appSrc.slice(appSrc.indexOf("function holidayHome()"), appSrc.indexOf("function holidayHome()") + 500);
+ok(/navigator\.language/.test(hh) && /I18N/.test(hh) && /uicc: L \? L\.country\(\)/.test(hh) && /timezone: WXCFG/.test(hh), "app.js hands the widget the TV's locale and couch-tv's language, besides the town");
+
 (async () => {
   // ---------------- 3. the loader: straight from the TV, no relay ----------------
   const answer = (src, url) => (/\/GB$/.test(url) ? gb : au);

@@ -7229,7 +7229,12 @@
       .catch(function (e) { if (TV && it.app && TV.launch(it.app.package)) { status(""); return; } status(tBridge(e.key, e.vars, e.message)); });
   }
   // where the holidays widget looks for its country and state: the town's time zone and words (never a house, never saved anywhere new)
-  function holidayHome() { return { timezone: WXCFG && WXCFG.timezone, place: WXCFG && WXCFG.place }; }
+  // (and, when the town has no zone we know, the TV's language: its locale, then couch-tv's own language and the country that has)
+  function holidayHome() {
+    var loc = "", L = window.I18N;
+    try { loc = String(navigator.language || ""); } catch (e) {}
+    return { timezone: WXCFG && WXCFG.timezone, place: WXCFG && WXCFG.place, locale: loc, lang: L ? L.lang() : "", uicc: L ? L.country() : "" };
+  }
   function commuteData() {
     var p = commutePlaces();
     return { from: p.from ? { name: p.from.name } : null, to: p.to ? { name: p.to.name } : null,
