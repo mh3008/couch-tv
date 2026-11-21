@@ -350,7 +350,7 @@
   // a style from fixed lists and plain colours, and a few options per kind, each on an allow list.
   // A design never carries a widget's data: the TV reads its own (the clock, its weather, its photos,
   // its apps, Home Assistant) or says plainly what is missing. No link, no number typed as words.
-  var WKINDS = ["clock", "tallclock", "glassclock", "analog", "flipclock", "wordclock", "solar", "worldclock", "countdown", "date", "month", "timer",
+  var WKINDS = ["clock", "tallclock", "glassclock", "analog", "flipclock", "wordclock", "solar", "worldclock", "countdown", "campfire", "date", "month", "timer",
     "weather", "bigtemp", "hourly", "week", "rain", "uv", "sun", "moon", "air", "surf",
     "photo", "slideshow", "mosaic", "artframe", "memory",
     "keep", "keeprow", "upnext", "picks",
@@ -363,14 +363,14 @@
   // which panel each kind has when its style does not say (glass, solid, colour, paper, none)
   var WPANEL = { clock: "none", tallclock: "none", glassclock: "none", flipclock: "none", date: "none", welcome: "none", quote: "none", quick: "none",
     photo: "none", slideshow: "none", mosaic: "none", artframe: "none", memory: "none", keep: "none", keeprow: "none", upnext: "none", picks: "none",
-    app: "none", appgrid: "none", camera: "none", stack: "none", analog: "colour", wordclock: "colour", countdown: "colour", weather: "colour",
+    app: "none", appgrid: "none", camera: "none", stack: "none", analog: "colour", wordclock: "colour", countdown: "colour", campfire: "solid", weather: "colour",
     bigtemp: "colour", hourly: "colour", week: "colour", uv: "colour", surf: "colour", screentime: "colour", note: "colour", word: "paper",
     worldclock: "solid", moon: "solid", timer: "solid", stocks: "solid", battery: "solid", ask: "glass", agent: "glass" };
   // the kinds the remote stops on (they do something with OK); the rest are to look at (GRID.md Focus 6)
   // (and, from 18 Nov 2026, every kind whose OK opens its detail layer, widget-detail.js: a clock opens
   // Timers, the weather the forecast, a photo the slideshow; a widget with nothing real to show opens
   // its setup record, so it is a stop too, decided when it is drawn)
-  var WACT = ["keep", "keeprow", "upnext", "picks", "app", "folder", "dock", "appgrid", "games", "nowplaying", "soundscape", "aircon", "scenes", "controls", "people", "quick", "stack",
+  var WACT = ["keep", "keeprow", "upnext", "picks", "app", "folder", "dock", "appgrid", "games", "nowplaying", "soundscape", "campfire", "aircon", "scenes", "controls", "people", "quick", "stack",
     "clock", "tallclock", "glassclock", "analog", "flipclock", "wordclock", "timer", "solar", "worldclock", "date", "month", "agenda",
     "weather", "bigtemp", "hourly", "week", "rain", "uv", "sun", "moon", "air", "surf", "photo", "slideshow", "mosaic", "artframe",
     "camera", "doorbell", "card", "news", "sports", "memory", "queue", "speakers", "energy", "sensor", "battery", "note", "list", "stocks", "commute", "wifi", "guide", "screentime", "ask", "agent"];
@@ -428,7 +428,7 @@
   var WEB_FEEDS = ["abc", "abc-justin", "abc-sport", "abc-business", "sbs", "guardian", "bbc", "rnz"];
   var WOPT = {
     clock: "format ampm seconds date align", tallclock: "format align", glassclock: "format scene", analog: "seconds", flipclock: "format",
-    wordclock: "", solar: "", worldclock: "label cities", countdown: "label month day unit icon", date: "show dfmt align place", month: "", timer: "label",
+    wordclock: "", solar: "", worldclock: "label cities", countdown: "label month day unit icon", campfire: "label", date: "show dfmt align place", month: "", timer: "label",
     weather: "place hilo night", bigtemp: "place", hourly: "place", week: "place", rain: "label", uv: "label", sun: "label", moon: "", air: "label", surf: "label",
     photo: "image fit caption sub", slideshow: "seconds_each caption sub", mosaic: "count", artframe: "image mat caption sub", memory: "align",
     keep: "", keeprow: "label shows", upnext: "apps sport", picks: "label align",

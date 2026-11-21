@@ -1088,6 +1088,54 @@
     add(root, [ic(icons[snd], b.h < 200 ? 44 : 56, "currentColor"), E("div", "cw-grow"), E("div", b.w < 300 ? "cw-t25" : "cw-t29", "font-weight:680;color:var(--ink)", [names[snd]]), b.w >= 300 ? E("div", "cw-t23", "", ["Soundscape"]) : null]);
     stop(root, "quick", "soundscape", "Soundscape");
   };
+  // Campfire: flames, drifting embers and glowing logs, all moved by the page's stylesheet (widgets.css,
+  // .cw-fire): transforms and opacity only, so the GPU does the moving and this code never runs again
+  // after it has drawn once. Nothing to set up, nothing asked: it is always there. OK plays the soundscape
+  // (the sound that was last used; press again for the next), like the Soundscape widget, so they pair.
+  var FIRE_N = 0;
+  function flameSvg(cls, css, path, c1, c2) {
+    var id = "cwfl" + (FIRE_N = (FIRE_N + 1) % 100000);
+    var s = svg("0 0 100 140", "100%", "100%", [S("defs", {}, [S("linearGradient", { id: id, x1: 0, y1: 1, x2: 0, y2: 0 }, [S("stop", { offset: "0", "stop-color": c1 }), S("stop", { offset: "1", "stop-color": c2 })])]), S("path", { d: path, fill: "url(#" + id + ")" })], "");
+    s.setAttribute("class", "cw-svg cw-fire-flame " + cls);
+    s.style.cssText = css;
+    return s;
+  }
+  var FLAME = "M50 2C53 30 90 50 90 94C90 122 72 138 50 138C28 138 10 122 10 94C10 66 28 56 34 30C40 44 46 28 50 2Z";
+  var TONGUE = "M50 4C52 34 86 52 86 96C86 122 70 138 50 138C30 138 14 122 14 96C14 72 36 60 50 4Z";
+  R.campfire = function (root, o, b, env) {
+    var q = op(o), label = q.label || "", s = Math.max(60, Math.min(b.w, b.h - (label ? 34 : 0))), x = Math.round((b.w - s) / 2), y = label ? 30 : 0, scene, kids = [], embers = [];
+    var pct = function (n) { return n + "%"; };
+    // the logs: two crossed, with the coals under them (the glow on them is its own layer, so it can breathe)
+    var logs = svg("0 0 100 44", "100%", "100%", [
+      S("ellipse", { cx: 50, cy: 31, rx: 42, ry: 9, fill: "#3a1a0c" }),
+      S("rect", { x: 10, y: 22, width: 80, height: 12, rx: 6, fill: "#8a5530", stroke: "#ffb060", "stroke-width": 0.8, transform: "rotate(-10 50 28)" }),
+      S("rect", { x: 10, y: 22, width: 80, height: 12, rx: 6, fill: "#9a6238", stroke: "#ffb060", "stroke-width": 0.8, transform: "rotate(10 50 28)" }),
+      S("rect", { x: 14, y: 24, width: 72, height: 3, rx: 1.5, fill: "#c98a52", opacity: 0.7, transform: "rotate(10 50 28)" })], "");
+    logs.style.cssText = "left:8%;bottom:4%;width:84%;height:30%";
+    var coals = svg("0 0 100 44", "100%", "100%", [
+      S("ellipse", { cx: 50, cy: 31, rx: 34, ry: 6, fill: "#ff6a1a", opacity: 0.8 }),
+      S("circle", { cx: 13, cy: 32, r: 5.5, fill: "#ffb347" }), S("circle", { cx: 87, cy: 23, r: 5.5, fill: "#ffb347" }),
+      S("circle", { cx: 30, cy: 24, r: 3, fill: "#ffc15a" }), S("circle", { cx: 70, cy: 31, r: 3, fill: "#ffc15a" })], "");
+    coals.setAttribute("class", "cw-svg cw-fire-coal");
+    coals.style.cssText = "left:8%;bottom:4%;width:84%;height:30%";
+    kids.push(logs, flameSvg("cw-fire-f4", "left:10%;bottom:20%;width:28%;height:44%", TONGUE, "#d8330f", "#ff7a22"),
+      flameSvg("cw-fire-f2", "left:62%;bottom:20%;width:28%;height:46%", TONGUE, "#d8330f", "#ff8a26"),
+      flameSvg("cw-fire-f1", "left:24%;bottom:18%;width:52%;height:76%", FLAME, "#e8431c", "#ff9a2a"),
+      flameSvg("cw-fire-f3", "left:34%;bottom:18%;width:32%;height:54%", FLAME, "#ff8a1f", "#ffd34d"),
+      flameSvg("cw-fire-f2", "left:41%;bottom:18%;width:18%;height:32%", FLAME, "#ffd34d", "#fff4c0"), coals);
+    // six embers rise from the logs, each on its own time, on one of three drifts
+    [[34, "cw-fire-e1", -0.2], [48, "cw-fire-e2", -1.6], [58, "cw-fire-e3", -2.4], [42, "cw-fire-e2", -3.9], [52, "cw-fire-e1", -3.1], [38, "cw-fire-e3", -0.9]].forEach(function (e, i) {
+      var em = E("div", "cw-fire-em " + e[1], "left:" + e[0] + "%;bottom:34%;" + (i % 2 ? "width:6px;height:6px;" : "") + "-webkit-animation-delay:" + e[2] + "s;animation-delay:" + e[2] + "s");
+      embers.push(em);
+    });
+    // the scene is as wide as the box is tall (or as tall as it is under the label), in the middle; the glow fills the whole box
+    var sh = Math.min(s, b.h - y);
+    scene = E("div", "cw-fire-scene", "left:" + x + "px;top:" + (y + Math.round((b.h - y - sh) / 2)) + "px;width:" + s + "px;height:" + sh + "px", kids.concat(embers));
+    root.style.padding = "0";
+    add(root, E("div", "cw-fire", "", [E("div", "cw-fire-glow"), scene,
+      label ? E("div", "cw-t23", "position:absolute;left:0;right:0;top:8px;text-align:center;font-weight:650;color:var(--ink)", [label]) : null]));
+    stop(root, "quick", "soundscape", "Soundscape");
+  };
   // ---------------- fitting words (group C widgets) ----------------
   // seagey, 18 Nov 2026: "Make sure each widget fits in each container correctly things aren't cut off
   // and all icons etc are default centre align unless it's changed in the designer." So these widgets
