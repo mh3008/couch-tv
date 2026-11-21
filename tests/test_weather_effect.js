@@ -13,15 +13,15 @@ const noop = () => {};
 // ---------------- the engine (ambient-weather.js) ----------------
 // a canvas that counts what is drawn: one stroke per rain streak, one fill per snowflake
 function countingCanvas() {
-  const n = { stroke: 0, fill: 0, ellipse: 0 };
-  return {
-    width: 0, height: 0, n,
-    getContext: () => ({
-      clearRect: noop, beginPath: noop, moveTo: noop, lineTo: noop, arc: noop, fillRect: noop,
-      ellipse: () => { n.ellipse++; }, stroke: () => { n.stroke++; }, fill: () => { n.fill++; },
-      createRadialGradient: () => ({ addColorStop: noop })
-    })
+  const n = { stroke: 0, fill: 0, ellipse: 0, width: 0, radius: 0, fillStyle: "" };
+  const ctx = {
+    clearRect: noop, beginPath: noop, moveTo: noop, lineTo: noop, fillRect: noop,
+    arc: (x, y, r) => { n.radius = r; },
+    ellipse: () => { n.ellipse++; }, stroke: () => { n.stroke++; n.width = ctx.lineWidth; },
+    fill: () => { n.fill++; n.fillStyle = ctx.fillStyle; },
+    createRadialGradient: () => ({ addColorStop: noop })
   };
+  return { width: 0, height: 0, n, getContext: () => ctx };
 }
 const lighting = { style: {}, classList: { add: noop, remove: noop, contains: () => false } };
 let frame = null, now = 1000;
@@ -86,7 +86,30 @@ W.setForced("snow"); W.setAmount("light");
 W.setColour("grey"); assert.strictEqual(drawn().fill, 20, "grey snow: still 20 flakes");
 W.setColour("soft"); { const n = drawn(); assert.strictEqual(n.fill, 20); assert.strictEqual(n.stroke, 20, "soft: an edge on every flake"); }
 W.setColour("purple"); assert.strictEqual(drawn().stroke, 0, "an unknown colour is plain white, no edge");
-W.setColour("white"); W.setForced("rain"); W.setAmount("medium");   // back to the fixed rain the checks below use
+W.setColour("white");
+
+// bold (a design that picked weather_effect): the same drops and flakes, drawn wider, bigger and brighter;
+// off (the older ambient_weather) draws exactly what it always did
+assert.strictEqual(W.isBold(), false, "not bold unless app.js says so");
+W.setForced("rain"); W.setAmount("medium");
+const plainRain = drawn().width;
+W.setBold(true); assert.strictEqual(W.isBold(), true);
+{ const n = drawn(); assert.strictEqual(n.stroke, 65, "bold rain: still 65 drops"); assert.ok(Math.abs(n.width - plainRain - 0.6) < 1e-9, "bold medium rain: 0.6 px wider (" + plainRain + " to " + n.width + ")"); }
+W.setForced("snow"); W.setAmount("heavy");
+{ const n = drawn(); assert.strictEqual(n.fill, 70, "bold snow: still 70 flakes"); }
+W.setBold(false);
+const unBold = drawn();
+assert.strictEqual(unBold.fill, 70);
+assert.ok(/, 0\.290\)$/.test(unBold.fillStyle), "not bold: a flake keeps its own alpha, as before (" + unBold.fillStyle + ")");
+const plainR = unBold.radius;
+for (const [amt, r] of [["light", 1.4], ["medium", 1.6], ["heavy", 1.9]]) {
+  W.setAmount(amt); W.setBold(true);
+  const n = drawn();
+  assert.ok(Math.abs(n.radius - plainR * r) < 1e-9, "bold " + amt + " snow: flakes x" + r + " (" + plainR + " to " + n.radius + ")");
+  assert.ok(parseFloat(n.fillStyle.split(",").pop()) > 0.29, "bold " + amt + " snow: brighter than plain (" + n.fillStyle + ")");
+  W.setBold(false);
+}
+W.setForced("rain"); W.setAmount("medium");   // back to the fixed rain the checks below use
 
 // paused (an app is open) nothing is drawn; switched off, no frame is asked for at all
 W.pause();

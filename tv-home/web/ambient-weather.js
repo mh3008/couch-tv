@@ -31,6 +31,15 @@
   // against a bright overcast sky
   var SNOW_RGB = { white: "245, 250, 255", ice: "196, 226, 245", silver: "206, 211, 218", soft: "250, 252, 255", grey: "112, 121, 132" };
   var snowColour = "white";
+  // a design that picks weather_effect gets rain and snow you can see from the sofa: the older
+  // ambient_weather look (faint 1.4 px streaks, small flakes) stays as it was. Applied when drawing,
+  // so nothing is reallocated. light stays close to the old look, heavy is the boldest.
+  // a: rain alpha, w: extra line width, l: streak length, r: flake radius, s: flake alpha (its own, so a
+  // flake still shows on a pale sky like Frost's). PLAIN is exactly the old look.
+  var LOOKS = { light: { a: 1.35, w: 0.3, l: 1.1, r: 1.4, s: 1.6 }, medium: { a: 1.8, w: 0.6, l: 1.25, r: 1.6, s: 1.7 }, heavy: { a: 2.2, w: 0.9, l: 1.4, r: 1.9, s: 1.8 } };
+  var PLAIN = { a: 1, w: 0, l: 1, r: 1, s: 1 };
+  var bold = false;
+  var look = PLAIN;
   var MAX_RAIN = AMOUNTS.medium.rain;
   var MAX_SNOW = AMOUNTS.medium.snow;
   var MAX_FOG = 4;
@@ -192,7 +201,7 @@
           rp.splash += dt * 30;
           ctx.beginPath();
           ctx.ellipse(rp.splashX, rp.splashY, rp.splash * 1.5, rp.splash * 0.6, 0, 0, Math.PI * 2);
-          ctx.strokeStyle = "rgba(220, 235, 255, " + (Math.max(0, (1 - rp.splash / rp.splashMax) * rp.alpha * 0.7)).toFixed(3) + ")";
+          ctx.strokeStyle = "rgba(220, 235, 255, " + (Math.max(0, (1 - rp.splash / rp.splashMax) * Math.min(0.7, rp.alpha * look.a) * 0.7)).toFixed(3) + ")";
           ctx.stroke();
           if (rp.splash >= rp.splashMax) {
             resetRainParticle(rp, false);
@@ -209,9 +218,9 @@
           } else {
             ctx.beginPath();
             ctx.moveTo(rp.x, rp.y);
-            ctx.lineTo(rp.x - rp.len * windAngle, rp.y - rp.len);
-            ctx.strokeStyle = "rgba(205, 225, 255, " + rp.alpha.toFixed(3) + ")";
-            ctx.lineWidth = rp.width;
+            ctx.lineTo(rp.x - rp.len * look.l * windAngle, rp.y - rp.len * look.l);
+            ctx.strokeStyle = "rgba(205, 225, 255, " + Math.min(0.7, rp.alpha * look.a).toFixed(3) + ")";
+            ctx.lineWidth = rp.width + look.w;
             ctx.stroke();
           }
         }
@@ -243,8 +252,8 @@
         }
 
         ctx.beginPath();
-        ctx.arc(sp.x, sp.y, sp.radius, 0, Math.PI * 2);
-        ctx.fillStyle = "rgba(" + SNOW_RGB[snowColour] + ", " + sp.alpha.toFixed(3) + ")";
+        ctx.arc(sp.x, sp.y, sp.radius * look.r, 0, Math.PI * 2);
+        ctx.fillStyle = "rgba(" + SNOW_RGB[snowColour] + ", " + Math.min(0.95, sp.alpha * look.s).toFixed(3) + ")";
         ctx.fill();
         // a soft grey edge, so a flake still shows over a pale sky or snow (weather_colour "soft")
         if (snowColour === "soft") { ctx.lineWidth = 2; ctx.strokeStyle = "rgba(70, 80, 92, " + Math.min(1, sp.alpha * 1.1).toFixed(3) + ")"; ctx.stroke(); }
@@ -415,7 +424,22 @@
       amount = val;
       MAX_RAIN = AMOUNTS[val].rain;
       MAX_SNOW = AMOUNTS[val].snow;
+      look = bold ? LOOKS[amount] : PLAIN;
       applyType();
+    },
+
+    // true when the design picked weather_effect: rain and snow drawn bolder (see LOOKS); false keeps
+    // the older ambient_weather look
+    setBold: function (val) {
+      val = !!val;
+      if (val === bold) return;
+      bold = val;
+      look = bold ? LOOKS[amount] : PLAIN;
+      applyType();
+    },
+
+    isBold: function () {
+      return bold;
     },
 
     // "white" (the default), "ice", "silver" or "soft" (white with a grey edge): the snowflakes' colour

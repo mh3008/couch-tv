@@ -75,9 +75,20 @@ console.log("Running weather effect browser tests...");
   ok((await state(rain)).type === "rain" && await most(rain) > 0, "weather_effect rain: rain is drawn");
   await rain.screenshot({ path: path.join(SHOTS, "rain-heavy.png") });
   await rain.close();
+  for (const h of [{ weather_effect: "snow", weather_amount: "light" }, { weather_effect: "auto" }]) {
+    const p = await load(design(h));
+    ok(await p.evaluate(() => window.AmbientWeather.isBold()) === true, "bold rain and snow with " + JSON.stringify(h));
+    await p.close();
+  }
+  { // the older ambient_weather alone keeps its old, fainter look
+    const p = await load(design({ ambient_weather: true }));
+    ok(await p.evaluate(() => window.AmbientWeather.isBold()) === false, "ambient_weather only: not bold");
+    await p.close();
+  }
   for (const h of [{ weather_effect: "off" }, {}, { weather_effect: "off", ambient_weather: true }]) {
     const p = await load(design(h));
     ok(await most(p) === 0, "nothing drawn with " + JSON.stringify(h));
+    ok(await p.evaluate(() => window.AmbientWeather.isBold()) === false, "not bold with " + JSON.stringify(h));
     ok(await p.evaluate(() => getComputedStyle(document.getElementById("weather-canvas")).display) === "none", "and the empty canvas is off the page (no layer to composite)");
     await p.close();
   }

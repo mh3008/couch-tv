@@ -130,7 +130,7 @@
   var IDLE_PHOTO_SECONDS = 0, idlePhotoTimer = null, idlePhotoActive = false;
   var WX_AMBIENT = true, WX_SUN_GRADE = true;
   // a design's rain and snow: always "rain" or "snow" (else null: the live weather), and how much of it
-  var WX_FORCED = null, WX_AMOUNT = "medium", WX_COLOUR = "white";
+  var WX_FORCED = null, WX_AMOUNT = "medium", WX_COLOUR = "white", WX_BOLD = false;
   // Now playing (#31), on unless switched off; the navigation sound: system, soft or off (#32)
   var NP_ON = true, KW_ON = true, SOUND_STYLE = "system", START_FOCUS = "people";
   // Keep watching follows the app the remote is on (home.shelf_follows_app), off unless switched on
@@ -505,6 +505,7 @@
     WX_AMBIENT = typeof ST.ambient_weather === "boolean" ? ST.ambient_weather : wxFx ? wxFx !== "off" : HOME.ambient_weather === true;
     WX_FORCED = wxFx === "rain" || wxFx === "snow" ? wxFx : null;
     WX_AMOUNT = HOME.weather_amount || "medium";
+    WX_BOLD = !!wxFx && wxFx !== "off";   // a design that picked weather_effect gets the bolder rain and snow
     WX_COLOUR = HOME.weather_colour || "white";
     WX_SUN_GRADE = typeof ST.ambient_sun_grade === "boolean" ? ST.ambient_sun_grade : HOME.ambient_sun_grade === true;
     var mine = TV_ID || CFG.default_tv;
@@ -1906,6 +1907,7 @@
     try { calm = !!(window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches); } catch (e) {}
     a.setLighter(LIGHTER || OLD_ENGINE);
     if (a.setForced) { a.setForced(WX_FORCED); a.setAmount(WX_AMOUNT); }
+    if (a.setBold) a.setBold(WX_BOLD);
     if (a.setColour) a.setColour(WX_COLOUR);
     a.setEnabled(WX_AMBIENT && (WX_SHOW || !!WX_FORCED) && !LOOP && !calm);
     a.setSunGradeEnabled(WX_SUN_GRADE && !LIGHTER && !OLD_ENGINE && !LOOP);
