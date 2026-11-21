@@ -2349,6 +2349,38 @@
   };
   CR.screentime = R.screentime;
 
+  // Year progress: how far through the year it is, worked out from the TV's own date (nothing asked, right at
+  // midnight): a ring and a percentage, "Day 325 of 365", the days left and, when the TV knows its town, when the
+  // next season starts (the usual weather-office seasons: summer is December to February in the south and
+  // June to August in the north). Without a town it says nothing about seasons rather than guess the hemisphere.
+  function yearOf(d) {
+    var y = d.getFullYear(), tot = Math.round((new Date(y + 1, 0, 1) - new Date(y, 0, 1)) / 86400000);
+    var n = Math.round((new Date(y, d.getMonth(), d.getDate()) - new Date(y, 0, 1)) / 86400000) + 1;
+    return { year: y, n: n, total: tot, left: tot - n, pct: Math.round(n / tot * 100) };
+  }
+  function nextSeason(d, lat) {
+    var m = d.getMonth(), k = Math.floor(((m + 1) % 12) / 3), names = ["Winter", "Spring", "Summer", "Autumn"], sm = (3 * k + 2) % 12, ty = d.getFullYear() + (sm <= m ? 1 : 0);
+    var n = Math.round((new Date(ty, sm, 1) - new Date(d.getFullYear(), m, d.getDate())) / 86400000);
+    return { name: names[((k + 1) + (lat < 0 ? 2 : 0)) % 4], n: n };
+  }
+  function yearLines(d, env) {
+    var Y = yearOf(d), p = dataOf(env).place, lat = env.demo ? -33.8 : p && isFinite(p.lat) && p.lat !== null && p.lat !== "" ? +p.lat : null, s = lat === null ? null : nextSeason(d, lat);
+    return { Y: Y, day: "Day " + Y.n + " of " + Y.total, left: Y.left === 0 ? "Last day of the year" : Y.left === 1 ? "1 day left" : Y.left + " days left",
+      season: s ? s.name + (s.n === 0 ? " starts today" : s.n === 1 ? " starts tomorrow" : " starts in " + s.n + " days") : null };
+  }
+  R.year = function (root, o, b, env) {
+    var q = op(o), L = yearLines(now(), env), row = b.w >= b.h * 1.6, still = b.w < 300 && b.h < 220, small = b.h < 300;
+    var s = still ? Math.min(b.w, b.h) - 48 : row ? Math.min(b.h - 48, 260) : clamp(Math.min(b.w - 48, b.h - 48 - (small ? 0 : 140)), 100, 240);
+    var ringSvg = svg("0 0 100 100", s, s, [S("circle", { cx: 50, cy: 50, r: 44, fill: "none", stroke: "var(--faint)", opacity: 0.35, "stroke-width": 8 }),
+      L.Y.pct > 0 ? S("circle", { cx: 50, cy: 50, r: 44, fill: "none", stroke: "var(--on)", "stroke-width": 8, "stroke-linecap": "round", "stroke-dasharray": 276.46, "stroke-dashoffset": 276.46 * (1 - L.Y.pct / 100), transform: "rotate(-90 50 50)" }) : null]);
+    var ringBox = E("div", "cw-row cw-center", "position:relative;flex:none;width:" + px(s) + ";height:" + px(s), [ringSvg,
+      E("div", "", "position:absolute;left:0;right:0;text-align:center;font-weight:700;letter-spacing:-.02em;line-height:1;font-size:" + px(clamp(s * 0.27, 29, 64)), [L.Y.pct + "%"])]);
+    var label = q.label || String(L.Y.year);
+    if (still) { root.style.justifyContent = "center"; root.style.alignItems = "center"; return add(root, ringBox); }
+    var lines = [line(L.day, 29, "font-weight:680", row ? "left" : "center"), line(L.left, 29, "color:var(--sub)", row ? "left" : "center", 3), L.season ? line(L.season, 25, "color:var(--sub);margin-top:6px", row ? "left" : "center", 1) : null];
+    if (row) return webBody(root, "center", [E("div", "cw-row", "justify-content:center;align-items:center;min-width:0;flex:none", [ringBox, E("div", "cw-col", "min-width:0;flex:0 1 auto;margin-left:24px;max-width:" + px(b.w - 48 - s - 24), (b.h >= 220 ? [webHead("calendar", label, "left")] : []).concat(lines))])]);
+    webBody(root, "center", [webHead("calendar", label, "center"), E("div", "cw-row cw-center", "flex:none;margin:10px 0", [ringBox])].concat(lines));
+  };
   // ---------------- one widget, a stack, the API ----------------
   function one(o, b, env) {
     var sh = shell(o, b, env), root = sh.root, st = o.style || {};
