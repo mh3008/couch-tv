@@ -290,12 +290,47 @@
   // TV without an update: GET <store>/v1/config/sources answers { "v": 1, "paused": ["sports"] }. The
   // TV asks at most once a day (app.js) and treats no answer as everything on. A paused source is
   // never asked; its widget says calmly that the feed is paused.
-  var PAUSABLE = ["news", "sports", "stocks", "commute"];
+  var PAUSABLE = ["news", "sports", "stocks", "commute", "onthisday"];
   function pausedOf(j) {
     if (typeof j === "string") { try { j = JSON.parse(j); } catch (e) { j = null; } }
     var p = j && typeof j === "object" ? j.paused : null, out = [];
     if (Object.prototype.toString.call(p) === "[object Array]") p.forEach(function (x) { if (PAUSABLE.indexOf(x) >= 0 && out.indexOf(x) < 0) out.push(x); });
     return out;
+  }
+
+  // ---------------- on this day: Wikipedia's picks for today's date (free, no key, open to web pages) ----------------
+  // One answer a day for the TV's own date. The feed is large (about 150 KB for a busy date, 25 KB sent), so
+  // the reader keeps only four short lines of it (a year and a sentence each), spread over the centuries, and
+  // the rest is dropped before anything is saved. Asked once per date and kept, never again that day.
+  var OTD_URL = "https://api.wikimedia.org/feed/v1/wikipedia/en/onthisday/selected/";
+  function pad2(n) { return (n < 10 ? "0" : "") + n; }
+  // "11-21" for a time in ms, by the TV's own clock
+  function onThisDayKey(ms) { var d = new Date(ms); return pad2(d.getMonth() + 1) + "-" + pad2(d.getDate()); }
+  function validMd(id) { var m = /^(\d\d)-(\d\d)$/.exec(String(id || "")); return !!m && +m[1] >= 1 && +m[1] <= 12 && +m[2] >= 1 && +m[2] <= 31; }
+  function yearWords(y) { return y < 0 ? Math.abs(y) + " BC" : String(y); }
+  // the feed into { md, items: [{ y, t }] } (four, oldest first, each t at most 110 letters) and short: { y, t } (the shortest, for a small box)
+  function parseOnThisDay(j, md) {
+    var list = j && Object.prototype.toString.call(j.selected) === "[object Array]" ? j.selected : [], seen = {}, all = [];
+    list.forEach(function (e) {
+      if (!e || typeof e !== "object" || typeof e.text !== "string") return;
+      var y = Number(e.year), t = cut(e.text, 110);
+      if (!isFinite(y) || y !== Math.round(y) || y < -3000 || y > 3000 || t.length < 12 || seen[y + t]) return;
+      seen[y + t] = 1;
+      all.push({ y: y, t: t, long: plain(e.text).length > 110 });
+    });
+    // a sentence cut short reads badly, so a whole short one is preferred
+    var pool = all.filter(function (x) { return !x.long; });
+    if (pool.length < 4) pool = all;
+    pool.sort(function (a, b) { return a.y - b.y; });
+    var items = pool.length <= 4 ? pool.slice() : [0, 1, 2, 3].map(function (i) { return pool[Math.floor((i + 0.5) * pool.length / 4)]; });
+    if (!items.length) return { md: md, items: [], short: null };
+    var shortest = all.slice().sort(function (a, b) { return a.t.length - b.t.length; })[0];
+    return { md: md, items: items.map(function (x) { return { y: x.y, t: x.t }; }), short: { y: shortest.y, t: cut(shortest.t, 80) } };
+  }
+  // sample lines for a preview or the gallery: four real events of 20 July, drawn the same way as real ones
+  function demoOnThisDay() {
+    return { md: "07-20", items: [{ y: 1807, t: "Napoleon patents the first internal combustion engine." }, { y: 1944, t: "A plot to kill Hitler fails at the Wolf's Lair." },
+      { y: 1969, t: "Apollo 11 lands on the Moon." }, { y: 1976, t: "Viking 1 lands on Mars." }], short: { y: 1969, t: "Apollo 11 lands on the Moon." } };
   }
 
   // ---------------- the sources the loader knows ----------------
@@ -346,6 +381,16 @@
         if (!url) return Promise.reject(new Error("empty"));
         return h.json(url).then(function (j) { var v = parseRoute(j); if (!v) throw new Error("empty"); return v; });
       }
+    },
+    onthisday: {
+      // one answer for each date, by the TV's own clock; good for the whole day, and only the last three dates are kept
+      key: function (w, h) { return onThisDayKey(h && h.now ? h.now() : Date.now()); },
+      every: function () { return 24 * 60 * MIN; },
+      keep: 3,
+      get: function (h, id) {
+        if (!validMd(id)) return Promise.reject(new Error("empty"));
+        return h.json(OTD_URL + id.slice(0, 2) + "/" + id.slice(3)).then(function (j) { var v = parseOnThisDay(j, id); if (!v.items.length) throw new Error("empty"); return v; });
+      }
     }
   };
 
@@ -374,6 +419,8 @@
     function put(src, id, rec) {
       web[src] = web[src] || {};
       web[src][id] = rec;
+      var keep = SOURCES[src] && SOURCES[src].keep, ids = Object.keys(web[src]);
+      if (keep && ids.length > keep) ids.sort(function (a, b) { return (web[src][b].at || 0) - (web[src][a].at || 0); }).slice(keep).forEach(function (old) { delete web[src][old]; });
       try { if (h.save) h.save(web); } catch (e) {}
       try { if (h.changed) h.changed(src, id); } catch (e2) {}
     }
@@ -424,6 +471,7 @@
     feedOf: feedOf, plain: plain, parseRss: parseRss, ago: ago,
     LEAGUES: LEAGUES, LEAGUE_DEFAULT: LEAGUE_DEFAULT, leagueOf: leagueOf, parseScores: parseScores, scoreOrder: scoreOrder, kickoff: kickoff,
     SYMBOL: SYMBOL, TICKERS_DEFAULT: TICKERS_DEFAULT, TICKER_NAMES: TICKER_NAMES, tickersOf: tickersOf, parseSpark: parseSpark, price: price, change: change,
+    onThisDayKey: onThisDayKey, parseOnThisDay: parseOnThisDay, demoOnThisDay: demoOnThisDay, yearWords: yearWords,
     routeKey: routeKey, routeUrl: routeUrl, parseRoute: parseRoute, leaveBy: leaveBy, picks: picks, PAUSABLE: PAUSABLE, pausedOf: pausedOf,
     loader: function (h) { return Loader(h); }
   };

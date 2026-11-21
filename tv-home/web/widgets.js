@@ -1747,10 +1747,12 @@
     news: ["Getting the headlines", "The headlines could not be read just now", "No headlines in this feed right now", "Headlines need a home computer or a newer couch-tv"],
     sports: ["Getting the scores", "The scores could not be read just now", "No games right now", "Scores need a newer couch-tv"],
     stocks: ["Getting the prices", "The prices could not be read just now", "No prices for these right now", "Prices need a home computer or a newer couch-tv"],
-    commute: ["Working out the drive", "The drive could not be worked out just now", "No road route between these places", "Commute needs a newer couch-tv"]
+    commute: ["Working out the drive", "The drive could not be worked out just now", "No road route between these places", "Commute needs a newer couch-tv"],
+    onthisday: ["Getting today in history", "Today in history could not be read just now", "Nothing is listed for today", "On this day needs a newer couch-tv"]
   };
   var WEB_SHORT = { news: ["Getting news", "News failed", "No news", "Needs set up"], sports: ["Getting scores", "Scores failed", "No games", "Needs set up"],
-    stocks: ["Getting prices", "Prices failed", "No prices", "Needs set up"], commute: ["Working it out", "Drive failed", "No route", "Needs set up"] };
+    stocks: ["Getting prices", "Prices failed", "No prices", "Needs set up"], commute: ["Working it out", "Drive failed", "No route", "Needs set up"],
+    onthisday: ["Getting history", "History failed", "Nothing today", "Needs set up"] };
   // an honest state in the widget's own box, its words fitted like the rest
   function webEmpty(root, b, iconName, line, sub, shortLine) {
     empty(root, b, iconName, (b.w < 300 || b.h < 200) && shortLine ? shortLine : line, sub);
@@ -2346,6 +2348,39 @@
     add(root, E("div", "cw-row", "width:100%;height:100%;align-items:center;justify-content:" + FLEX[a], [main, E("div", "cw-col", "width:" + px(appsW) + ";flex:none;margin-left:40px;justify-content:center;min-width:0", apps.map(function (x, i) {
       return E("div", "cw-row cw-sp", i ? "margin-top:16px" : "", [E("span", "cw-t25 cw-ell", "color:var(--ink);font-weight:620;min-width:0", [x.name || x.package || ""]), E("span", "cw-t25", "flex:none;margin-left:14px;color:var(--ink)", [hm(x.minutes)])]);
     }))]));
+  };
+  // On this day: four things that happened on today's date in history, a year and a sentence each, from
+  // Wikipedia (through widget-web.js, once a day). The date is the TV's own, so it turns over at midnight.
+  function otdWhen(md) { return Number(md.slice(3)) + " " + MONTHS[Number(md.slice(0, 2)) - 1]; }
+  function onthisdayOf(root, o, b, env) {
+    var WW = window.CouchWidgetWeb, q = op(o), v, stale = false;
+    if (!WW) { webEmpty(root, b, "calendar", WEB_WORDS.onthisday[3], "", WEB_SHORT.onthisday[3]); return null; }
+    if (env.demo) v = WW.demoOnThisDay();
+    else {
+      var rec = webOf(env, "onthisday", WW.onThisDayKey(now().getTime()));
+      if (!webReady(root, b, "calendar", "onthisday", rec)) return null;
+      v = rec.v; stale = !!rec.stale;
+    }
+    if (!v || !v.items || !v.items.length || !/^\d\d-\d\d$/.test(String(v.md))) { webEmpty(root, b, "calendar", WEB_WORDS.onthisday[2], "couch-tv looks again soon", WEB_SHORT.onthisday[2]); return null; }
+    return { v: v, stale: stale, label: q.label || "" };
+  }
+  function otdRow(x, first, a) {
+    var WW = window.CouchWidgetWeb;
+    return dropT(E("div", "cw-col", "flex:none;min-width:0;text-align:" + a + (first ? "" : ";margin-top:14px"), [line(WW.yearWords(x.y), 24, "font-weight:700;color:var(--on)", a), line(x.t, 26, "margin-top:2px", a)]), first ? 1 : 2);
+  }
+  R.onthisday = function (root, o, b, env) {
+    var V = onthisdayOf(root, o, b, env), a = alignOf(o);
+    if (!V) return;
+    var rows = clamp(Math.floor((b.h - 130) / 110), 1, 4);
+    webBody(root, a, [webHead("calendar", V.label || "On this day", a, V.stale ? { text: "Not updated lately" } : null), line(otdWhen(V.v.md), 23, "color:var(--sub);margin-top:2px;margin-bottom:12px", a, 3)]
+      .concat(V.v.items.slice(0, rows).map(function (x, i) { return otdRow(x, i === 0, a); })));
+  };
+  // a box under 200 px tall (a wide tile): the shortest of the four, with its year
+  CR.onthisday = function (root, o, b, env) {
+    var V = onthisdayOf(root, o, b, env), a = alignOf(o), WW = window.CouchWidgetWeb, x;
+    if (!V) return;
+    x = V.v.short || V.v.items[0];
+    webBody(root, a, [line(otdWhen(V.v.md), 23, "color:var(--sub)", a, 3), line(WW.yearWords(x.y), 30, "font-weight:740;color:var(--on)", a), line(x.t, 25, "margin-top:2px", a)]);
   };
   CR.screentime = R.screentime;
 

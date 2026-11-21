@@ -411,6 +411,12 @@
       until: "\"Set where you drive to\", and where", build: "",
       ok: "Opens the drive: how long, how far, and when to leave", platforms: plat("setup", "computer", "setup", { android: "The places are kept on the TV. Drive time without traffic.", web: "Works while the home computer is on. The places are kept on the TV." }), sizes: sz(["tile", "wtile", "small", "medium"], [2, 2]) },
 
+    // Wikipedia's "On this day" picks (free, no key, open to web pages), asked by the TV itself, once for each date
+    onthisday: { name: "On this day", status: "works", beta: "Unofficial source: a free feed that may change. couch-tv can pause it for every TV, and then the widget says the feed is paused.",
+      what: "Four things that happened on today's date in history, a year and a sentence each", needs: ["Nothing: it uses the TV's own date"],
+      setup: setup("designer", inStudio("type a name for it if you like")), until: "\"Getting today in history\" for a moment, then four lines from Wikipedia", build: "",
+      ok: "Nothing: it is to look at", platforms: EVERY(), sizes: sz(["wtile", "small", "tall", "medium"], [4, 2]) },
+
     // ---------- guests and the room ----------
     welcome: { name: "Welcome words", status: "works", what: "A greeting in your own words, or each guest by name with their check in or check out time from your bookings calendar", needs: ["The words, typed in couch-tv Studio", "For guest names: your Airbnb, Booking.com or VRBO calendar link, typed on the TV"],
       setup: setup("designer", {

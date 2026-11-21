@@ -260,7 +260,7 @@ short code. It also has a gallery of designs other people made.
   background video, if it has one, by the video's id and a size (720p or 1080p, short clip or long
   loop), with no cookies and no referrer; once it has played, the TV keeps its own copy and does
   not ask again. While a news,
-  scores, markets or commute widget is on, it asks Studio once a day whether that source is paused.
+  scores, markets, commute or on this day widget is on, it asks Studio once a day whether that source is paused.
   **Open this home in couch-tv Studio** (called Share this home on 0.13.0 to 0.13.2) sends the
   layout of the home you have now, without names, photos, places, keys or calendar links.
 - **Bring the home you have now into Studio.** On the TV: Home settings, couch-tv Studio, **Open this
@@ -367,7 +367,7 @@ Bing for the daily picture and FotMob for football scores (both only when you tu
 id, once the bridge has found the video (option B); GitHub for the update check (only with updates on); Home Assistant on your home network, if you set
 it up; couch-tv Studio only once it is turned on (above); and, only while that widget is on the
 home, its own source (news feeds, ESPN for scores, Yahoo Finance for markets, OSRM for commute
-times, your own calendar address). The home's page rules allow any https address, because the
+times, Wikipedia for On this day, your own calendar address). The home's page rules allow any https address, because the
 calendar and video links in Home settings are addresses you choose. A design carries no code and
 no outside links, and the TV drops any it finds. The bridge (option B) also looks up each YouTube
 video it writes down on YouTube's public results page, by its title and channel, with no key and no

@@ -455,13 +455,14 @@ reload asks nothing.
 | Scores | ESPN's public scoreboards (`opts.league`: `afl`, `nrl` (default), `aleague`, `epl`, `nba`, `bbl`, `cricket`; `opts.team` puts a team first). Unofficial and undocumented, so they may change | 2 minutes while a game is on, else 15 | Nothing |
 | Markets | Yahoo Finance's public chart data (`opts.tickers`, up to six symbols such as `BHP.AX`, `^AXJO`, `AUDUSD=X`, `BTC-AUD`; the ASX 200, the dollar and Bitcoin by default). Unofficial, for personal use, ASX prices about 20 minutes late | 10 minutes | The symbols |
 | Commute | OSRM's route server with OpenStreetMap roads; the usual drive, no live traffic | When the places change, then 6 hours | The two places, rounded to about a kilometre |
+| On this day | Wikipedia's "On this day" picks for the TV's own date (free, no key). Four short lines are kept of an answer of about 150 KB; asked once for each date and the last three dates are kept. Unofficial, a free community service | once a date | Nothing about the household: the request is only a month and a day |
 | Picks for you | This TV's own Keep watching (everyone's, but never a kids or guest profile's shows) | Never asks anyone | Nothing |
 
 A news feed and a share price send no CORS header, so the TV asks through a relay that is part of
 couch-tv at home: the bridge or the on-TV app (`GET /api/webdata`, bridge/API.md), or with neither,
 the launcher itself (`http://tvos.invalid/webdata`). The relay knows only the ids above, never a
 link. The website home on a Hisense (no computer) has no relay, so Headlines and Markets say they
-need a home computer there; Scores and Commute ask their services straight from the TV.
+need a home computer there; Scores, Commute and On this day ask their services straight from the TV.
 
 The commute's places are never in a design: from the town in Home settings, Location, to the town or
 suburb picked in Home settings, couch-tv Studio, Commute (shown while a design has the widget). The
@@ -469,7 +470,7 @@ second is kept on the TV only (`tvhome.commute`), not in the settings the bridge
 this home stops if it would send it. A design's Commute widget carries only its label, the arrive by
 time (`arrive_h`, `arrive_m`), the minutes to spare (`buffer`, 10 unless set) and `weekdays`.
 
-Scores and Markets are marked as unofficial (their sources are unofficial). The design store can pause any of
+Scores, Markets and On this day are marked as unofficial (their sources are unofficial). The design store can pause any of
 these sources for every TV without an update: the TV asks `<design_store>/v1/config/sources` at most
 once a day, only while a web widget is on the home, with no cookies and no referrer, and keeps the
 answer for the day. `{"v": 1, "paused": ["sports"]}` pauses Scores; a paused source is never asked and
