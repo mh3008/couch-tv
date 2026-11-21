@@ -402,3 +402,54 @@ html.lighter .cwd-artbg { -webkit-filter: none; filter: none; opacity: 0.18; }
 .cw-ah.cw-strip > .cw-row > svg { width: 34px !important; height: 34px !important; }
 .cw-ah.cw-strip > .cw-row > .cw-col { margin-left: 0 !important; margin-top: 6px; -webkit-align-items: center; align-items: center; max-width: 100%; }
 .cw-ah.cw-strip .cw-e1 { text-align: center; font-size: 24px; line-height: 1.2; }
+
+/* Soundscape card (widgets.js R.soundscape): idle = the plain card; playing (.cw-snd-on) = a glow, the mix's own motion and a
+   volume bar. Everything that moves moves by transform or opacity only, only while playing, and stands still on the
+   Lighter home and when the TV asks for less motion. */
+.cw-snd-fx { position: absolute; left: 0; top: 0; right: 0; bottom: 0; overflow: hidden; border-radius: inherit; pointer-events: none; opacity: 0;
+  -webkit-transition: opacity 0.5s linear; transition: opacity 0.5s linear; }
+.cw-snd-on .cw-snd-fx { opacity: 1; }
+.cw-snd-up { position: relative; z-index: 1; }
+.cw-snd-ic { -webkit-flex: none; flex: none; -webkit-transform-origin: 50% 100%; transform-origin: 50% 100%; }
+.cw-snd-glow { position: absolute; left: 0; top: 0; right: 0; bottom: 0; opacity: 0.7; }
+.cw-snd-g-rain { background: radial-gradient(ellipse at 50% 0%, rgba(120, 170, 255, 0.34), rgba(120, 170, 255, 0) 72%); }
+.cw-snd-g-storm { background: radial-gradient(ellipse at 50% 0%, rgba(150, 140, 255, 0.4), rgba(150, 140, 255, 0) 74%); }
+.cw-snd-g-fire { background: radial-gradient(ellipse at 25% 100%, rgba(255, 130, 40, 0.42), rgba(255, 130, 40, 0) 72%); }
+.cw-snd-g-brown { background: radial-gradient(ellipse at 50% 100%, rgba(180, 150, 255, 0.3), rgba(180, 150, 255, 0) 72%); }
+.cw-snd-col { position: absolute; top: 0; width: 3px; height: 100%; opacity: 0; -webkit-transform: translateY(-100%); transform: translateY(-100%);
+  background: -webkit-linear-gradient(top, rgba(200, 225, 255, 0) 0, rgba(200, 225, 255, 0.9) 21px, rgba(200, 225, 255, 0) 22px);
+  background: linear-gradient(to bottom, rgba(200, 225, 255, 0) 0, rgba(200, 225, 255, 0.9) 21px, rgba(200, 225, 255, 0) 22px); }
+.cw-snd-bead { width: 9px; background: -webkit-radial-gradient(50% 6px, circle, rgba(210, 232, 255, 0.85) 0, rgba(210, 232, 255, 0.85) 3px, rgba(210, 232, 255, 0) 4.5px);
+  background: radial-gradient(circle at 50% 6px, rgba(210, 232, 255, 0.85) 0, rgba(210, 232, 255, 0.85) 3px, rgba(210, 232, 255, 0) 4.5px); }
+.cw-snd-em { position: absolute; bottom: 14px; width: 6px; height: 6px; border-radius: 50%; background: #ffc15a; box-shadow: 0 0 6px 1px rgba(255, 140, 40, 0.8); opacity: 0; }
+.cw-snd-flash { position: absolute; left: 0; top: 0; right: 0; bottom: 0; background: rgba(215, 225, 255, 0.5); opacity: 0; }
+.cw-snd-swell { position: absolute; left: 0; right: 0; bottom: 0; height: 60%; opacity: 0; background: -webkit-linear-gradient(bottom, rgba(180, 150, 255, 0.34), rgba(180, 150, 255, 0)); background: linear-gradient(to top, rgba(180, 150, 255, 0.34), rgba(180, 150, 255, 0)); }
+.cw-snd-vol { position: absolute; left: 24px; right: 24px; bottom: 10px; height: 5px; border-radius: 3px; background: rgba(255, 255, 255, 0.2); overflow: hidden; opacity: 0; z-index: 1; }
+.cw-snd-on .cw-snd-vol { opacity: 1; }
+.cw-snd-volw { height: 100%; }
+.cw-snd-volf { width: 100%; height: 100%; border-radius: 3px; background: var(--ink); -webkit-transform-origin: 0 50%; transform-origin: 0 50%; }
+.cw-snd-on .cw-snd-glow { -webkit-animation: cw-snd-glow 3s ease-in-out infinite alternate; animation: cw-snd-glow 3s ease-in-out infinite alternate; }
+.cw-snd-on .cw-snd-rain { -webkit-animation: cw-snd-fall 1.5s linear infinite; animation: cw-snd-fall 1.5s linear infinite; }
+.cw-snd-on .cw-snd-bead { -webkit-animation: cw-snd-bead 6s ease-in infinite; animation: cw-snd-bead 6s ease-in infinite; }
+.cw-snd-on .cw-snd-em { -webkit-animation: cw-snd-ember 4s linear infinite; animation: cw-snd-ember 4s linear infinite; }
+.cw-snd-on .cw-snd-flick { -webkit-animation: cw-snd-flick 0.9s ease-in-out infinite alternate; animation: cw-snd-flick 0.9s ease-in-out infinite alternate; }
+.cw-snd-on .cw-snd-flash { -webkit-animation: cw-snd-flash 11s linear infinite; animation: cw-snd-flash 11s linear infinite; }
+.cw-snd-on .cw-snd-swell { -webkit-animation: cw-snd-swell 12.5s ease-in-out infinite alternate; animation: cw-snd-swell 12.5s ease-in-out infinite alternate; }
+html.lighter .cw-snd-fx *, html.lighter .cw-snd-flick { -webkit-animation: none !important; animation: none !important; }
+@media (prefers-reduced-motion: reduce) { .cw-snd-fx *, .cw-snd-flick { -webkit-animation: none !important; animation: none !important; } }
+@-webkit-keyframes cw-snd-glow { from { opacity: 0.55; } to { opacity: 1; } }
+@keyframes cw-snd-glow { from { opacity: 0.55; } to { opacity: 1; } }
+@-webkit-keyframes cw-snd-fall { 0% { -webkit-transform: translateY(-100%); opacity: 0; } 10% { opacity: 1; } 90% { opacity: 1; } 100% { -webkit-transform: translateY(100%); opacity: 0; } }
+@keyframes cw-snd-fall { 0% { transform: translateY(-100%); opacity: 0; } 10% { opacity: 1; } 90% { opacity: 1; } 100% { transform: translateY(100%); opacity: 0; } }
+@-webkit-keyframes cw-snd-bead { 0% { -webkit-transform: translateY(-100%); opacity: 0; } 10% { opacity: 1; } 85% { opacity: 1; } 100% { -webkit-transform: translateY(100%); opacity: 0; } }
+@keyframes cw-snd-bead { 0% { transform: translateY(-100%); opacity: 0; } 10% { opacity: 1; } 85% { opacity: 1; } 100% { transform: translateY(100%); opacity: 0; } }
+@-webkit-keyframes cw-snd-ember { 0% { -webkit-transform: translate(0, 0); opacity: 0; } 15% { opacity: 0.95; } 100% { -webkit-transform: translate(60%, -1500%); opacity: 0; } }
+@keyframes cw-snd-ember { 0% { transform: translate(0, 0); opacity: 0; } 15% { opacity: 0.95; } 100% { transform: translate(60%, -1500%); opacity: 0; } }
+@-webkit-keyframes cw-snd-flick { 0% { -webkit-transform: scale(1, 1) skewX(0deg); opacity: 0.92; } 50% { -webkit-transform: scale(0.94, 1.09) skewX(-3deg); opacity: 1; } 100% { -webkit-transform: scale(1.05, 0.95) skewX(2deg); opacity: 0.85; } }
+@keyframes cw-snd-flick { 0% { transform: scale(1, 1) skewX(0deg); opacity: 0.92; } 50% { transform: scale(0.94, 1.09) skewX(-3deg); opacity: 1; } 100% { transform: scale(1.05, 0.95) skewX(2deg); opacity: 0.85; } }
+@-webkit-keyframes cw-snd-flash { 0%, 90% { opacity: 0; } 91% { opacity: 0.45; } 93% { opacity: 0; } 95% { opacity: 0.3; } 100% { opacity: 0; } }
+@keyframes cw-snd-flash { 0%, 90% { opacity: 0; } 91% { opacity: 0.45; } 93% { opacity: 0; } 95% { opacity: 0.3; } 100% { opacity: 0; } }
+@-webkit-keyframes cw-snd-swell { from { opacity: 0.1; } to { opacity: 0.9; } }
+@keyframes cw-snd-swell { from { opacity: 0.1; } to { opacity: 0.9; } }
+@-webkit-keyframes cw-snd-fadevol { from { -webkit-transform: scaleX(1); } to { -webkit-transform: scaleX(0); } }
+@keyframes cw-snd-fadevol { from { transform: scaleX(1); } to { transform: scaleX(0); } }

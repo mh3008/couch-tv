@@ -2738,6 +2738,10 @@ def clean_settings(s):
     if isinstance(sc, dict) and sc.get("type") in config.SOUNDSCAPE_TYPES:
         out["soundscape"] = {"type": sc["type"], "volume": config._float(sc.get("volume"), 0.5, 0.0, 1.0),
                              "fade_with_sleep": sc.get("fade_with_sleep") is not False}
+        if sc.get("fade_min") in (30, 60):
+            out["soundscape"]["fade_min"] = sc["fade_min"]
+        if sc.get("match_ceiling") is not None:
+            out["soundscape"]["match_ceiling"] = config._float(sc.get("match_ceiling"), 0.3, 0.1, 1.0)
     if isinstance(s.get("smart_idle"), dict):
         out["smart_idle"] = config._smart_idle(s["smart_idle"])
     return out

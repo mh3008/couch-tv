@@ -1083,10 +1083,78 @@
     // OK opens the player (widget-detail.js), which has every control
     stop(root, "detail", "player", m.title);
   };
-  R.soundscape = function (root, o, b) {
-    var snd = op(o).sound || "rain", names = { rain: "Rain", fire: "Fire", waves: "Waves", brown: "Brown noise" }, icons = { rain: "rain", fire: "bolt", waves: "wind", brown: "speaker" };
-    add(root, [ic(icons[snd], b.h < 200 ? 44 : 56, "currentColor"), E("div", "cw-grow"), E("div", b.w < 300 ? "cw-t25" : "cw-t29", "font-weight:680;color:var(--ink)", [names[snd]]), b.w >= 300 ? E("div", "cw-t23", "", ["Soundscape"]) : null]);
-    stop(root, "quick", "soundscape", "Soundscape");
+  // Soundscape (the sounds are soundscape.js, ekagra-codes #81): a card that plays one mix on OK. Idle it is the plain card
+  // (icon, name), nothing moving. Playing it comes alive: a glow, the mix's own motion (drops fall in the rain cards, the
+  // flame flickers and embers rise in the fire cards, a flash now and then in the storm), and a thin volume bar along the
+  // bottom edge (it empties by itself over a fade out). All of it is CSS in widgets.css (.cw-snd-*): transforms and opacity
+  // only, and only while playing, so an idle card costs nothing. The card listens to Soundscape.onChange; no timer here.
+  var SND = {
+    rain: ["Rain", "rain", "rain"], fire: ["Fire", "flame", "fire"], waves: ["Waves", "wind", "brown"], brown: ["Brown noise", "speaker", "brown"],
+    rainfire: ["Rain + fire", "flame", "fire"], window: ["Window rain", "rain", "rain"], storm: ["Storm", "storm", "storm"], match: ["Match weather", "rain", "rain"]
+  };
+  var SND_NOW = { rain: "Rain", window: "Light rain", storm: "Storm", brown: "Soft" };
+  function sndCols(n, cls, dur0, dur1) {
+    var out = [], i;
+    for (i = 0; i < n; i++) {
+      var d = dur0 + ((i * 7) % n) * (dur1 - dur0) / Math.max(1, n - 1), delay = -((i * 5) % n) * d / n;
+      out.push(E("div", "cw-snd-col " + cls, "left:" + Math.round(8 + (i + 0.5) * 84 / n) + "%;-webkit-animation-duration:" + d.toFixed(2) + "s;animation-duration:" + d.toFixed(2) + "s;-webkit-animation-delay:" + delay.toFixed(2) + "s;animation-delay:" + delay.toFixed(2) + "s"));
+    }
+    return out;
+  }
+  function sndEmbers(n) {
+    // two lanes at the sides, so an ember never crosses the name in the middle
+    var out = [], i, lanes = n > 3 ? [7, 17, 83, 93] : [9, 85, 93];
+    for (i = 0; i < n; i++) out.push(E("div", "cw-snd-em", "left:" + lanes[i] + "%;-webkit-animation-delay:" + (-i * 1.3).toFixed(1) + "s;animation-delay:" + (-i * 1.3).toFixed(1) + "s;-webkit-animation-duration:" + (3.4 + (i % 3) * 0.9).toFixed(1) + "s;animation-duration:" + (3.4 + (i % 3) * 0.9).toFixed(1) + "s"));
+    return out;
+  }
+  R.soundscape = function (root, o, b, env) {
+    var q = op(o), snd = SND[q.sound] ? q.sound : "rain", def = SND[snd], fadeMin = Number(q.fade) === 30 || Number(q.fade) === 60 ? Number(q.fade) : 0;
+    var Snd = window.Soundscape, demo = !!(env && (env.demo || env.designer)), small = b.w < 300, art = def[2];
+    if (root.__sndOff) { try { root.__sndOff(); } catch (e0) {} root.__sndOff = null; }
+    var fx = [E("div", "cw-snd-glow cw-snd-g-" + art)];
+    if (snd === "storm") fx = fx.concat(sndCols(10, "cw-snd-rain cw-snd-fast", 0.9, 1.5), [E("div", "cw-snd-flash")]);
+    else if (snd === "window") fx = fx.concat(sndCols(5, "cw-snd-bead", 4.5, 8));
+    else if (snd === "rainfire") fx = fx.concat(sndCols(5, "cw-snd-rain", 1.3, 2), sndEmbers(3));
+    else if (art === "rain") fx = fx.concat(sndCols(9, "cw-snd-rain", 1.2, 1.9));
+    else if (snd === "fire") fx = fx.concat(sndEmbers(4));
+    else fx = fx.concat([E("div", "cw-snd-swell")]);
+    var flame = art === "fire", icon = E("div", "cw-snd-up cw-snd-ic" + (flame ? " cw-snd-flick" : ""), "", [ic(def[1], small && b.h < 200 ? 44 : b.h < 200 ? 44 : 56, "currentColor")]);
+    var nm = fitWords(root, def[0], b.w - 48, small ? 25 : 29, 2, 680, "color:var(--ink);position:relative;z-index:1") || E("div", small ? "cw-t25" : "cw-t29", "font-weight:680;color:var(--ink);position:relative;z-index:1", [def[0]]);
+    var sub = !small ? E("div", "cw-t23 cw-snd-up", "", [""]) : null;
+    var volf = E("div", "cw-snd-volf"), volw = E("div", "cw-snd-volw", "width:50%", [volf]), vol = E("div", "cw-snd-vol", "", [volw]);
+    function subText(st, on) {
+      if (!on) return fadeMin ? "Fades out in " + fadeMin + " min" : snd === "match" ? "Follows the weather" : "Soundscape";
+      if (snd === "match") return (SND_NOW[st && st.mix] || "Soft") + " now";
+      return st && st.fadeEnds ? "Fading out" : "Playing";
+    }
+    function paint(st) {
+      var on = demo || !!(st && st.type === snd);
+      if (on) root.classList.add("cw-snd-on"); else root.classList.remove("cw-snd-on");
+      if (sub) sub.textContent = subText(st, on);
+      var eff = demo ? 0.5 : on && st ? st.effective : 0;
+      volw.style.cssText = "width:" + Math.max(4, Math.round(eff * 100)) + "%";
+      if (on && st && st.fadeEnds && !demo) {
+        var secs = Math.max(1, Math.round((st.fadeEnds - st.fadeStarted) / 1000)), gone = Math.max(0, (Date.now() - st.fadeStarted) / 1000);
+        var a = "cw-snd-fadevol " + secs + "s linear -" + gone.toFixed(1) + "s 1 forwards";
+        volf.style.cssText = "-webkit-animation:" + a + ";animation:" + a;
+      } else volf.style.cssText = "";
+    }
+    root.style.position = "relative";
+    add(root, [E("div", "cw-snd-fx", "", fx), icon, E("div", "cw-grow"), nm, sub, vol]);
+    paint(Snd && Snd.state ? Snd.state() : null);
+    if (Snd && Snd.onChange && !demo) {
+      var off = Snd.onChange(function (st) {
+        var body = document.body;
+        if (body && body.contains) {
+          if (body.contains(root)) root.__sndSeen = true;
+          else if (root.__sndSeen) { off(); return; }   // the card has gone from the page: stop listening
+        }
+        paint(st);
+      });
+      root.__sndOff = off;
+    }
+    // OK plays this card's own mix (or stops it if it is the one playing); fade is this card's own fade out, in minutes
+    stop(root, "sound", snd + (fadeMin ? ":" + fadeMin : ""), "Soundscape");
   };
   // ---------------- fitting words (group C widgets) ----------------
   // seagey, 18 Nov 2026: "Make sure each widget fits in each container correctly things aren't cut off

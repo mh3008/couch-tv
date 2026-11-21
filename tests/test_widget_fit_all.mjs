@@ -105,7 +105,10 @@ const CHECKS = String(function (root, tag, mode) {
     if (!r.width || !r.height) return;
     const name = nm(node);
     // 1. nothing past the box
-    if (r.right > b.right + 2 || r.bottom > b.bottom + 2 || r.left < b.left - 2 || r.top < b.top - 2) {
+    // (what a clipping box inside the widget cuts away, like the rain falling in a Soundscape card, is not seen, so it is not past the box)
+    let vr = { left: r.left, right: r.right, top: r.top, bottom: r.bottom };
+    clipsOf(node.parentElement || node).forEach((c) => { if (c.el === root || c.box) return; if (c.cx) { vr.left = Math.max(vr.left, c.r.left); vr.right = Math.min(vr.right, c.r.right); } if (c.cy) { vr.top = Math.max(vr.top, c.r.top); vr.bottom = Math.min(vr.bottom, c.r.bottom); } });
+    if (vr.right > b.right + 2 || vr.bottom > b.bottom + 2 || vr.left < b.left - 2 || vr.top < b.top - 2) {
       if (!node.classList.contains("cw-fill") && !node.classList.contains("cw-layer")) say(name + " past the box (" + Math.round(r.left - b.left) + "," + Math.round(r.top - b.top) + " " + Math.round(r.width) + "x" + Math.round(r.height) + " in " + Math.round(b.width) + "x" + Math.round(b.height) + ")");
     }
     const texts = [].filter.call(node.childNodes, (t) => t.nodeType === 3 && t.textContent.trim());

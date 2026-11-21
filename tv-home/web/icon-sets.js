@@ -287,6 +287,7 @@
       P("b", cloud(6.25, 20.5, 15.5)), P("x", cloud(6.25, 20.5, 15.5))], { k: .9, dx: -.5 }],
     ["cloud", "Cloudy", "weather", "cyan", [P("b", CLOUD_MID)], { k: 1.08, dy: -1 }],
     ["rain", "Rain", "weather", "blue", [P("b", CLOUD_HIGH), P("s", "M8.5 18.25l-1 2.5M12.5 18.25l-1 2.5M16.5 18.25l-1 2.5")]],
+    ["flame", "Flame", "weather", "orange", [P("b", "M12 2.75c.7 3.3 5.75 5.6 5.75 10.9a5.75 5.75 0 0 1-11.5 0c0-2.2.9-3.6 2.1-4.9.3 1.7 1.2 2.6 2 2.9C10 8.4 10.5 5.3 12 2.75z"), P("d", "M12 20.25a2.7 2.7 0 0 1-2.7-2.7c0-1.5 1.2-2.4 2.7-3.8 1.5 1.4 2.7 2.3 2.7 3.8a2.7 2.7 0 0 1-2.7 2.7z")]],
     ["storm", "Storm", "weather", "purple", [P("b", CLOUD_HIGH), P("s", "M12.75 15.75 10.5 19.25h3.25l-2 3")]],
     ["snow", "Snow", "weather", "cyan", [P("b", CLOUD_HIGH), P("s", snowflake(8.25, 19.6, 1.9) + snowflake(15.75, 19.6, 1.9))]],
     ["fog", "Fog", "weather", "grey", [P("b", cloud(3.5, 14.5, 17)), P("s", "M4.5 18h15M7 21h10")], { k: 1.06, dy: -.25 }],

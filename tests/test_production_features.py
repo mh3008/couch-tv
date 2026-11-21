@@ -91,6 +91,15 @@ class TestProductionFeatures(unittest.TestCase):
         res3 = config._home({"soundscape": {"type": "fire", "volume": 1.5}})
         self.assertEqual(res3["soundscape"]["volume"], 1.0)
 
+        # the mixes added with Soundscape+, the sleep fade out and the weather ceiling (kept only when set, and only valid ones)
+        for mix in ("rainfire", "window", "storm", "match"):
+            self.assertEqual(config._home({"soundscape": mix})["soundscape"]["type"], mix)
+        res4 = config._home({"soundscape": {"type": "match", "volume": 0.4, "fade_min": 60, "match_ceiling": 0.2}})
+        self.assertEqual(res4["soundscape"], {"type": "match", "volume": 0.4, "fade_with_sleep": True, "fade_min": 60, "match_ceiling": 0.2})
+        res5 = config._home({"soundscape": {"type": "storm", "fade_min": 45, "match_ceiling": 9}})
+        self.assertNotIn("fade_min", res5["soundscape"])
+        self.assertEqual(res5["soundscape"]["match_ceiling"], 1.0)
+
         # Invalid type ignored
         self.assertNotIn("soundscape", config._home({"soundscape": "invalid_ambient"}))
         self.assertNotIn("soundscape", config._home({"soundscape": {"type": "invalid"}}))

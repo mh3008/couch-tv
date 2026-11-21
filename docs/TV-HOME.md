@@ -250,7 +250,7 @@ Choose which of these buttons show, and in what order:
 
 Since 0.13:
 
-- **Soundscape** (rain, fireplace, ocean or brown noise made on the TV).
+- **Soundscape** (rain, fireplace, rain and fire, rain on a window, a storm, ocean or brown noise, or whatever the weather is, all made on the TV). As a widget the card plays its own sound on OK and, while it plays, glows, falls with rain or flickers with its flame, and shows the volume; the Home settings have a fade out (30 or 60 minutes) and a ceiling for "Match the weather".
 - **Screen off** (the picture goes dark while sound and the sleep timer carry on).
 - **Bluetooth headphones** (opens the TV's own Bluetooth screen).
 

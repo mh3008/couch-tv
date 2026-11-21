@@ -214,7 +214,7 @@ def _share(value, lo, hi):
     return round(max(lo, min(hi, float(value))), 3)
 
 
-SOUNDSCAPE_TYPES = ("off", "rain", "fire", "waves", "brown")
+SOUNDSCAPE_TYPES = ("off", "rain", "fire", "waves", "brown", "rainfire", "window", "storm", "match")
 SMART_IDLE_ACTIONS = ("ambient_clock", "screen_off", "tv_off")
 
 
@@ -525,6 +525,11 @@ def _home(h):
                 "volume": _float(soundscape.get("volume"), 0.5, 0.0, 1.0),
                 "fade_with_sleep": soundscape.get("fade_with_sleep") is not False,
             }
+            # the sleep fade out (30 or 60 minutes) and the loudest "match the weather" plays: kept only when set
+            if soundscape.get("fade_min") in (30, 60):
+                out["soundscape"]["fade_min"] = soundscape["fade_min"]
+            if soundscape.get("match_ceiling") is not None:
+                out["soundscape"]["match_ceiling"] = _float(soundscape.get("match_ceiling"), 0.3, 0.1, 1.0)
     elif isinstance(soundscape, str) and soundscape in SOUNDSCAPE_TYPES:
         out["soundscape"] = {
             "type": soundscape,

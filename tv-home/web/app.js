@@ -136,12 +136,24 @@
   var SHELF_FOLLOW = false;
   // Ambient sleep soundscapes (rain, fire, waves, brown noise)
   var SOUND_TYPE = "off", SOUND_VOL = 0.5, SOUND_FADE_SLEEP = true;
+  // the fade out a sound starts with (0 = none, 30 or 60 minutes), and the loudest "Match the weather" ever plays
+  var SOUND_FADE_MIN = 0, SOUND_MATCH_CEIL = 0.3;
+  function soundSettings(type) {
+    return { type: type, volume: SOUND_VOL, fade_with_sleep: SOUND_FADE_SLEEP, fade_min: SOUND_FADE_MIN, match_ceiling: SOUND_MATCH_CEIL };
+  }
   function initSoundscape() {
     var sc = ST.soundscape || HOME.soundscape || {};
     if (typeof sc === "string") sc = { type: sc };
     SOUND_TYPE = sc.type || "off";
     SOUND_VOL = typeof sc.volume === "number" ? Math.max(0, Math.min(1, sc.volume)) : 0.5;
     SOUND_FADE_SLEEP = sc.fade_with_sleep !== false;
+    SOUND_FADE_MIN = sc.fade_min === 30 || sc.fade_min === 60 ? sc.fade_min : 0;
+    SOUND_MATCH_CEIL = typeof sc.match_ceiling === "number" ? Math.max(0.1, Math.min(1, sc.match_ceiling)) : 0.3;
+    // "Match the weather" reads the weather the home already has (the same answer the Weather widget draws): its WMO code
+    if (window.Soundscape) {
+      if (window.Soundscape.setMatchCeiling) window.Soundscape.setMatchCeiling(SOUND_MATCH_CEIL);
+      if (window.Soundscape.setWeatherSource) window.Soundscape.setWeatherSource(function () { return data && data.weather && data.weather.code !== undefined ? data.weather.code : null; });
+    }
     // Nothing plays from here: the home never starts a sound by itself (not when it opens, not when it
     // comes back from an app). SOUND_TYPE is only the sound the button starts with.
   }
@@ -174,12 +186,29 @@
     var types = window.Soundscape.TYPES;
     var cur = window.Soundscape.current();
     var next = cur === "off" ? (SOUND_TYPE !== "off" ? SOUND_TYPE : types[1]) : types[(types.indexOf(cur) + 1) % types.length];
-    window.Soundscape.play(next, SOUND_VOL);
+    window.Soundscape.play(next, SOUND_VOL, { fadeMin: SOUND_FADE_MIN });
     SOUND_TYPE = next;
-    ST.soundscape = { type: next, volume: SOUND_VOL, fade_with_sleep: SOUND_FADE_SLEEP };
+    ST.soundscape = soundSettings(next);
     saveSettings();
     renderQuick();
     note(t("soundscape") + ": " + (next === "off" ? t("timer_off") : t("sound_" + next)));
+  }
+  // OK on a Soundscape widget: ITS mix starts (or stops, when it is the one playing). arg is "storm" or "storm:30" (the
+  // card's own fade out, in minutes, else the one from Home settings)
+  function soundToggle(arg) {
+    var S = window.Soundscape;
+    if (!S) return;
+    var parts = String(arg || "").split(":"), type = parts[0], fm = parseInt(parts[1], 10);
+    if (S.TYPES.indexOf(type) < 1) return cycleSoundscape();
+    if (S.current() === type) S.stop();
+    else {
+      S.play(type, SOUND_VOL, { fadeMin: fm === 30 || fm === 60 ? fm : SOUND_FADE_MIN });
+      SOUND_TYPE = type;
+      ST.soundscape = soundSettings(type);
+      saveSettings();
+    }
+    renderQuick();
+    note(t("soundscape") + ": " + (S.current() === "off" ? t("timer_off") : t("sound_" + S.current())));
   }
   // glass app icons: the focused app in its own colours, or staying glass (#32)
   var GLASS_FOCUS = "colour";
@@ -5222,7 +5251,36 @@
         var vi = volSteps.indexOf(Math.round(SOUND_VOL * 10) / 10);
         SOUND_VOL = vi < 0 ? 0.6 : volSteps[(vi + 1) % volSteps.length];
         if (window.Soundscape) window.Soundscape.setVolume(SOUND_VOL);
-        ST.soundscape = { type: window.Soundscape ? window.Soundscape.current() : SOUND_TYPE, volume: SOUND_VOL, fade_with_sleep: SOUND_FADE_SLEEP };
+        ST.soundscape = soundSettings(window.Soundscape ? window.Soundscape.current() : SOUND_TYPE);
+        saveSettings();
+        renderSettings();
+      }
+    });
+    // a sound that fades itself out: none, 30 or 60 minutes after it starts (applies to the next sound you start)
+    rows.push({
+      kind: "cycle",
+      key: "soundscape-fade",
+      label: t("sound_fade"),
+      value: SOUND_FADE_MIN ? t("sound_fade_n", { n: SOUND_FADE_MIN }) : t("timer_off"),
+      act: function () {
+        SOUND_FADE_MIN = SOUND_FADE_MIN === 0 ? 30 : SOUND_FADE_MIN === 30 ? 60 : 0;
+        ST.soundscape = soundSettings(window.Soundscape ? window.Soundscape.current() : SOUND_TYPE);
+        saveSettings();
+        renderSettings();
+      }
+    });
+    // "Match the weather" is kept quiet: the loudest it ever plays, whatever the volume above says
+    var ceilSteps = [0.1, 0.2, 0.3, 0.5, 0.8];
+    rows.push({
+      kind: "cycle",
+      key: "soundscape-match",
+      label: t("sound_match_ceiling"),
+      value: Math.round(SOUND_MATCH_CEIL * 100) + "%",
+      act: function () {
+        var ci = ceilSteps.indexOf(Math.round(SOUND_MATCH_CEIL * 10) / 10);
+        SOUND_MATCH_CEIL = ceilSteps[(ci + 1) % ceilSteps.length];
+        if (window.Soundscape && window.Soundscape.setMatchCeiling) window.Soundscape.setMatchCeiling(SOUND_MATCH_CEIL);
+        ST.soundscape = soundSettings(window.Soundscape ? window.Soundscape.current() : SOUND_TYPE);
         saveSettings();
         renderSettings();
       }
@@ -7473,6 +7531,7 @@
         else if (what === "gear") openGear();
         else if (what === "smart") openSmart();
         else if (what === "quick") { var qv = quickVisible(), qn = qv.indexOf(arg); if (qn >= 0) { qi = qn; quickAction(); } else if (arg === "soundscape") cycleSoundscape(); }
+        else if (what === "sound") soundToggle(arg);
         else if (what === "person") { pickWho(arg); renderPeople(); }
         else if (what === "scene") { if (window.smartHome && window.smartHome.request && window.smartHome.available()) { var scn = (window.smartHome.scenes() || []).filter(function (x) { return x.entity === arg; })[0], snm = scn ? scn.name : arg; window.smartHome.request("scene", arg).then(function (r) { note(r && r.ok ? t("sh_started", { name: snm }) : t("sh_failed")); }); } }
         else if (what === "media") {
