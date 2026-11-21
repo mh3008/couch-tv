@@ -574,62 +574,160 @@
     var lb = root.querySelector(".cw-lab"); if (lb && root.classList.contains("cw-tint")) lb.style.color = "var(--sub)";
   };
   // Christmas tree: an advent tree. From 1 December one more light comes on each day (24 of them, spread
-  // over the tree), on the 25th every light is on, the tree glows and the star lights up. The rest of the
-  // year it is a bare tree (the lights are there, dim) counting the days to the next Christmas, so it is
-  // never empty. One small drawing with no animation; the count comes from the TV's own date.
+  // over the tree), on the 24th two presents appear at its foot, on the 25th every light is on, five presents
+  // sit under it and the star lights up with rays. The rest of the year it is a bare tree (the lights are
+  // there, dim) counting the days to the next Christmas, so it is never empty. The count comes from the
+  // TV's own date. Two looks, picked with opts.style: "classic" (layered branches, a bead garland, snow on
+  // the tips) and "lights" (a spiral of light dots, no branches).
+  // Light for a Fire TV Stick: the drawing is a few static SVG layers; what moves are four of those layers,
+  // each as one element whose opacity alone changes (the twinkle of the lights in three groups, the rays of
+  // the star), so the GPU does the moving (widgets.css .cw-tree) and this code never runs again.
   var TREE_COL = ["#ff5a52", "#ffd60a", "#5ac8fa", "#ff7ab6", "#ff9f0a", "#fff3c4"];
-  var TREE_ROWS = [[26, 90, 38, 60, 2], [26, 90, 38, 80, 3], [56, 145, 58, 110, 3], [56, 145, 58, 134, 5], [98, 205, 82, 160, 3], [98, 205, 82, 182, 4], [98, 205, 82, 198, 4]];
+  var TREE_SPARK = ["#ffe9a8", "#ffd1dc", "#bfe9ff", "#fff3c4", "#ffc15a", "#e6d4ff"];
+  // [tier, y, lights in the row]: 24 places, the first tier's two rows, the second's three, the third's three
+  var TREE_ROWS = [[0, 40, 2], [0, 62, 3], [1, 96, 2], [1, 112, 3], [1, 128, 3], [2, 152, 3], [2, 174, 4], [2, 192, 4]];
+  // [centre x, apex y, base y, half width, teeth on the hem]
+  var TREE_TIERS = [[100, 22, 84, 40, 4], [100, 54, 138, 62, 5], [100, 96, 204, 86, 6]];
+  var TREE_GIFTS = [[56, 211, 15, 15, "#d94452", "#f6d36b"], [130, 215, 13, 11, "#3b82d6", "#e8eef7"], [40, 217, 11, 9, "#2fa36b", "#f6d36b"], [148, 218, 10, 8, "#c75ad0", "#e8eef7"], [78, 218, 10, 8, "#f2a93b", "#d94452"]];
+  var TREE_N = 0;
   // the 24 places for a light: [x, y]; the order they come on is a fixed shuffle (day * 11 mod 24) so the tree fills evenly
   var TREE_SLOTS = (function () {
     var out = [];
     TREE_ROWS.forEach(function (r) {
-      var hw = r[2] * (r[3] - r[0]) / (r[1] - r[0]), i;
-      for (i = 0; i < r[4]; i++) out.push([Math.round(100 + ((i + 0.5) / r[4] - 0.5) * 2 * hw * 0.8), r[3]]);
+      var t = TREE_TIERS[r[0]], hw = t[3] * (r[1] - t[1]) / (t[2] - t[1]), i;
+      for (i = 0; i < r[2]; i++) out.push([Math.round(100 + ((i + 0.5) / r[2] - 0.5) * 2 * hw * 0.8), r[1]]);
     });
     return out;
+  })();
+  // the spiral of the "lights" look: two strands round a cone, front to back, 72 dots; every third is a bright one (24)
+  var TREE_SPIRAL = (function () {
+    var dots = [], s, i, t, a, r;
+    for (s = 0; s < 2; s++) for (i = 0; i < 36; i++) {
+      t = i / 35; a = t * 2 * Math.PI * 3.2 + s * Math.PI; r = 5 + 80 * t;
+      dots.push({ x: Math.round((100 + r * Math.cos(a)) * 10) / 10, y: Math.round((34 + 172 * t) * 10) / 10, front: (Math.sin(a) + 1) / 2, t: t });
+    }
+    dots.sort(function (p, q) { return p.y - q.y; });
+    var rank = 0;
+    dots.forEach(function (d, k) { d.bright = k % 3 === 1; if (d.bright) d.rank = rank++; });
+    return dots;
   })();
   function starPoints(cx, cy, ro, ri) {
     var p = [], i, a;
     for (i = 0; i < 10; i++) { a = -Math.PI / 2 + i * Math.PI / 5; p.push(Math.round((cx + Math.cos(a) * (i % 2 ? ri : ro)) * 10) / 10 + "," + Math.round((cy + Math.sin(a) * (i % 2 ? ri : ro)) * 10) / 10); }
     return p.join(" ");
   }
-  // where the tree is today: how many lights are on (0 to 24), the star, and the days to the next Christmas
+  // where the tree is today: how many lights are on (0 to 24), the star, the presents, and the days to the next Christmas
   function treeDay() {
     var t = now(), day = t.getMonth() === 11 ? t.getDate() : 0;
-    return { lit: day >= 1 && day <= 25 ? Math.min(day, 24) : 0, star: day === 25, n: daysTo(12, 25) };
+    return { lit: day >= 1 && day <= 25 ? Math.min(day, 24) : 0, star: day === 25, gifts: day === 24 ? 2 : day === 25 ? 5 : 0, n: daysTo(12, 25) };
   }
-  function treeSvg(lit, star, css) {
-    var kids = [], glow = star;
-    if (glow) [[98, 0.05], [80, 0.06], [62, 0.07]].forEach(function (g) { kids.push(S("circle", { cx: 100, cy: 130, r: g[0], fill: "#ffd60a", opacity: g[1] })); });   // soft rings, kept inside the picture
-    kids.push(S("rect", { x: 90, y: 203, width: 20, height: 26, rx: 3, fill: "#7a4a2a" }),
-      S("polygon", { points: "100,98 18,205 182,205", fill: "#1f7a46" }), S("polygon", { points: "100,56 42,145 158,145", fill: "#2a9a5a" }), S("polygon", { points: "100,26 62,90 138,90", fill: "#36b36c" }));
-    TREE_SLOTS.forEach(function (p, k) {
-      var on = (k * 11) % 24 < lit;
-      if (on) kids.push(S("circle", { cx: p[0], cy: p[1], r: glow ? 12 : 10, fill: TREE_COL[k % 6], opacity: 0.3 }), S("circle", { cx: p[0], cy: p[1], r: 5.5, fill: TREE_COL[k % 6] }));
-      else kids.push(S("circle", { cx: p[0], cy: p[1], r: 4, fill: "#0d3a22", opacity: 0.8 }));
+  // one tier of branches: a triangle whose hem is a row of pointed tips, as a path; the tips are returned too (for the snow)
+  function tierShape(t) {
+    var cx = t[0], ay = t[1], by = t[2], hw = t[3], n = t[4], d = "M" + cx + " " + ay + "L" + (cx + hw) + " " + (by - 7), tips = [], i, step = 2 * hw / n;
+    for (i = 0; i < n; i++) {
+      var xr = cx + hw - i * step, xm = xr - step / 2;
+      d += "L" + Math.round((xr - step * 0.22) * 10) / 10 + " " + by + "L" + Math.round(xm * 10) / 10 + " " + (by - 10) + "L" + Math.round((xr - step * 0.78) * 10) / 10 + " " + by;
+      tips.push([Math.round((xr - step * 0.22) * 10) / 10, by], [Math.round((xr - step * 0.78) * 10) / 10, by]);
+    }
+    return { d: d + "L" + (cx - hw) + " " + (by - 7) + "Z", tips: tips };
+  }
+  function gradient(id, kind, stops, at) {
+    var a = at || {}; a.id = id;
+    return S(kind, a, stops.map(function (s) { return S("stop", { offset: s[0], "stop-color": s[1], "stop-opacity": s[2] === undefined ? 1 : s[2] }); }));
+  }
+  function giftShape(g) {
+    var x = g[0], y = g[1], w = g[2], h = g[3];
+    return S("g", { "class": "cw-tree-gift" }, [S("rect", { x: x, y: y, width: w, height: h, rx: 1.6, fill: g[4] }), S("rect", { x: x, y: y, width: w, height: h * 0.28, rx: 1.2, fill: "#000", opacity: 0.12 }),
+      S("rect", { x: x + w / 2 - 1.2, y: y, width: 2.4, height: h, fill: g[5] }), S("rect", { x: x, y: y + h * 0.36, width: w, height: 2.2, fill: g[5] }),
+      S("circle", { cx: x + w / 2 - 2, cy: y - 1.4, r: 2.2, fill: g[5] }), S("circle", { cx: x + w / 2 + 2, cy: y - 1.4, r: 2.2, fill: g[5] })]);
+  }
+  // the lights that are on, as [x, y, colour, size], from the look and the count
+  function treeLit(look, lit, star) {
+    var out = [];
+    if (look === "lights") TREE_SPIRAL.forEach(function (d) { if (d.bright && (d.rank * 11) % 24 < lit) out.push([d.x, d.y, TREE_SPARK[d.rank % 6], 3 + d.front * 1.4]); });
+    else TREE_SLOTS.forEach(function (p, k) { if ((k * 11) % 24 < lit) out.push([p[0], p[1], TREE_COL[k % 6], 3.6]); });
+    return out;
+  }
+  // the whole tree: a div of stacked SVG layers that share one picture box: the still drawing, three layers of
+  // light halos that twinkle, and on the 25th the rays of the star
+  function treeScene(look, lit, star, gifts, css) {
+    var id = "cwt" + (TREE_N = (TREE_N + 1) % 100000), VB = "0 -12 200 252", base = [], defs = [], on = treeLit(look, lit, star), groups = [[], [], []], layers = [], i;
+    if (star) base.push(S("circle", { cx: 100, cy: 118, r: 104, fill: "url(#" + id + "g)" }));
+    defs.push(gradient(id + "g", "radialGradient", [[0, "#ffd60a", 0.3], [1, "#ffd60a", 0]]), gradient(id + "t", "linearGradient", [[0, "#6b4126"], [1, "#4a2c1a"]], { x1: 0, y1: 0, x2: 1, y2: 0 }));
+    if (look === "lights") {
+      TREE_SPIRAL.forEach(function (d) {
+        var k = d.rank, isOn = d.bright && (k * 11) % 24 < lit;
+        if (d.bright) base.push(S("circle", { cx: d.x, cy: d.y, r: isOn ? 3 + d.front * 1.4 : 2.2 + d.front * 0.8, fill: isOn || star ? TREE_SPARK[k % 6] : "#e8eef7", opacity: isOn || star ? 1 : 0.22 + d.front * 0.18 }));
+        else base.push(S("circle", { cx: d.x, cy: d.y, r: 0.9 + d.front * 0.9, fill: star ? "#fff3c4" : "#e8eef7", opacity: star ? 0.85 : 0.16 + d.front * 0.22 }));
+      });
+    } else {
+      defs.push(gradient(id + "a", "linearGradient", [[0, "#4fcf86"], [0.32, "#2a9a5a"], [0.5, "#176a3e"], [0.68, "#2a9a5a"], [1, "#4fcf86"]], { x1: 0, y1: 0, x2: 1, y2: 0 }),
+        gradient(id + "s", "linearGradient", [[0, "#000", 0], [1, "#000", 0.34]], { x1: 0, y1: 0, x2: 0, y2: 1 }));
+      base.push(S("rect", { x: 90, y: 196, width: 20, height: 30, rx: 3, fill: "url(#" + id + "t)" }));
+      for (i = 2; i >= 0; i--) {
+        var tier = tierShape(TREE_TIERS[i]);
+        base.push(S("path", { d: tier.d, fill: "url(#" + id + "a)" }), S("path", { d: tier.d, fill: "url(#" + id + "s)" }));
+        // snow on the tips of the hem
+        tier.tips.forEach(function (p) { base.push(S("ellipse", { cx: p[0], cy: p[1] - 0.6, rx: 3, ry: 2.2, fill: "#f4f8ff", opacity: 0.95 })); });
+        // the lights of this tier sit on it: drawn now, so the next tier up overlaps what it should
+        TREE_SLOTS.forEach(function (p, k) {
+          if (TREE_ROWS[rowOf(k)][0] !== i) return;
+          var isOn = (k * 11) % 24 < lit;
+          base.push(S("circle", { cx: p[0], cy: p[1], r: isOn ? 3.6 : 3, fill: isOn ? TREE_COL[k % 6] : "#12402a", stroke: isOn ? "#fff" : "#0a2a1a", "stroke-width": isOn ? 0.6 : 0.8, "stroke-opacity": isOn ? 0.55 : 1, "class": isOn ? "cw-tree-on" : "cw-tree-off" }));
+        });
+      }
+      // the garland: a gold thread with beads, swagged across the tiers
+      ["M28 188Q100 226 172 170", "M146 126Q98 152 56 110", "M80 60Q100 78 120 52"].forEach(function (d) {
+        base.push(S("path", { d: d, fill: "none", stroke: "#c99a2e", "stroke-width": 0.9, opacity: 0.75 }), S("path", { d: d, fill: "none", stroke: "#f2c14e", "stroke-width": 2.6, "stroke-linecap": "round", "stroke-dasharray": "0.1 5.4" }));
+      });
+    }
+    for (i = 0; i < gifts; i++) base.push(giftShape(TREE_GIFTS[i]));
+    base.push(S("polygon", { points: starPoints(100, 10, 15, 6.6), fill: star ? "#ffe45c" : "#5d6b5f", stroke: star ? "#ffb300" : "none", "stroke-width": 0.8, "stroke-linejoin": "round", "class": star ? "cw-tree-star cw-tree-star-on" : "cw-tree-star" }));
+    if (look === "lights") on.forEach(function (p, k) { base.push(S("circle", { cx: p[0], cy: p[1], r: 1.1, fill: "#fff", opacity: 0.9, "class": "cw-tree-on" })); });
+    layers.push(svg(VB, "100%", "100%", [S("defs", {}, defs)].concat(base), ""));
+    // the halos: soft discs round every light that is on, three groups twinkling out of step (each group one layer)
+    on.forEach(function (p, k) { groups[k % 3].push(p); });
+    groups.forEach(function (g, gi) {
+      if (!g.length) return;
+      var gd = [], kids = [], seen = {};
+      g.forEach(function (p, j) {
+        var ci = (look === "lights" ? TREE_SPARK : TREE_COL).indexOf(p[2]);
+        if (!seen[ci]) { seen[ci] = 1; gd.push(gradient(id + "h" + gi + "c" + ci, "radialGradient", [[0, p[2], 0.95], [0.45, p[2], 0.35], [1, p[2], 0]])); }
+        kids.push(S("circle", { cx: p[0], cy: p[1], r: star ? 15 : look === "lights" ? 12 + (p[3] - 3) * 2 : 12, fill: "url(#" + id + "h" + gi + "c" + ci + ")" }));
+      });
+      var l = svg(VB, "100%", "100%", [S("defs", {}, gd)].concat(kids), "");
+      l.setAttribute("class", "cw-svg cw-tree-tw cw-tree-t" + (gi + 1));
+      layers.push(l);
     });
-    if (star) kids.push(S("circle", { cx: 100, cy: 15, r: 22, fill: "#ffd60a", opacity: 0.3 }));
-    kids.push(S("polygon", { points: starPoints(100, 15, 15, 6.5), fill: star ? "#ffe45c" : "#5d6b5f" }));
-    return svg("0 -10 200 242", "100%", "100%", kids, css);
+    // the rays of the star on the 25th: eight thin points round a soft glow, pulsing
+    if (star) {
+      var rays = [S("circle", { cx: 100, cy: 10, r: 30, fill: "url(#" + id + "r)" })], a;
+      for (i = 0; i < 8; i++) { a = i * Math.PI / 4 + Math.PI / 8; rays.push(S("polygon", { points: Math.round((100 + Math.cos(a - 0.09) * 12) * 10) / 10 + "," + Math.round((10 + Math.sin(a - 0.09) * 12) * 10) / 10 + " " + Math.round((100 + Math.cos(a) * (i % 2 ? 26 : 36)) * 10) / 10 + "," + Math.round((10 + Math.sin(a) * (i % 2 ? 26 : 36)) * 10) / 10 + " " + Math.round((100 + Math.cos(a + 0.09) * 12) * 10) / 10 + "," + Math.round((10 + Math.sin(a + 0.09) * 12) * 10) / 10, fill: "#fff0a8", opacity: 0.85 })); }
+      var rl = svg(VB, "100%", "100%", [S("defs", {}, [gradient(id + "r", "radialGradient", [[0, "#ffe45c", 0.75], [1, "#ffe45c", 0]])])].concat(rays), "");
+      rl.setAttribute("class", "cw-svg cw-tree-rays");
+      layers.push(rl);
+    }
+    return E("div", "cw-tree", "position:relative;" + css, layers);
   }
+  function rowOf(k) { var n = 0, r; for (r = 0; r < TREE_ROWS.length; r++) { n += TREE_ROWS[r][2]; if (k < n) return r; } return TREE_ROWS.length - 1; }
   function treeWords(q, n, today) {
     var unit = q.unit === "days" ? "days" : "sleeps", one = unit === "days" ? "day to go" : "sleep to go";
     return today ? "It's today!" : n === 1 ? one : unit + " to go";
   }
   R.xmastree = function (root, o, b, env) {
-    var q = op(o), d = env.demo ? { lit: 14, star: false, n: 11 } : treeDay(), today = d.n === 0, label = q.label || "Christmas";
-    var tiny = b.h < 200, fs = clamp(Math.min((b.h - 330) * 0.5 + 64, 96), 52, 96);
+    var q = op(o), look = q.style === "lights" ? "lights" : "classic", d = env.demo ? { lit: 18, star: false, gifts: 0, n: 7 } : treeDay(), today = d.n === 0, label = q.label || "Christmas";
+    var tiny = b.h < 200, fs = clamp(Math.min((b.h - 330) * 0.5 + 64, 96), 52, 96), tree = function (css) { return treeScene(look, d.lit, d.star, d.gifts, css); };
     if (tiny && b.w < 300) {
       // a tile: the tree over the number
       root.style.padding = "14px"; root.style.justifyContent = "center";
-      return add(root, [treeSvg(d.lit, d.star, "flex:1;min-height:0"), E("div", "cw-big", "white-space:nowrap;font-size:" + px(36) + ";margin-top:4px", [today ? "Today" : String(d.n)])]);
+      return add(root, [tree("flex:1;min-height:0"), E("div", "cw-big", "white-space:nowrap;font-size:" + px(36) + ";margin-top:4px", [today ? "Today" : String(d.n)])]);
     }
     if (tiny) {
       // a wide tile: the tree on the left, the number and its words on the right
-      return add(root, E("div", "cw-row", "height:100%;align-items:center;justify-content:space-around", [treeSvg(d.lit, d.star, "width:30%;height:100%;flex:none"),
+      return add(root, E("div", "cw-row", "height:100%;align-items:center;justify-content:space-around", [tree("width:30%;height:100%;flex:none"),
         E("div", "cw-col", "min-width:0;align-items:center", [E("div", "cw-t23 cw-ell", "font-weight:700;color:var(--sub)", [label]), today ? null : E("div", "cw-big", "white-space:nowrap;font-size:" + px(56), [String(d.n)]), E("div", "cw-t25 cw-ell", "font-weight:650", [treeWords(q, d.n, today)])])]));
     }
-    add(root, [E("div", "cw-t23 cw-ell", "font-weight:700;color:var(--sub);flex:none", [label]), treeSvg(d.lit, d.star, "flex:1;min-height:0;margin:6px 0"),
+    add(root, [E("div", "cw-t23 cw-ell", "font-weight:700;color:var(--sub);flex:none", [label]), tree("flex:1;min-height:0;margin:6px 0"),
       today ? null : E("div", "cw-big", "flex:none;white-space:nowrap;font-size:" + px(fs), [String(d.n)]), E("div", "cw-t29 cw-ell", "flex:none;font-weight:650", [treeWords(q, d.n, today)])]);
   };
   R.date = function (root, o, b, env) {

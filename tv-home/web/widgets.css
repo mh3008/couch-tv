@@ -402,3 +402,19 @@ html.lighter .cwd-artbg { -webkit-filter: none; filter: none; opacity: 0.18; }
 .cw-ah.cw-strip > .cw-row > svg { width: 34px !important; height: 34px !important; }
 .cw-ah.cw-strip > .cw-row > .cw-col { margin-left: 0 !important; margin-top: 6px; -webkit-align-items: center; align-items: center; max-width: 100%; }
 .cw-ah.cw-strip .cw-e1 { text-align: center; font-size: 24px; line-height: 1.2; }
+
+/* Christmas tree (widgets.js R.xmastree): the tree is a few stacked SVG layers; the lights' halos (three layers)
+   and the star's rays twinkle by opacity alone, one element each, so the GPU does the moving and the page none.
+   The Lighter home and a TV set to reduce motion get the same tree standing still, every halo at full strength. */
+.cw-tree > svg { position: absolute; left: 0; top: 0; width: 100%; height: 100%; display: block; overflow: visible; }
+.cw-tree-tw, .cw-tree-rays { will-change: opacity; }
+.cw-tree-t1 { -webkit-animation: cw-tree-tw 2.3s ease-in-out infinite alternate; animation: cw-tree-tw 2.3s ease-in-out infinite alternate; }
+.cw-tree-t2 { -webkit-animation: cw-tree-tw 3.1s ease-in-out -1.1s infinite alternate; animation: cw-tree-tw 3.1s ease-in-out -1.1s infinite alternate; }
+.cw-tree-t3 { -webkit-animation: cw-tree-tw 2.7s ease-in-out -2s infinite alternate; animation: cw-tree-tw 2.7s ease-in-out -2s infinite alternate; }
+.cw-tree-rays { -webkit-animation: cw-tree-pulse 2.4s ease-in-out infinite alternate; animation: cw-tree-pulse 2.4s ease-in-out infinite alternate; }
+html.lighter .cw-tree svg { -webkit-animation: none !important; animation: none !important; will-change: auto !important; }
+@-webkit-keyframes cw-tree-tw { from { opacity: 0.4; } to { opacity: 1; } }
+@keyframes cw-tree-tw { from { opacity: 0.4; } to { opacity: 1; } }
+@-webkit-keyframes cw-tree-pulse { from { opacity: 0.45; } to { opacity: 1; } }
+@keyframes cw-tree-pulse { from { opacity: 0.45; } to { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .cw-tree svg { -webkit-animation: none !important; animation: none !important; will-change: auto !important; } }

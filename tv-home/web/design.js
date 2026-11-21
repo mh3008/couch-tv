@@ -393,6 +393,8 @@
     cities: function (v) { return SAN.list(v, 4, tzOk); },
     month: function (v) { return SAN.n(v, 1, 12, true); }, day: function (v) { return SAN.n(v, 1, 31, true); },
     unit: function (v) { return SAN.pick(v, ["sleeps", "days", "weeks"]); }, icon: iconName,
+    // the Christmas tree's look: the branches, or a spiral of light dots
+    style: function (v) { return SAN.pick(v, ["classic", "lights"]); },
     // apps in a dock, row, folder or app tile: catalogue ids (app-catalogue.js). An old design's package
     // name becomes its id when the catalogue knows it; anything else is dropped. A page without the
     // catalogue (an older copy of this file's helpers) keeps package names as it always did.
@@ -428,7 +430,7 @@
   var WEB_FEEDS = ["abc", "abc-justin", "abc-sport", "abc-business", "sbs", "guardian", "bbc", "rnz"];
   var WOPT = {
     clock: "format ampm seconds date align", tallclock: "format align", glassclock: "format scene", analog: "seconds", flipclock: "format",
-    wordclock: "", solar: "", worldclock: "label cities", countdown: "label month day unit icon", xmastree: "label unit", date: "show dfmt align place", month: "", timer: "label",
+    wordclock: "", solar: "", worldclock: "label cities", countdown: "label month day unit icon", xmastree: "label unit style", date: "show dfmt align place", month: "", timer: "label",
     weather: "place hilo night", bigtemp: "place", hourly: "place", week: "place", rain: "label", uv: "label", sun: "label", moon: "", air: "label", surf: "label",
     photo: "image fit caption sub", slideshow: "seconds_each caption sub", mosaic: "count", artframe: "image mat caption sub", memory: "align",
     keep: "", keeprow: "label shows", upnext: "apps sport", picks: "label align",
