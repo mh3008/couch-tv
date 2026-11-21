@@ -1,6 +1,6 @@
 // The Campfire widget (widgets.js R.campfire, widgets.css .cw-fire): flames, drifting embers and glowing logs moved
 // by CSS animations that use transforms and opacity only (so the GPU does the moving), standing still on the
-// Lighter home and when the TV asks for less motion; OK plays the soundscape. Run: node tests/test_widget_campfire.js
+// Lighter home and when the TV asks for less motion; OK plays the fire's sound. Run: node tests/test_widget_campfire.js
 const fs = require("fs");
 const path = require("path");
 const K = require("./web-widgets-kit");
@@ -22,7 +22,7 @@ const hasCls = (el, c) => el.all().filter((e) => (e.getAttribute("class") || "")
   ok(hasCls(el, "cw-fire-em").length === 6, "campfire " + id + ": six embers");
   ok(hasCls(el, "cw-fire-glow").length === 1 && hasCls(el, "cw-fire-coal").length === 1, "campfire " + id + ": the glow and the glowing coals");
   ok(el.all().filter((e) => e.tagName === "RECT").length >= 3, "campfire " + id + ": the logs");
-  ok(el.getAttribute("data-act") === "quick" && el.getAttribute("data-arg") === "soundscape", "campfire " + id + ": OK plays the soundscape");
+  ok(el.getAttribute("data-act") === "sound" && el.getAttribute("data-arg") === "fire", "campfire " + id + ": OK plays the fire's sound");
   ok(!/undefined|NaN/.test(text(el)), "campfire " + id + ": no stray words");
 });
 const gradIds = hasCls(draw(160, 160), "cw-fire-flame").map((f) => f.all().filter((e) => e.tagName === "LINEARGRADIENT")[0].getAttribute("id"));

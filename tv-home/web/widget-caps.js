@@ -173,7 +173,7 @@
       ok: "Nothing: it is to look at", platforms: EVERY(), sizes: sz(["tile", "wtile", "small"], [2, 2]) },
     campfire: { name: "Campfire", status: "works", what: "A fire with flickering flames, drifting embers and glowing logs", needs: ["Nothing: it is drawn by the home itself"],
       setup: setup("designer", inStudio("type a name for it if you like")), until: "Always shows the fire", build: "",
-      ok: "Plays the Soundscape (the sound you used last; press again for the next one)", platforms: EVERY(), sizes: sz(["tile", "wtile"], [2, 2]) },
+      ok: "Plays the fire's sound (the Soundscape's Fire); OK again stops it", platforms: EVERY(), sizes: sz(["tile", "wtile"], [2, 2]) },
     date: { name: "Date", status: "works", what: "Today's date, with the weather if you like", needs: ["Nothing for the date. The weather line needs your town"],
       setup: setup("nothing", ["Nothing to set up for the date.", "For the weather, " + OPEN.charAt(0).toLowerCase() + OPEN.slice(1), "Go down to Location, pick Search for a town or city, type your town, then press OK."]),
       until: "Always shows the date", build: "",

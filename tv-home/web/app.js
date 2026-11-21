@@ -168,6 +168,22 @@
       renderQuick();
     }
   }
+  // OK on a widget with its own sound (Campfire: "fire"): that sound starts, or stops when it is the one playing
+  function soundToggle(arg) {
+    var S = window.Soundscape;
+    if (!S) return;
+    var type = String(arg || "").split(":")[0];
+    if (S.TYPES.indexOf(type) < 1) return cycleSoundscape();
+    if (S.current() === type) S.stop();
+    else {
+      S.play(type, SOUND_VOL);
+      SOUND_TYPE = type;
+      ST.soundscape = { type: type, volume: SOUND_VOL, fade_with_sleep: SOUND_FADE_SLEEP };
+      saveSettings();
+    }
+    renderQuick();
+    note(t("soundscape") + ": " + (S.current() === "off" ? t("timer_off") : t("sound_" + S.current())));
+  }
   function cycleSoundscape() {
     if (!window.Soundscape) return;
     var types = window.Soundscape.TYPES;
@@ -7361,6 +7377,7 @@
         else if (what === "more") { dockBack = null; expanded = true; zone = "grid"; g = 0; renderGrid(); paintFocus(); }
         else if (what === "gear") openGear();
         else if (what === "smart") openSmart();
+        else if (what === "sound") soundToggle(arg);
         else if (what === "quick") { var qv = quickVisible(), qn = qv.indexOf(arg); if (qn >= 0) { qi = qn; quickAction(); } else if (arg === "soundscape") cycleSoundscape(); }
         else if (what === "person") { pickWho(arg); renderPeople(); }
         else if (what === "scene") { if (window.smartHome && window.smartHome.request && window.smartHome.available()) { var scn = (window.smartHome.scenes() || []).filter(function (x) { return x.entity === arg; })[0], snm = scn ? scn.name : arg; window.smartHome.request("scene", arg).then(function (r) { note(r && r.ok ? t("sh_started", { name: snm }) : t("sh_failed")); }); } }

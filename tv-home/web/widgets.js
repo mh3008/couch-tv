@@ -1134,7 +1134,8 @@
     root.style.padding = "0";
     add(root, E("div", "cw-fire", "", [E("div", "cw-fire-glow"), scene,
       label ? E("div", "cw-t23", "position:absolute;left:0;right:0;top:8px;text-align:center;font-weight:650;color:var(--ink)", [label]) : null]));
-    stop(root, "quick", "soundscape", "Soundscape");
+    // OK plays the fire's own sound (and stops it when it is the one playing), whatever the Soundscape played last
+    stop(root, "sound", "fire", "Campfire");
   };
   // ---------------- fitting words (group C widgets) ----------------
   // seagey, 18 Nov 2026: "Make sure each widget fits in each container correctly things aren't cut off
