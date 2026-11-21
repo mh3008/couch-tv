@@ -52,7 +52,7 @@ let n = 0;
 const ok = (c, m) => { assert.ok(c, m); n++; };
 const FIX = path.join(ROOT, "tests/fixtures/widgets-data");
 const fixtures = {};
-for (const f of ["rss-abc-top.xml", "yahoo-spark.json", "espn-nba.json", "osrm-route.json"]) fixtures[f] = fs.existsSync(path.join(FIX, f)) ? fs.readFileSync(path.join(FIX, f), "utf8") : null;
+for (const f of ["rss-abc-top.xml", "yahoo-spark.json", "espn-nba.json", "osrm-route.json", "nager-au.json"]) fixtures[f] = fs.existsSync(path.join(FIX, f)) ? fs.readFileSync(path.join(FIX, f), "utf8") : null;
 
 const browser = await chromium.launch();
 async function home(objects, q) {
@@ -212,14 +212,15 @@ const CHECKS = String(function (root, tag, mode) {
       const T = L[k], long = k === "long", hindi = k === "hindi";
       const web = (() => {
         if (!WW || !F["rss-abc-top.xml"]) return {};
-        const news = WW.parseRss(F["rss-abc-top.xml"], 12), games = WW.parseScores(JSON.parse(F["espn-nba.json"]), "nba"), quotes = WW.parseSpark(F["yahoo-spark.json"]), route = WW.parseRoute(JSON.parse(F["osrm-route.json"]));
+        const news = WW.parseRss(F["rss-abc-top.xml"], 12), games = WW.parseScores(JSON.parse(F["espn-nba.json"]), "nba"), quotes = WW.parseSpark(F["yahoo-spark.json"]), route = WW.parseRoute(JSON.parse(F["osrm-route.json"])), hol = WW.parseHolidays(JSON.parse(F["nager-au.json"]), "AU", "");
         if (long || hindi) {
           news.forEach((x, i) => { x.title = hindi ? "भारत में आज भारी बारिश की चेतावनी, कई राज्यों में स्कूल बंद रहेंगे और यातायात प्रभावित " + i : x.title + " " + LONG + " " + LONG; });
           games.games.forEach((g) => g.teams.forEach((tm) => { tm.name = hindi ? "मुंबई इंडियंस" : "Wolverhampton Wanderers " + LONG; if (long) tm.score = "460/7 (105.5 ov, target 529)"; }));
           Object.keys(quotes.quotes).forEach((q) => { quotes.quotes[q].name = hindi ? "रिलायंस इंडस्ट्रीज" : LONG; if (long) quotes.quotes[q].price = 98765432.1; });
           if (long) { route.minutes = 1234; route.km = 12345.6; }
+          hol.days.forEach((d, i) => { d.n = hindi ? "भारत में आज भारी बारिश के कारण छुट्टी " + i : d.n + " " + LONG; });
         }
-        return { news: { abc: { ok: true, at, v: news } }, sports: { nrl: { ok: true, at, v: games } }, stocks: { "^AXJO,AUDUSD=X,BTC-AUD": { ok: true, at, v: quotes } }, commute: { K: { ok: true, at, v: route } } };
+        return { news: { abc: { ok: true, at, v: news } }, sports: { nrl: { ok: true, at, v: games } }, stocks: { "^AXJO,AUDUSD=X,BTC-AUD": { ok: true, at, v: quotes } }, commute: { K: { ok: true, at, v: route } }, holidays: { "AU:": { ok: true, at, v: hol } } };
       })();
       const shows = [{ title: T("A show with a long name"), season: 3, episode: 2, progress: 0.5, app: { package: "com.netflix.ninja", name: "Netflix" } }, { title: T("Mystery Road"), season: 1, episode: 4, progress: 0.2, app: { package: "au.net.abc.iview", name: "ABC iview" } }];
       const ha = {

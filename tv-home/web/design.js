@@ -358,7 +358,7 @@
     "nowplaying", "soundscape", "queue", "speakers",
     "aircon", "scenes", "controls", "camera", "doorbell", "energy", "sensor", "battery",
     "bins", "people", "agenda", "note", "list",
-    "card", "quote", "word", "news", "sports", "stocks", "commute",
+    "card", "quote", "word", "news", "sports", "stocks", "commute", "holidays",
     "welcome", "quick", "wifi", "guide", "screentime", "ask", "agent", "stack"];
   // which panel each kind has when its style does not say (glass, solid, colour, paper, none)
   var WPANEL = { clock: "none", tallclock: "none", glassclock: "none", flipclock: "none", date: "none", welcome: "none", quote: "none", quick: "none",
@@ -373,7 +373,7 @@
   var WACT = ["keep", "keeprow", "upnext", "picks", "app", "folder", "dock", "appgrid", "games", "nowplaying", "soundscape", "aircon", "scenes", "controls", "people", "quick", "stack",
     "clock", "tallclock", "glassclock", "analog", "flipclock", "wordclock", "timer", "solar", "worldclock", "date", "month", "agenda",
     "weather", "bigtemp", "hourly", "week", "rain", "uv", "sun", "moon", "air", "surf", "photo", "slideshow", "mosaic", "artframe",
-    "camera", "doorbell", "card", "news", "sports", "memory", "queue", "speakers", "energy", "sensor", "battery", "note", "list", "stocks", "commute", "wifi", "guide", "screentime", "ask", "agent"];
+    "camera", "doorbell", "card", "news", "sports", "memory", "queue", "speakers", "energy", "sensor", "battery", "note", "list", "stocks", "commute", "holidays", "wifi", "guide", "screentime", "ask", "agent"];
   var WSIZES = ["line", "wline", "tile", "wtile", "small", "tall", "medium", "wide", "large", "xl", "hero", "full", "row8", "row12", "row18"];
   var WSTYLE = { panel: ["glass", "solid", "colour", "paper", "none"], gradient: ["off", "soft"], ink: ["auto", "white", "ink", "accent"],
     font: ["inter", "antonio", "rounded", "cormorant", "jost"], icons: ["line", "solid", "duotone", "tile", "glass", "playful", "classic"],
@@ -422,7 +422,11 @@
     tickers: function (v) { return SAN.list(v, 6, function (s) { s = typeof s === "string" ? s.trim().toUpperCase() : ""; return /^\^?[A-Z0-9]{1,8}([.=-][A-Z0-9]{1,4})?$/.test(s) ? s : undefined; }); },
     // the commute: when to arrive and the minutes to spare; the places stay on the TV, never here
     arrive_h: function (v) { return SAN.n(v, 0, 23, true); }, arrive_m: function (v) { return SAN.n(v, 0, 59, true); },
-    buffer: function (v) { return SAN.n(v, 0, 60, true); }, weekdays: SAN.b
+    buffer: function (v) { return SAN.n(v, 0, 60, true); }, weekdays: SAN.b,
+    // the holidays: a country by its two letters (AU, NZ, GB) and a state or region by its short code (NSW, CA, ENG), as Nager.Date writes them;
+    // never a link, a word or a place. no country: the TV's own town decides
+    country: function (v) { v = typeof v === "string" ? v.trim().toUpperCase() : ""; return /^[A-Z]{2}$/.test(v) ? v : undefined; },
+    region: function (v) { v = typeof v === "string" ? v.trim().toUpperCase() : ""; return /^[A-Z0-9]{1,3}$/.test(v) ? v : undefined; }
   };
   var WEB_LEAGUES = ["afl", "nrl", "aleague", "epl", "nba", "bbl", "cricket"];
   var WEB_FEEDS = ["abc", "abc-justin", "abc-sport", "abc-business", "sbs", "guardian", "bbc", "rnz"];
@@ -436,7 +440,7 @@
     nowplaying: "", soundscape: "sound", queue: "", speakers: "",
     aircon: "entity", scenes: "label", controls: "label controls cols", camera: "label", doorbell: "", energy: "", sensor: "label", battery: "",
     bins: "label weekday alt anchor lid_a lid_b bin_a bin_b", people: "", agenda: "label align", note: "align", list: "label icon align",
-    card: "label text icon", quote: "text sub", word: "", news: "feed label align", sports: "label league team align", stocks: "label tickers align", commute: "label arrive_h arrive_m buffer weekdays align",
+    card: "label text icon", quote: "text sub", word: "", news: "feed label align", sports: "label league team align", stocks: "label tickers align", commute: "label arrive_h arrive_m buffer weekdays align", holidays: "label country region align",
     welcome: "kicker text sub align source times", quick: "quick align", wifi: "align", guide: "align", screentime: "align", ask: "label align", agent: "label align", stack: ""
   };
   // The smart home and music widgets: which of the TV's own Home Assistant things a widget shows,

@@ -258,6 +258,110 @@
     return null;
   }
 
+  // ---------------- holidays: Nager.Date's public holidays (free, no key, open to web pages) ----------------
+  // The next 365 days of a country's public holidays, about 3 KB, asked twice a day. A holiday counts
+  // when it is national, or when it is named for this TV's state or region (AU-NSW, US-CA, GB-ENG: the
+  // TV's own town knows its state in Australia; a design can say a region for anywhere else). Only the
+  // name, the date and how many days off in a row it makes are kept. A country Nager does not list
+  // answers 404, which the widget says plainly.
+  var NAGER = "https://date.nager.at/api/v3/NextPublicHolidays/";
+  var HOLIDAYS_DEFAULT = "AU";   // like the news, scores and markets defaults: couch-tv's own people
+  function ccOf(v) { v = typeof v === "string" ? v.trim().toUpperCase() : ""; return /^[A-Z]{2}$/.test(v) ? v : ""; }
+  function regionOf(v) { v = typeof v === "string" ? v.trim().toUpperCase() : ""; return /^[A-Z0-9]{1,3}$/.test(v) ? v : ""; }
+  // the TV's town tells us the country by its time zone (the one thing every saved town has, with or
+  // without a bridge), and in Australia the state by the town's own words (Sydney, New South Wales) or its zone
+  var AU_STATES = { "new south wales": "NSW", victoria: "VIC", queensland: "QLD", "south australia": "SA", "western australia": "WA", tasmania: "TAS",
+    "northern territory": "NT", "australian capital territory": "ACT" };
+  var AU_ZONES = { "Australia/Sydney": "NSW", "Australia/Melbourne": "VIC", "Australia/Brisbane": "QLD", "Australia/Adelaide": "SA", "Australia/Perth": "WA",
+    "Australia/Hobart": "TAS", "Australia/Darwin": "NT" };
+  // the zones of the countries most TVs are in (a zone not here asks for the default; a design can name any country)
+  var ZONE_CC = { "Pacific/Auckland": "NZ", "Europe/London": "GB", "Europe/Dublin": "IE", "Europe/Paris": "FR", "Europe/Berlin": "DE", "Europe/Madrid": "ES", "Europe/Rome": "IT",
+    "Europe/Amsterdam": "NL", "Europe/Brussels": "BE", "Europe/Vienna": "AT", "Europe/Zurich": "CH", "Europe/Stockholm": "SE", "Europe/Oslo": "NO", "Europe/Copenhagen": "DK",
+    "Europe/Helsinki": "FI", "Europe/Warsaw": "PL", "Europe/Prague": "CZ", "Europe/Lisbon": "PT", "Europe/Athens": "GR", "Europe/Istanbul": "TR", "Asia/Tokyo": "JP",
+    "Asia/Seoul": "KR", "Asia/Singapore": "SG", "Asia/Hong_Kong": "HK", "Asia/Kolkata": "IN", "Asia/Dubai": "AE", "Asia/Manila": "PH", "Asia/Jakarta": "ID", "Asia/Bangkok": "TH",
+    "Asia/Kuala_Lumpur": "MY", "Asia/Shanghai": "CN", "Asia/Taipei": "TW", "Africa/Johannesburg": "ZA", "Africa/Lagos": "NG", "Africa/Nairobi": "KE", "Africa/Cairo": "EG",
+    "America/New_York": "US", "America/Chicago": "US", "America/Denver": "US", "America/Los_Angeles": "US", "America/Phoenix": "US", "America/Anchorage": "US", "Pacific/Honolulu": "US",
+    "America/Toronto": "CA", "America/Vancouver": "CA", "America/Edmonton": "CA", "America/Winnipeg": "CA", "America/Halifax": "CA", "America/Sao_Paulo": "BR",
+    "America/Mexico_City": "MX", "America/Argentina/Buenos_Aires": "AR", "America/Bogota": "CO", "America/Santiago": "CL", "America/Lima": "PE" };
+  function homeOf(home) {
+    home = home || {};
+    var zone = String(home.timezone || ""), place = String(home.place || "").toLowerCase(), cc = /^Australia\//.test(zone) ? "AU" : ZONE_CC[zone] || "", region = "";
+    if (cc === "AU") {
+      Object.keys(AU_STATES).forEach(function (n) { if (!region && place.indexOf(n) >= 0) region = AU_STATES[n]; });
+      region = region || AU_ZONES[zone] || "";
+    }
+    return { cc: cc, region: region };
+  }
+  // which country and region a widget asks for: its own options first, then this TV's town
+  function holidayPlace(opts, home) {
+    var h = homeOf(home), cc = ccOf((opts || {}).country) || h.cc || HOLIDAYS_DEFAULT;
+    return { cc: cc, region: regionOf((opts || {}).region) || (cc === h.cc ? h.region : "") };
+  }
+  // whole days since 1 Jan 1970 for a "YYYY-MM-DD" (pure arithmetic, no Date: the same in every WebView)
+  function dayNum(iso) {
+    var m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(iso || ""));
+    if (!m) return NaN;
+    var y = +m[1], mo = +m[2], d = +m[3];
+    if (mo < 1 || mo > 12 || d < 1 || d > 31) return NaN;
+    y -= mo <= 2 ? 1 : 0;
+    var era = Math.floor(y / 400), yoe = y - era * 400, doy = Math.floor((153 * (mo + (mo > 2 ? -3 : 9)) + 2) / 5) + d - 1, doe = yoe * 365 + Math.floor(yoe / 4) - Math.floor(yoe / 100) + doy;
+    return era * 146097 + doe - 719468;
+  }
+  function isoOf(n) {
+    n += 719468;
+    var era = Math.floor(n / 146097), doe = n - era * 146097, yoe = Math.floor((doe - Math.floor(doe / 1460) + Math.floor(doe / 36524) - Math.floor(doe / 146096)) / 365);
+    var y = yoe + era * 400, doy = doe - (365 * yoe + Math.floor(yoe / 4) - Math.floor(yoe / 100)), mp = Math.floor((5 * doy + 2) / 153), d = doy - Math.floor((153 * mp + 2) / 5) + 1, m = mp + (mp < 10 ? 3 : -9);
+    y += m <= 2 ? 1 : 0;
+    return y + "-" + (m < 10 ? "0" : "") + m + "-" + (d < 10 ? "0" : "") + d;
+  }
+  function weekdayOf(iso) { var n = dayNum(iso); return isFinite(n) ? ((n + 4) % 7 + 7) % 7 : -1; }   // 0 Sunday
+  // the days off in a row that hold this date: weekends and holidays together
+  function daysOffRun(n, off) {
+    var a = n, b = n, free = function (k) { var w = ((k + 4) % 7 + 7) % 7; return w === 0 || w === 6 || off[k]; };
+    while (free(a - 1)) a--;
+    while (free(b + 1)) b++;
+    return b - a + 1;
+  }
+  // Nager's list into { days: [{ d: "2026-12-25", n: "Christmas Day", run: 3 }] }, weekday holidays only, the next 12
+  function parseHolidays(j, cc, region) {
+    var list = Object.prototype.toString.call(j) === "[object Array]" ? j : [], mine = region ? cc + "-" + region : "", seen = {}, off = {}, keep = [];
+    list.forEach(function (x) {
+      if (!x || typeof x !== "object") return;
+      var n = dayNum(x.date), types = Object.prototype.toString.call(x.types) === "[object Array]" ? x.types : [], counties = Object.prototype.toString.call(x.counties) === "[object Array]" ? x.counties : [];
+      if (!isFinite(n) || types.indexOf("Public") < 0) return;
+      if (!(x.global === true || (mine && counties.indexOf(mine) >= 0))) return;
+      var name = cut(x.name || x.localName, 44);
+      if (!name) return;
+      off[n] = true;
+      if (!seen[n] && [0, 6].indexOf(((n + 4) % 7 + 7) % 7) < 0) { seen[n] = true; keep.push({ n: n, name: name }); }
+    });
+    keep.sort(function (a, b) { return a.n - b.n; });
+    return { cc: cc, region: region, days: keep.slice(0, 12).map(function (k) { return { d: isoOf(k.n), n: k.name, run: daysOffRun(k.n, off) }; }) };
+  }
+  // Easter Sunday as days since 1970 (the anonymous Gregorian method), for the sample holidays
+  function easterNum(y) {
+    var a = y % 19, b = Math.floor(y / 100), c = y % 100, d = Math.floor(b / 4), e = b % 4, f = Math.floor((b + 8) / 25), g = Math.floor((b - f + 1) / 3), h = (19 * a + b - d - g + 15) % 30;
+    var i = Math.floor(c / 4), k = c % 4, l = (32 + 2 * e + 2 * i - h - k) % 7, m = Math.floor((a + 11 * h + 22 * l) / 451), v = h + l - 7 * m + 114;
+    return dayNum(y + "-" + (Math.floor(v / 31) < 10 ? "0" : "") + Math.floor(v / 31) + "-" + (v % 31 + 1 < 10 ? "0" : "") + (v % 31 + 1));
+  }
+  // sample holidays for a preview or the gallery: the national Australian ones that come next, drawn the same way as real ones
+  function demoHolidays(todayIso) {
+    var t = dayNum(todayIso), y = +String(todayIso).slice(0, 4), fixed = [["01-01", "New Year's Day"], ["01-26", "Australia Day"], ["04-25", "Anzac Day"], ["12-25", "Christmas Day"], ["12-26", "Boxing Day"]], raw = [];
+    [y, y + 1].forEach(function (yy) {
+      fixed.forEach(function (f) { raw.push({ date: yy + "-" + f[0], name: f[1], global: true, types: ["Public"] }); });
+      raw.push({ date: isoOf(easterNum(yy) - 2), name: "Good Friday", global: true, types: ["Public"] }, { date: isoOf(easterNum(yy) + 1), name: "Easter Monday", global: true, types: ["Public"] });
+    });
+    var v = parseHolidays(raw, "AU", "");
+    v.days = v.days.filter(function (x) { return dayNum(x.d) >= t; });
+    return v;
+  }
+  // "Fri 25 Dec", and how far away it is
+  var SHORT_DAY = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"], SHORT_MONTH = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+  function holidayDate(iso) { var m = /^\d{4}-(\d{2})-(\d{2})$/.exec(iso); return m ? SHORT_DAY[weekdayOf(iso)] + " " + (+m[2]) + " " + SHORT_MONTH[+m[1] - 1] : ""; }
+  function daysAway(iso, todayIso) { return dayNum(iso) - dayNum(todayIso); }
+  function awayWords(n) { return n <= 0 ? "Today" : n === 1 ? "Tomorrow" : "In " + n + " days"; }
+  function runWords(run) { return run >= 3 ? run + " day weekend" : ""; }
+
   // ---------------- picks: from this TV's own Keep watching, no outside service ----------------
   // household: [{ id, name, kid, shows: [Keep watching items, newest first] }], who: the person watching,
   // apps: the packages this TV has (empty when not known). Picks, in order: what other grown ups at home
@@ -290,7 +394,7 @@
   // TV without an update: GET <store>/v1/config/sources answers { "v": 1, "paused": ["sports"] }. The
   // TV asks at most once a day (app.js) and treats no answer as everything on. A paused source is
   // never asked; its widget says calmly that the feed is paused.
-  var PAUSABLE = ["news", "sports", "stocks", "commute"];
+  var PAUSABLE = ["news", "sports", "stocks", "commute", "holidays"];
   function pausedOf(j) {
     if (typeof j === "string") { try { j = JSON.parse(j); } catch (e) { j = null; } }
     var p = j && typeof j === "object" ? j.paused : null, out = [];
@@ -345,6 +449,17 @@
         var url = routeUrl(id);
         if (!url) return Promise.reject(new Error("empty"));
         return h.json(url).then(function (j) { var v = parseRoute(j); if (!v) throw new Error("empty"); return v; });
+      }
+    },
+    holidays: {
+      // the country and region come from the widget's options, else from this TV's town (h.home); "AU:NSW"
+      key: function (w, h) { var p = holidayPlace(w.opts, h.home ? h.home() : null); return p.cc + ":" + p.region; },
+      every: function () { return 12 * 60 * MIN; },
+      get: function (h, id) {
+        var cc = id.split(":")[0], region = id.split(":")[1] || "";
+        // a country Nager does not list answers 404: that is "nothing there", not "could not be read"
+        return h.json(NAGER + cc).then(function (j) { var v = parseHolidays(j, cc, region); if (!v.days.length) throw new Error("empty"); return v; },
+          function (e) { throw new Error(e && /\b404\b/.test(String(e.message)) ? "empty" : "failed"); });
       }
     }
   };
@@ -425,6 +540,7 @@
     LEAGUES: LEAGUES, LEAGUE_DEFAULT: LEAGUE_DEFAULT, leagueOf: leagueOf, parseScores: parseScores, scoreOrder: scoreOrder, kickoff: kickoff,
     SYMBOL: SYMBOL, TICKERS_DEFAULT: TICKERS_DEFAULT, TICKER_NAMES: TICKER_NAMES, tickersOf: tickersOf, parseSpark: parseSpark, price: price, change: change,
     routeKey: routeKey, routeUrl: routeUrl, parseRoute: parseRoute, leaveBy: leaveBy, picks: picks, PAUSABLE: PAUSABLE, pausedOf: pausedOf,
+    holidayPlace: holidayPlace, parseHolidays: parseHolidays, demoHolidays: demoHolidays, holidayDate: holidayDate, daysAway: daysAway, awayWords: awayWords, runWords: runWords, dayNum: dayNum, isoOf: isoOf,
     loader: function (h) { return Loader(h); }
   };
   root.CouchWidgetWeb = API;

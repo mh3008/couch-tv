@@ -49,7 +49,8 @@ function fakeTv(WW, opts) {
     json: (url) => { t.asked.push(url); return t.fail ? Promise.reject(new Error("down")) : Promise.resolve(opts.answer("json", url)); },
     load: () => t.store, save: (o) => { t.store = JSON.parse(JSON.stringify(o)); }, changed: () => { t.changed++; },
     now: () => t.now, hidden: () => false,
-    places: () => t.places || null
+    places: () => t.places || null,
+    home: () => opts.home || null
   };
   t.L = WW.loader(t.h);
   return t;

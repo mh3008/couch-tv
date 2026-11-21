@@ -1747,10 +1747,12 @@
     news: ["Getting the headlines", "The headlines could not be read just now", "No headlines in this feed right now", "Headlines need a home computer or a newer couch-tv"],
     sports: ["Getting the scores", "The scores could not be read just now", "No games right now", "Scores need a newer couch-tv"],
     stocks: ["Getting the prices", "The prices could not be read just now", "No prices for these right now", "Prices need a home computer or a newer couch-tv"],
-    commute: ["Working out the drive", "The drive could not be worked out just now", "No road route between these places", "Commute needs a newer couch-tv"]
+    commute: ["Working out the drive", "The drive could not be worked out just now", "No road route between these places", "Commute needs a newer couch-tv"],
+    holidays: ["Getting the holidays", "The holidays could not be read just now", "No public holidays are listed for this country", "Holidays need a newer couch-tv"]
   };
   var WEB_SHORT = { news: ["Getting news", "News failed", "No news", "Needs set up"], sports: ["Getting scores", "Scores failed", "No games", "Needs set up"],
-    stocks: ["Getting prices", "Prices failed", "No prices", "Needs set up"], commute: ["Working it out", "Drive failed", "No route", "Needs set up"] };
+    stocks: ["Getting prices", "Prices failed", "No prices", "Needs set up"], commute: ["Working it out", "Drive failed", "No route", "Needs set up"],
+    holidays: ["Getting days off", "Holidays failed", "No holidays", "Needs set up"] };
   // an honest state in the widget's own box, its words fitted like the rest
   function webEmpty(root, b, iconName, line, sub, shortLine) {
     empty(root, b, iconName, (b.w < 300 || b.h < 200) && shortLine ? shortLine : line, sub);
@@ -1919,6 +1921,40 @@
         wide ? E("span", "cw-t25", "margin-left:24px;color:var(--sub)", [V.km + " km by road"]) : null]),
       line(V.stale ? "Not updated lately" : "The usual drive, no live traffic", 24, "color:var(--sub);margin-top:6px", a, 3),
       line(V.leave ? V.leave + (V.arrive ? " for " + V.arrive : "") : "Set an arrive by time in couch-tv Studio", 25, "font-weight:680;margin-top:12px", a)]);
+  };
+
+  // Holidays: the next public holidays of this TV's country (Nager.Date, through widget-web.js): the one
+  // coming up and how many days away it is, and the ones that make a long weekend. The count is worked
+  // out here from the TV's own date, so it stays right all day without asking again.
+  function todayIso() { var d = now(), m = d.getMonth() + 1, k = d.getDate(); return d.getFullYear() + "-" + (m < 10 ? "0" : "") + m + "-" + (k < 10 ? "0" : "") + k; }
+  function holidaysOf(root, o, b, env) {
+    var WW = window.CouchWidgetWeb, q = op(o), t = todayIso(), v, stale = false;
+    if (!WW) { webEmpty(root, b, "calendar", WEB_WORDS.holidays[3], "", WEB_SHORT.holidays[3]); return null; }
+    if (env.demo) v = WW.demoHolidays(t);
+    else {
+      var p = WW.holidayPlace(q, dataOf(env).holidays), rec = webOf(env, "holidays", p.cc + ":" + p.region);
+      if (!webReady(root, b, "calendar", "holidays", rec)) return null;
+      v = rec.v; stale = !!rec.stale;
+    }
+    var days = ((v || {}).days || []).filter(function (x) { return WW.daysAway(x.d, t) >= 0; });
+    // the list ran out before the next ask (it is asked twice a day): say so calmly
+    if (!days.length) { webEmpty(root, b, "calendar", "No more holidays listed yet", "couch-tv looks again soon", "No holidays"); return null; }
+    return { days: days, stale: stale, label: q.label || "" };
+  }
+  function holidayRow(x, t, wide, first, a) {
+    var WW = window.CouchWidgetWeb, long = WW.runWords(x.run), sub = WW.holidayDate(x.d) + ". " + WW.awayWords(WW.daysAway(x.d, t));
+    return dropT(E("div", "cw-row", "justify-content:space-between;align-items:center;min-width:0;flex:none;" + (first ? "" : "margin-top:14px"), [
+      E("div", "cw-col", "min-width:0;flex:1;text-align:" + (wide ? "left" : a), [fitT(E("div", "", WRAP + "font-size:29px;line-height:1.2;font-weight:680", [x.n])),
+        fitT(E("div", "", WRAP + "font-size:24px;line-height:1.25;color:var(--sub)", [sub])),
+        long && !wide ? fitT(E("div", "", WRAP + "font-size:24px;line-height:1.25;font-weight:700;color:var(--on)", [long])) : null]),
+      long && wide ? E("div", "cw-chip on", "height:44px;font-size:23px;margin-left:12px;padding:0 16px;flex:none;white-space:nowrap", [long]) : null]), first ? 1 : 2);
+  }
+  R.holidays = function (root, o, b, env) {
+    var V = holidaysOf(root, o, b, env), a = alignOf(o), t = todayIso();
+    if (!V) return;
+    var head = webHead("calendar", V.label || "Days off", a, V.stale ? { text: "Not updated lately" } : null);
+    var wide = b.w >= 560, rows = clamp(Math.floor((b.h - 100) / (wide ? 66 : 80)), 1, 6);   // a little generous: the ones that do not fit are left out whole (dropT)
+    webBody(root, a, [head, E("div", "", "height:14px;flex:none")].concat(V.days.slice(0, rows).map(function (x, i) { return holidayRow(x, t, wide, i === 0, a); })));
   };
 
   // guests and the room
@@ -2146,6 +2182,14 @@
     if (!V) return;
     if (b.w < 300) return webBody(root, a, [E("div", "cw-row", "justify-content:" + jc(a) + ";flex:none", [ic("location", 30, "currentColor")]), line(V.minutes + " min", 44, "font-weight:740;margin-top:4px", a), V.label.length <= 10 ? line(V.label, 24, "font-weight:650;margin-top:2px", a, 2) : null]);
     webBody(root, a, [line(V.minutes + " min", 44, "font-weight:740", a), line(V.label, 25, "font-weight:650;margin-top:2px", a, 3), line(V.leave || "The usual drive, no live traffic", 24, "color:var(--sub);margin-top:2px", a, 2)]);
+  };
+  // a box under 200 px tall (a wide tile): how many days away the next one is, its name, and when
+  CR.holidays = function (root, o, b, env) {
+    var V = holidaysOf(root, o, b, env), a = alignOf(o), WW = window.CouchWidgetWeb, x, n;
+    if (!V) return;
+    x = V.days[0]; n = WW.daysAway(x.d, todayIso());
+    webBody(root, a, [line(n <= 1 ? WW.awayWords(n) : n + " days", 44, "font-weight:740", a), line(x.n, 25, "font-weight:650;margin-top:4px", a, 2),
+      line(WW.holidayDate(x.d) + (WW.runWords(x.run) ? ". " + WW.runWords(x.run) : ""), 23, "color:var(--sub);margin-top:2px", a, 3)]);
   };
 
   // ---------------- things typed at home (athome.js, through app.js): kept on this TV only ----------------
@@ -2469,5 +2513,5 @@
   // the smart home and music widgets' readers, for their detail layers (widget-detail.js)
   window.CouchWidgets.kit.ha = { haOf: haOf, controlsOf: controlsOf, ctlIcon: ctlIcon, ctlWord: ctlWord, speakersOf: speakersOf, spkWord: spkWord, spkSong: spkSong, sensorPick: sensorPick, sensorText: sensorText, spark: spark, hourBars: hourBars, kwh: kwh, ringWords: ringWords, queueOf: queueOf, coverOk: coverOk, stillWidth: stillWidth, SENSOR_ICON: SENSOR_ICON };
   // what the web widgets' detail layers share with them (widget-detail.js)
-  window.CouchWidgets.webKit = { webOf: webOf, agoOf: agoOf, DEMO_NEWS: DEMO_NEWS, demoScores: demoScores, gameStatus: gameStatus, shortScore: shortScore, demoQuote: demoQuote, upDown: upDown, commuteOf: commuteOf, picksOf: picksOf };
+  window.CouchWidgets.webKit = { webOf: webOf, agoOf: agoOf, DEMO_NEWS: DEMO_NEWS, demoScores: demoScores, gameStatus: gameStatus, shortScore: shortScore, demoQuote: demoQuote, upDown: upDown, commuteOf: commuteOf, picksOf: picksOf, holidaysOf: holidaysOf, todayIso: todayIso };
 })();

@@ -410,6 +410,17 @@
       setup: setup("tv", [OPEN, "Go down to Location and set your town, if it is not set yet.", "Go down to couch-tv Studio, then Commute, Where to. Type the town or suburb you drive to and pick it.", "For when to leave: in couch-tv Studio on your phone, tap the widget and set the arrive by time, then send it again."]),
       until: "\"Set where you drive to\", and where", build: "",
       ok: "Opens the drive: how long, how far, and when to leave", platforms: plat("setup", "computer", "setup", { android: "The places are kept on the TV. Drive time without traffic.", web: "Works while the home computer is on. The places are kept on the TV." }), sizes: sz(["tile", "wtile", "small", "medium"], [2, 2]) },
+    // Nager.Date's public holidays (free, no key, open to web pages), asked by the TV itself, twice a day.
+    // The country comes from the TV's own town (its time zone), the state in Australia from the town's words
+    holidays: { name: "Holidays", status: "works", beta: "Unofficial source: a free feed that may change. couch-tv can pause it for every TV, and then the widget says the feed is paused.",
+      what: "The next public holidays where you live, how many days away, and which ones make a long weekend",
+      needs: ["Nothing: the TV works out your country from your town (Australia if the town is not set), and your state in Australia"],
+      setup: setup("designer", {
+        android: ["Nothing to set up: the widget shows the next public holidays for the country of your town, and your state in Australia.", "To show another country, or a state or region, open your design in couch-tv Studio on your phone.", "Tap the widget, then type the country's two letters (AU, NZ, GB) and the region's short code (NSW, CA, ENG) if you like.", SEND],
+        web: ["Keep the home computer on: it runs couch-tv for this TV.", "To show another country, or a state or region, open your design in couch-tv Studio on your phone.", "Tap the widget, then type the country's two letters (AU, NZ, GB) and the region's short code (NSW, CA, ENG) if you like.", SEND],
+        vidaa: ["Nothing to set up: the widget shows the next public holidays for the country of your town, and your state in Australia.", "To show another country, or a state or region, open your design in couch-tv Studio on your phone.", "Tap the widget, then type the country's two letters (AU, NZ, GB) and the region's short code (NSW, CA, ENG) if you like.", SEND] }),
+      until: "\"Getting the holidays\" for a moment; \"No public holidays are listed for this country\" for a country the free service does not cover", build: "",
+      ok: "Opens the list: the next twelve days off, how far away each is, and the long weekends", platforms: EVERY(), sizes: sz(["wtile", "small", "tall", "medium"], [4, 2]) },
 
     // ---------- guests and the room ----------
     welcome: { name: "Welcome words", status: "works", what: "A greeting in your own words, or each guest by name with their check in or check out time from your bookings calendar", needs: ["The words, typed in couch-tv Studio", "For guest names: your Airbnb, Booking.com or VRBO calendar link, typed on the TV"],

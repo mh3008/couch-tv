@@ -53,10 +53,20 @@ const CASES = [
   // the commute's places are the TV's own (Home settings), never the design's
   { kind: "commute", opts: { arrive_h: 8, arrive_m: 30 }, box: [0, 0, 8, 4], routes: [["https://router.project-osrm.org/**", "osrm-route.json"]], says: () => "27", layer: "commute",
     kept: { "mock:tvhome.commute": { name: "Parramatta", lat: -33.82, lon: 151.0 }, "mock:tvhome.settings": { s: { place: { name: "Riverside", area: "", lat: -33.87, lon: 151.21, timezone: "Australia/Sydney" } }, updated: Date.now(), pending: false } } },
+  // the holidays: the country and state come from the TV's own town (Home settings), the dates are moved to start ten days from today so the test never ages
+  { kind: "holidays", box: [0, 0, 8, 4], routes: [["https://date.nager.at/**", () => holidaysSoon()]], says: () => "Christmas Day", layer: "holidays",
+    kept: { "mock:tvhome.settings": { s: { place: { name: "Sydney", area: "New South Wales, Australia", lat: -33.87, lon: 151.21, timezone: "Australia/Sydney" } }, updated: Date.now(), pending: false } } },
   // picks come from the preview's own Keep watching (two people, each with their own shows): nothing is asked
   { kind: "picks", box: [0, 0, 12, 4], says: () => "Person 2 is watching", layer: "picks", noAsk: true }
 ];
 const KINDS = CASES.map((c) => c.kind);
+// Nager's saved answer with every date moved so the first holiday is ten days away
+function holidaysSoon() {
+  const j = JSON.parse(fix("nager-au.json")), d = new Date(), today = d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
+  const off = WW.dayNum(today) + 10 - WW.dayNum(j[0].date);
+  j.forEach((x) => { x.date = WW.isoOf(WW.dayNum(x.date) + off); });
+  return JSON.stringify(j);
+}
 const WW = createRequire(import.meta.url)("../tv-home/web/widget-web.js");
 
 const browser = await chromium.launch();
@@ -69,7 +79,7 @@ async function home(c) {
     const a = ANSWERS.relay(u.searchParams.get("src"), u.searchParams.get("id"));
     route.fulfill({ status: a ? 200 : 400, contentType: "application/json", body: JSON.stringify(a || { ok: false, error: "unknown source" }) });
   });
-  for (const [pat, file] of c.routes || []) await page.route(pat, (route) => { page.asked.push(route.request().url()); route.fulfill({ status: 200, contentType: "application/json", headers: { "access-control-allow-origin": "*" }, body: fix(file) }); });
+  for (const [pat, file] of c.routes || []) await page.route(pat, (route) => { page.asked.push(route.request().url()); route.fulfill({ status: 200, contentType: "application/json", headers: { "access-control-allow-origin": "*" }, body: typeof file === "function" ? file() : fix(file) }); });
   const R = rect(...c.box);
   const design = { v: 1, background: { colour: "#26303f" }, objects: [Object.assign({ id: "w0", type: "widget", kind: c.kind, x: R.x, y: R.y, w: R.w, h: R.h }, c.opts ? { opts: c.opts } : {}),
     { id: "w1", type: "widget", kind: "app", x: rect(16, 0, 2, 2).x, y: rect(16, 0, 2, 2).y, w: 160, h: 160, opts: { apps: ["com.netflix.ninja"] } }] };
@@ -157,22 +167,26 @@ for (const c of CASES) {
 // with opts.align "left"), and a TV never shows the designer's demo.
 {
   const page = await home({ kind: "clock", box: [0, 0, 4, 2] });
-  const fixtures = {}; ["rss-abc-top.xml", "rss-bbc.xml", "yahoo-spark.json", "espn-nba.json", "osrm-route.json"].forEach((f) => { fixtures[f] = fix(f); });
+  const fixtures = {}; ["rss-abc-top.xml", "rss-bbc.xml", "yahoo-spark.json", "espn-nba.json", "osrm-route.json", "nager-au.json"].forEach((f) => { fixtures[f] = fix(f); });
   const res = await page.evaluate(async ([F, KINDS]) => {
     const NAMED = { line: [4, 1], wline: [8, 1], tile: [2, 2], wtile: [4, 2], small: [4, 4], tall: [4, 6], medium: [8, 4], wide: [12, 4], large: [8, 8], xl: [12, 6], hero: [18, 7], full: [18, 10] };
     const C = window.CouchWidgetCaps, W = window.CouchWidgets, WW = window.CouchWidgetWeb, at = Date.now();
     const HINDI = "भारत में आज भारी बारिश की चेतावनी, कई राज्यों में स्कूल बंद रहेंगे और यातायात प्रभावित";
     const LONG = "Supercalifragilisticexpialidociousnessesandmore";
     const real = { news: { abc: { ok: true, at, v: WW.parseRss(F["rss-abc-top.xml"], 12) } }, sports: { nrl: { ok: true, at, v: WW.parseScores(JSON.parse(F["espn-nba.json"]), "nba") } },
-      stocks: { "^AXJO,AUDUSD=X,BTC-AUD": { ok: true, at, v: WW.parseSpark(F["yahoo-spark.json"]) } }, commute: { K: { ok: true, at, v: WW.parseRoute(JSON.parse(F["osrm-route.json"])) } } };
+      stocks: { "^AXJO,AUDUSD=X,BTC-AUD": { ok: true, at, v: WW.parseSpark(F["yahoo-spark.json"]) } }, commute: { K: { ok: true, at, v: WW.parseRoute(JSON.parse(F["osrm-route.json"])) } },
+      // the saved holidays with their dates moved to start ten days from today, so the test never ages
+      holidays: { "AU:": { ok: true, at, v: (() => { const v = WW.parseHolidays(JSON.parse(F["nager-au.json"]), "AU", ""), d = new Date(), today = d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0"), off = WW.dayNum(today) + 10 - WW.dayNum(v.days[0].d); v.days.forEach((x) => { x.d = WW.isoOf(WW.dayNum(x.d) + off); }); return v; })() } } };
     const hardGames = JSON.parse(JSON.stringify(real.sports.nrl.v));
     hardGames.games[0].teams[0].name = "Wolverhampton Wanderers"; hardGames.games[0].teams[1].name = "मुंबई इंडियंस"; hardGames.games[0].teams[0].score = "460/7 (105.5 ov, target 529)"; hardGames.games[0].teams[1].score = "1000";
     hardGames.games[1].teams[0].name = LONG; hardGames.games[1].state = "in"; hardGames.games[1].detail = "Australia require another 224 runs with 7 wickets and 27.5 overs remaining";
+    const hardHolidays = JSON.parse(JSON.stringify(real.holidays["AU:"].v));
+    hardHolidays.days[0].n = "भारत में आज भारी बारिश के कारण छुट्टी"; hardHolidays.days[1].n = LONG + " " + LONG; hardHolidays.days[2].n = "A public holiday with a name so long that it will never fit on one line of any box we draw";
     const hardQuotes = JSON.parse(JSON.stringify(real.stocks["^AXJO,AUDUSD=X,BTC-AUD"].v));
     hardQuotes.quotes["^AXJO"].name = "रिलायंस इंडस्ट्रीज"; hardQuotes.quotes["^AXJO"].change = -123.45; hardQuotes.quotes["^AXJO"].price = 1234567.89;
     hardQuotes.quotes["BTC-AUD"].name = LONG; hardQuotes.quotes["BTC-AUD"].price = 98765432.1;
     const hard = { news: { abc: { ok: true, at, v: [{ title: HINDI, at: at - 60000 }, { title: LONG + " " + LONG + " is a very long word", at: at - 3600000 }, { title: "A headline of one hundred and sixty letters that goes on and on about the council meeting where the budget for the new pool was argued over for hours", at: at - 7200000 }].concat(real.news.abc.v) } },
-      sports: { nrl: { ok: true, at, v: hardGames } }, stocks: { "^AXJO,AUDUSD=X,BTC-AUD": { ok: true, at, v: hardQuotes } }, commute: { K: { ok: true, at, v: { minutes: 1234, km: 12345.6 } } } };
+      sports: { nrl: { ok: true, at, v: hardGames } }, stocks: { "^AXJO,AUDUSD=X,BTC-AUD": { ok: true, at, v: hardQuotes } }, commute: { K: { ok: true, at, v: { minutes: 1234, km: 12345.6 } } }, holidays: { "AU:": { ok: true, at, v: hardHolidays } } };
     const commute = { from: { name: "Riverside" }, to: { name: "Parramatta" }, key: "K" };
     const hardCommute = { from: { name: "Riverside" }, to: { name: "Llanfairpwllgwyngyllgogerychwyrndrobwllllantysiliogogogoch" }, key: "K" };
     const failWith = (err) => { const o = {}; Object.keys(real).forEach((s) => { o[s] = {}; Object.keys(real[s]).forEach((id) => { o[s][id] = { ok: false, at, err }; }); }); return o; };
@@ -252,8 +266,10 @@ for (const c of CASES) {
       document.querySelectorAll(".sheet-host").forEach((e) => e.remove());
       const NAMED = { tile: [2, 2], wtile: [4, 2], small: [4, 4], tall: [4, 6], medium: [8, 4], wide: [12, 4] };
       const C = window.CouchWidgetCaps, W = window.CouchWidgets, WW = window.CouchWidgetWeb, at = Date.now();
+      const hol = WW.parseHolidays(JSON.parse(F["nager-au.json"]), "AU", ""), d0 = new Date(), today0 = d0.getFullYear() + "-" + String(d0.getMonth() + 1).padStart(2, "0") + "-" + String(d0.getDate()).padStart(2, "0"), off0 = WW.dayNum(today0) + 10 - WW.dayNum(hol.days[0].d);
+      hol.days.forEach((x) => { x.d = WW.isoOf(WW.dayNum(x.d) + off0); });
       const web = { news: { abc: { ok: true, at, v: WW.parseRss(F["rss-abc-top.xml"], 12) } }, sports: { nrl: { ok: true, at, v: WW.parseScores(JSON.parse(F["espn-nba.json"]), "nba") } },
-        stocks: { "^AXJO,AUDUSD=X,BTC-AUD": { ok: true, at, v: WW.parseSpark(F["yahoo-spark.json"]) } }, commute: { K: { ok: true, at, v: WW.parseRoute(JSON.parse(F["osrm-route.json"])) } } };
+        stocks: { "^AXJO,AUDUSD=X,BTC-AUD": { ok: true, at, v: WW.parseSpark(F["yahoo-spark.json"]) } }, commute: { K: { ok: true, at, v: WW.parseRoute(JSON.parse(F["osrm-route.json"])) } }, holidays: { "AU:": { ok: true, at, v: hol } } };
       const commute = { from: { name: "Riverside" }, to: { name: "Parramatta" }, key: "K" };
       const host = document.createElement("div");
       host.className = "sheet-host"; host.style.cssText = "position:fixed;left:0;top:0;width:1920px;height:1080px;z-index:99;background:#26303f";

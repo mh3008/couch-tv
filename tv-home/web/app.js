@@ -7158,6 +7158,7 @@
       changed: webChanged,
       paused: webPaused,
       places: commutePlaces,
+      home: holidayHome,
       hidden: function () { return !!document.hidden; }
     });
     // the first look waits for the store's off switch (or 6 seconds), so a paused source is never asked
@@ -7227,6 +7228,8 @@
       .then(function (res) { status(res.note ? tBridge(res.note_key, res.note_vars, res.note) : ""); })
       .catch(function (e) { if (TV && it.app && TV.launch(it.app.package)) { status(""); return; } status(tBridge(e.key, e.vars, e.message)); });
   }
+  // where the holidays widget looks for its country and state: the town's time zone and words (never a house, never saved anywhere new)
+  function holidayHome() { return { timezone: WXCFG && WXCFG.timezone, place: WXCFG && WXCFG.place }; }
   function commuteData() {
     var p = commutePlaces();
     return { from: p.from ? { name: p.from.name } : null, to: p.to ? { name: p.to.name } : null,
@@ -7338,6 +7341,8 @@
           web: WEB ? WEB.data() : null,
           // the commute's two places by name only, and the drive's id (Home settings; never in a design)
           commute: commuteData(),
+          // the town the holidays widget reads its country and state from (widget-web.js holidayPlace)
+          holidays: holidayHome(),
           // everyone's Keep watching on this TV, for Picks for you (widget-web.js picks; stays on the TV)
           household: householdData() };
       },

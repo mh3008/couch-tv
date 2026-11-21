@@ -37,6 +37,7 @@
   // the web widgets' own layers (widget-web.js)
   LAYER.stocks = "stocks"; TITLE.stocks = "Markets";
   LAYER.commute = "commute"; TITLE.commute = "Commute";
+  LAYER.holidays = "holidays"; TITLE.holidays = "Holidays";
   LAYER.picks = "picks"; TITLE.picks = "Picks for you";
   // Ask AI and From your AI (ask.js): Ask AI has its own layer; From your AI shows how to connect an agent
   LAYER.battery = "batteries"; TITLE.batteries = "Batteries";
@@ -947,6 +948,21 @@
       tile(V.leave ? (/^Leave/.test(V.leave) ? "Leave by" : V.leave.replace(/, leave by .*/, "") + ", leave by") : "Leave by", lb || "Not set", V.leave ? (V.arrive ? "To arrive by " + V.arrive : "") : "Set an arrive by time in couch-tv Studio")]));
     S.body.appendChild(E("div", "cwd-grow"));
     S.body.appendChild(E("div", "cwd-small", "", ["Route by OSRM from OpenStreetMap. Map data © OpenStreetMap contributors."]));
+  };
+  // the days off: the next twelve public holidays with how far away each is, the long weekends marked, and where the list comes from
+  B.holidays = function (o, env) {
+    var host = document.createElement("div"), V = wk().holidaysOf ? wk().holidaysOf(host, o, { w: 1760, h: 960 }, env) : null, WW = window.CouchWidgetWeb;
+    if (!V || !WW) return B.setup(o, env);
+    var q = op(o), t = wk().todayIso(), p = env.demo ? { cc: "AU", region: "" } : WW.holidayPlace(q, kit().dataOf(env).holidays), rec = env.demo ? null : webRec(env, "holidays", p.cc + ":" + p.region), where = p.cc;
+    try { if (typeof Intl !== "undefined" && Intl.DisplayNames) where = new Intl.DisplayNames(["en"], { type: "region" }).of(p.cc) || p.cc; } catch (e) { where = p.cc; }
+    S.body.appendChild(head("calendar", V.label || "Public holidays", where + (p.region ? ", " + p.region : "") + (rec ? ". " + updated(rec) : ""), "#ff9f0a"));
+    var shown = V.days.slice(0, 12), cols = shown.length <= 6 ? 2 : 3, w = Math.floor((1600 - (cols - 1) * 24) / cols);
+    S.body.appendChild(E("div", "cwd-grid cwd-grow", "align-content:flex-start;margin-top:30px", shown.map(function (x) {
+      var long = WW.runWords(x.run);
+      return F(E("div", "cwd-game", "width:" + w + "px;padding:18px 24px", [E("div", "cwd-small", "color:#ff9f0a;font-weight:700", [WW.holidayDate(x.d) + ". " + WW.awayWords(WW.daysAway(x.d, t))]),
+        E("div", "cwd-mid", "margin-top:6px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden", [x.n]), long ? E("div", "cwd-small", "margin-top:6px;font-weight:700", [long]) : null]), null, x.n);
+    })));
+    S.body.appendChild(E("div", "cwd-small", "margin-top:14px", ["Public holidays from Nager.Date. State holidays are shown for the state in your town, or the one set in couch-tv Studio."]));
   };
   // the watchlist with today's line for each (the day's prices, from the first trade to now)
   B.stocks = function (o, env) {
