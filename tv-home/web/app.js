@@ -7418,6 +7418,8 @@
       if (window.AmbientWeather) {
         window.AmbientWeather.init($("weather-canvas"), $("ambient-lighting"));
         ambientSync();
+        // the TV switching less motion on or off while the home is up (addListener: old WebViews)
+        try { var rm = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)"); if (rm && rm.addListener) rm.addListener(ambientSync); } catch (e) {}
       }
       buildScenes();
       // ?scene=fog starts on that scene, for previews (?scene=own: the first of the household's

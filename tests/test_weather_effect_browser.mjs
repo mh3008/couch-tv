@@ -106,6 +106,11 @@ console.log("Running weather effect browser tests...");
 { // 4. less motion and Lighter home draw nothing, even a fixed rain
   const calm = await load(design({ weather_effect: "rain", weather_amount: "heavy" }), { calm: true });
   ok(await most(calm) === 0, "the TV asks for reduced motion: no rain");
+  await calm.emulateMedia({ reducedMotion: "no-preference" });
+  ok(await most(calm) > 0, "less motion switched off while the home is up: rain starts");
+  await calm.emulateMedia({ reducedMotion: "reduce" });
+  await calm.waitForTimeout(300);
+  ok(await most(calm) === 0, "and switched on again: it stops and the canvas is cleared");
   await calm.close();
   const lighter = await load(design({ weather_effect: "rain", lighter: true }));
   ok(await most(lighter) === 0, "Lighter home: no rain");
