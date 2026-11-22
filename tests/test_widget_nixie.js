@@ -1,5 +1,5 @@
-// The Nixie clock (widgets.js R.nixie, widgets.css .cw-nx-*): four glass tubes with a glowing digit, two neon dots,
-// a digit that changes cross-fades, nothing but transform and opacity moves, a lighter home / reduced motion
+// The Nixie clock v2 (widgets.js R.nixie, widgets.css .cw-nx-*): four glass tubes, each a pre-drawn still picture (glass, honeycomb mesh,
+// the unlit wire numerals, base) with a pre-drawn strip of ten glowing wire numerals, two neon dots; a digit that changes cross-fades, nothing but transform and opacity moves, a lighter home / reduced motion
 // stands still, and every colour the widget writes is a valid rgb / rgba / hex (a bad one threw in a real browser
 // once, in the waves effect, and the page never drew).
 // Run: node tests/test_widget_nixie.js
@@ -13,13 +13,33 @@ const web = path.join(__dirname, "../tv-home/web");
 
 console.log("Running Nixie clock tests...");
 
-function page(at) {
+// a recording canvas: every call, every colour it is given and every toDataURL, so the test can prove the pictures are drawn ONCE
+function makeCanvas(log) {
+  const cv = { width: 0, height: 0, tag: "canvas" };
+  const grad = () => ({ addColorStop(o, c) { log.colours.push(c); log.stops++; } });
+  const ctx = new Proxy({}, {
+    get(t, k) {
+      if (k in t) return t[k];
+      if (k === "createLinearGradient" || k === "createRadialGradient") return grad;
+      return (...a) => { log.calls[k] = (log.calls[k] || 0) + 1; };
+    },
+    set(t, k, v) { if (/Style$|shadowColor/.test(k)) log.colours.push(v); if (k === "filter") log.filter = true; t[k] = v; return true; },
+  });
+  cv.getContext = () => ctx;
+  cv.toDataURL = () => { log.urls++; return "data:image/png;base64,AAAA"; };
+  log.canvases.push(cv);
+  return cv;
+}
+function page(at, noCanvas) {
   const D = fixedDate(Date); D.set(at);
   let tick = null;
-  const sb = { document: fakeDocument(), Date: D, setInterval: (f) => { tick = f; return 1; }, clearInterval() {}, setTimeout: () => 1, clearTimeout() {}, console, Promise, JSON, Math };
+  const log = { canvases: [], colours: [], calls: {}, urls: 0, stops: 0 };
+  const doc = fakeDocument(), mk = doc.createElement;
+  if (!noCanvas) doc.createElement = (t) => (t === "canvas" ? makeCanvas(log) : mk(t));
+  const sb = { document: doc, Date: D, setInterval: (f) => { tick = f; return 1; }, clearInterval() {}, setTimeout: () => 1, clearTimeout() {}, console, Promise, JSON, Math };
   sb.window = sb; vm.createContext(sb);
   ["widget-web.js", "widget-caps.js", "widgets.js"].forEach((f) => vm.runInContext(fs.readFileSync(path.join(web, f), "utf8"), sb, { filename: f }));
-  return { W: sb.window.CouchWidgets, D, sb, tick: () => tick() };
+  return { W: sb.window.CouchWidgets, D, sb, log, tick: () => tick() };
 }
 const draw = (P, w, h, env, style, opts) => {
   const el = P.W.render({ kind: "nixie", w, h, opts: opts || { format: "24h" }, style: style || {} }, env || {});
@@ -28,8 +48,8 @@ const draw = (P, w, h, env, style, opts) => {
 };
 const has = (el, c) => el.all().filter((e) => (e._cls || []).indexOf(c) >= 0);
 const tubes = (el) => has(el, "cw-nx");
-const cur = (t) => has(t, "cw-nx-cur")[0].textContent;
-const prev = (t) => has(t, "cw-nx-prev")[0].textContent;
+const cur = (t) => has(t, "cw-nx-cur")[0].getAttribute("data-nx");   // the digit the sprite strip is parked on ("" = unlit)
+const prev = (t) => has(t, "cw-nx-prev")[0].getAttribute("data-nx");
 const digits = (el) => tubes(el).map(cur).join("");
 const at = (h, m, s) => new Date(2026, 10, 21, h, m, s || 0).getTime();
 
@@ -58,7 +78,7 @@ K.sizes(K.home().C, "nixie").forEach(([id, w, h]) => {
   ok(tubes(el).length === 4 && digits(el) === "1907", "nixie " + id + " (" + w + "x" + h + "): four tubes showing 1907 (" + digits(el) + ")");
   ok(has(el, "cw-nx-go").length === 0, id + ": at rest no cross-fade is running");
   ok(has(el, "cw-nx-l").length === 4 && has(el, "cw-nx-c").length === 1, id + ": one glow layer per tube and one for the dots");
-  ok(!/undefined|NaN|null/.test(el.textContent + allCss(el)), id + ": no stray words or NaN in the markup");
+  ok(!/undefined|NaN|null/.test(el.textContent + allCss(el)) && has(el, "cw-nx-d").every((d) => d.textContent === ""), id + ": no stray words or NaN in the markup");
   const bad = badColours(allCss(el));
   ok(bad.length === 0, id + ": every colour is a valid rgb / rgba / hex" + (bad.length ? " (bad: " + bad.slice(0, 3).join(" | ") + ")" : ""));
   tubes(el).forEach((t) => { const m = /width:(\d+)px;height:(\d+)px/.exec(t.style.cssText); ok(m && +m[1] <= w / 4 && +m[2] <= h, id + ": a tube fits the box (" + (m && m[1] + "x" + m[2]) + ")"); });
@@ -67,14 +87,16 @@ K.sizes(K.home().C, "nixie").forEach(([id, w, h]) => {
 // ---------------- 2. colours: the classic orange, or the design's glow colour (style.accent); a bad one is ignored ----------------
 {
   const P = page(at(19, 7, 30));
-  const plain = draw(P, 760, 300);
-  ok(/rgba\(255, 122, 26,/.test(allCss(plain)), "no accent: the classic nixie orange (255, 122, 26)");
-  const blue = draw(page(at(19, 7, 30)), 760, 300, {}, { accent: "#33AAFF" });
-  ok(/rgba\(51, 170, 255,/.test(allCss(blue)) && badColours(allCss(blue)).length === 0, "style.accent #33AAFF: a blue-glow tube, colours valid");
-  const dark = draw(page(at(19, 7, 30)), 760, 300, {}, { accent: "#101010" });
-  ok(badColours(allCss(dark)).length === 0 && !/rgba\(16, 16, 16, 1\);text-shadow/.test(allCss(dark)), "a near-black accent is lifted so the digit still glows (no black digit)");
-  const junk = draw(page(at(19, 7, 30)), 760, 300, {}, { accent: "not-a-colour" });
-  ok(/rgba\(255, 122, 26,/.test(allCss(junk)) && badColours(allCss(junk)).length === 0, "a bad accent falls back to the orange");
+  const plain = draw(P, 760, 300), cl = (Pg) => Pg.log.colours.join("\n");
+  ok(/rgba\(255, 122, 26,/.test(cl(P)) && badColours(cl(P)).length === 0, "no accent: the classic nixie orange (255, 122, 26) in the pictures, every canvas colour valid");
+  const Pb = page(at(19, 7, 30)); draw(Pb, 760, 300, {}, { accent: "#33AAFF" });
+  ok(/rgba\(51, 170, 255,/.test(cl(Pb)) && !/rgba\(255, 122, 26,/.test(cl(Pb)) && badColours(cl(Pb)).length === 0, "style.accent #33AAFF: blue-glow tubes, colours valid");
+  const Pd = page(at(19, 7, 30)); draw(Pd, 760, 300, {}, { accent: "#101010" });
+  ok(badColours(cl(Pd)).length === 0 && !/rgba\(16, 16, 16, 1\)/.test(cl(Pd)), "a near-black accent is lifted so the digit still glows (no black digit)");
+  const Pj = page(at(19, 7, 30)); draw(Pj, 760, 300, {}, { accent: "not-a-colour" });
+  ok(/rgba\(255, 122, 26,/.test(cl(Pj)) && badColours(cl(Pj)).length === 0, "a bad accent falls back to the orange");
+  // any value the page gives the canvas is a valid colour, at every size and for odd accents (NaN / out of range alpha threw in the waves effect)
+  ["#fff", "#ff0000", "rgb(10, 200, 30)", "", "nope", "#12"].forEach((a) => { const Px = page(at(19, 7, 30)); draw(Px, 600, 240, {}, { accent: a }); ok(badColours(cl(Px) + allCss(Px.sb.document.documentElement)).length === 0 && !/NaN/.test(cl(Px)), "accent \"" + a + "\": every canvas colour is a valid rgba / hex"); });
 }
 
 // ---------------- 3. the minute changes: only the digits that change cross-fade ----------------
@@ -133,10 +155,10 @@ K.sizes(K.home().C, "nixie").forEach(([id, w, h]) => {
   // LAYER COUNT (the stick's cost): what can be animated at once, worst case = every digit changing together
   {
     const Pw = page(at(23, 59, 30)), ew = draw(Pw, 760, 300);
-    tubes(ew).forEach((t) => ok(t.childNodes.filter((n) => n.nodeType === 1).length === 1 && has(t, "cw-nx-l").length === 1, "a tube is one static picture plus one glow layer (no mesh / highlight / cap elements over it)"));
+    tubes(ew).forEach((t) => ok(t.childNodes.filter((n) => n.nodeType === 1).length === 1 && has(t, "cw-nx-l").length === 1 && /cw-nxb\d+/.test(t._cls.join(" ")), "a tube is one still picture (class cw-nxb<id>) plus one glow layer (no mesh / highlight / cap elements over it)"));
     Pw.D.set(at(24, 0, 0)); Pw.tick();
     const moving = has(ew, "cw-nx-l").length + has(ew, "cw-nx-c").length + has(ew, "cw-nx-go").length;   // glows + dots + one fading old digit per changing tube
-    const old = has(ew, "cw-nx-prev").filter((p) => p.textContent !== "").length;
+    const old = has(ew, "cw-nx-prev").filter((p) => p.getAttribute("data-nx") !== "").length;
     ok(old === 4 && moving === 4 + 1 + 4, "worst case (23:59 to 00:00): 4 glows + 1 dots + 4 fading old digits = " + moving + " animated layers");
     ok(moving <= 10, "at most 10 separately animated layers (" + moving + ")");
     ok(!/animation/.test(has(ew, "cw-nx-cur").map((c) => c.style.cssText).join("")) && !/cw-nx-go \.cw-nx-cur/.test(fs.readFileSync(path.join(web, "widgets.css"), "utf8")), "the new digit is never animated: the old one fades out over it");
@@ -149,6 +171,39 @@ K.sizes(K.home().C, "nixie").forEach(([id, w, h]) => {
   const pct = area / (1920 * 1080) * 100;
   console.log("  glowing layers at 760 x 300: " + area + " px = " + pct.toFixed(1) + " % of the screen");
   ok(pct <= 8, "the moving layers are at most 8 % of the screen (" + pct.toFixed(1) + " %)");
+}
+
+// ---------------- 6b. PRE-RENDERED sprites: drawn once, a digit change only swaps / cross-fades ----------------
+{
+  const P = page(at(19, 7, 30)), el = draw(P, 760, 300);
+  const L = P.log;
+  ok(L.canvases.length === 3 && L.urls === 3, "three pictures drawn once per widget (tube still, ten-digit strip, dots) and turned into images (" + L.canvases.length + " canvases, " + L.urls + " toDataURL)");
+  const sizes = L.canvases.map((c) => c.width + "x" + c.height);
+  ok(L.canvases[1].width === L.canvases[0].width * 11 && L.canvases[1].height === L.canvases[0].height, "the strip is 11 cells wide (10 glowing digits + 1 empty) and as tall as a tube (" + sizes.join(" ") + ")");
+  ok((L.calls.bezierCurveTo || 0) > 150 && (L.calls.lineTo || 0) > 1000, "wire numerals (curves) and the honeycomb mesh (hexagon lines) are really drawn (" + (L.calls.bezierCurveTo || 0) + " curves, " + (L.calls.lineTo || 0) + " lines)");
+  ok(!L.filter, "no canvas filter anywhere");
+  const css = allCss(el), styleEl = el.all().filter((e) => e.tagName === "STYLE" || e.tagName === "style");
+  ok(styleEl.length === 1 && /cw-nxb\d+\{background-image:url\(data:image\/png/.test(styleEl[0].textContent) && /cw-nxs\d+\{background-image/.test(styleEl[0].textContent) && /cw-nxk\d+\{background-image/.test(styleEl[0].textContent), "one style rule each for the tube picture, the digit strip and the dots (the data is in the page once)");
+  ok(!/filter|blur|backdrop|text-shadow|box-shadow|will-change/.test(css), "no filter / blur / shadow in any inline style (" + (css.match(/filter|blur|backdrop|text-shadow|box-shadow|will-change/) || [""])[0] + ")");
+  const before = L.canvases.length, urls = L.urls;
+  for (let m = 8; m < 14; m++) { P.D.set(at(19, m, 0)); P.tick(); P.D.set(at(19, m, 5)); P.tick(); }
+  ok(L.canvases.length === before && L.urls === urls, "six minute changes (with fades) drew nothing new: no canvas made, no picture encoded");
+  const t3 = tubes(el)[3], c3 = has(t3, "cw-nx-cur")[0];
+  ok(c3.getAttribute("data-nx") === "3" && /^30% 0%$/.test(c3.style.backgroundPosition), "digit 3 = the strip moved to 30% (cell 4 of 11), only background-position changes (" + c3.style.backgroundPosition + ")");
+  const e12 = draw(page(at(9, 5, 0)), 760, 300, {}, {}, { format: "12h" }), c0 = has(tubes(e12)[0], "cw-nx-cur")[0];
+  ok(c0.getAttribute("data-nx") === "" && c0.style.backgroundPosition === "100% 0%", "an unlit tube (12h, before 10) sits on the empty last cell (100%)");
+  // the same picture for every tube and the same colours at every minute: sprite cache hit when redrawn at the same size
+  const P2 = page(at(19, 7, 30)); draw(P2, 760, 300); draw(P2, 760, 300);
+  ok(P2.log.canvases.length === 3, "a second widget of the same size and colour reuses the pictures (" + P2.log.canvases.length + " canvases for two draws)");
+  // no canvas at all (a very old browser): glowing text digits, still four tubes, still cross-fades, nothing thrown
+  const Pn = page(at(19, 7, 30), true), en = draw(Pn, 760, 300);
+  ok(digits(en) === "1907" && tubes(en).length === 4 && has(en, "cw-nx-cur")[0].textContent === "1", "no canvas: four tubes with text digits as a fallback (" + digits(en) + ")");
+  Pn.D.set(at(19, 8, 0)); Pn.tick();
+  ok(digits(en) === "1908" && has(en, "cw-nx-go").length === 1, "no canvas: the minute still changes with a fade");
+  const k = K.sizes(K.home().C, "nixie");
+  ok(k.length >= 3, "sizes known (" + k.length + ")");
+  // every size draws without a bad value
+  k.forEach(([id, w, h]) => { const Q = page(at(19, 7, 30)); draw(Q, w, h); ok(badColours(Q.log.colours.join("\n")).length === 0, id + ": canvas colours valid"); });
 }
 
 // ---------------- 7. design.js knows the kind and its one option ----------------

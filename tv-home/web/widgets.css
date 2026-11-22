@@ -362,19 +362,21 @@ html.lighter .cwd-artbg { -webkit-filter: none; filter: none; opacity: 0.18; }
 .cwd-dial .cw-t23 { font-size: 29px; color: rgba(255, 255, 255, 0.75); margin-top: 4px; }
 .cwd-room { -webkit-flex: none; flex: none; }
 
-/* the Nixie clock (widgets.js R.nixie): four glass tubes. The glow layer of each tube breathes and flickers (opacity, one 8 s loop,
-   a different start per tube), the two dots blink (opacity, 2 s), the old digit fades out over the new one (opacity).
-   Only transform and opacity change. Lighter home / reduced motion: nothing runs and a digit just changes. */
-.cw-nx { position: relative; -webkit-flex: none; flex: none; }
+/* the Nixie clock (widgets.js R.nixie): four glass tubes. Each tube is ONE still picture (glass, honeycomb mesh, the unlit wire numerals,
+   base: .cw-nxb<id>, drawn once on a canvas); the lit numeral is a strip of ten pre-drawn glowing wire digits whose background-position
+   is moved, never redrawn (.cw-nxs<id>). What animates, opacity only: the glow layer of each tube (breathes and flickers, one 8 s
+   loop, a different start per tube), the two dots (blink, 2 s), the old digit fading out over the new one. At most 9 layers. No blur, filter
+   or shadow runs. Lighter home / reduced motion: nothing runs and a digit just changes. */
+.cw-nx { position: relative; -webkit-flex: none; flex: none; background-size: 100% 100%; background-repeat: no-repeat; }
 .cw-nx-l { position: absolute; left: 0; top: 0; width: 100%; height: 100%; -webkit-animation: cw-nx-glow 8s linear infinite; animation: cw-nx-glow 8s linear infinite; }
-.cw-nx-d { position: absolute; left: 0; top: 0; width: 100%; height: 100%; display: -webkit-flex; display: flex; -webkit-align-items: center; align-items: center; -webkit-justify-content: center; justify-content: center; font-weight: 400; line-height: 1; padding-bottom: 6%; box-sizing: border-box; }
+.cw-nx-d { position: absolute; left: 0; top: 0; width: 100%; height: 100%; background-size: 1100% 100%; background-repeat: no-repeat; display: -webkit-flex; display: flex; -webkit-align-items: center; align-items: center; -webkit-justify-content: center; justify-content: center; font-weight: 400; line-height: 1; padding-bottom: 6%; box-sizing: border-box; }
 .cw-nx-prev { opacity: 0; }
-.cw-nx-c { position: relative; -webkit-flex: none; flex: none; display: -webkit-flex; display: flex; -webkit-flex-direction: column; flex-direction: column; -webkit-align-items: center; align-items: center; -webkit-justify-content: space-between; justify-content: space-between; -webkit-animation: cw-nx-blink 2s ease-in-out infinite; animation: cw-nx-blink 2s ease-in-out infinite; }
+.cw-nx-c { position: relative; -webkit-flex: none; flex: none; background-size: 100% 100%; background-repeat: no-repeat; -webkit-animation: cw-nx-blink 2s ease-in-out infinite; animation: cw-nx-blink 2s ease-in-out infinite; }
 .cw-nx-go .cw-nx-prev { -webkit-animation: cw-nx-out 0.5s ease-in both; animation: cw-nx-out 0.5s ease-in both; }
 @-webkit-keyframes cw-nx-glow { 0% { opacity: 0.88; } 14% { opacity: 1; } 30% { opacity: 0.92; } 31.5% { opacity: 0.7; } 33% { opacity: 0.96; } 50% { opacity: 1; } 64% { opacity: 0.9; } 78% { opacity: 1; } 90% { opacity: 0.93; } 91.2% { opacity: 0.78; } 92.5% { opacity: 0.97; } 100% { opacity: 0.88; } }
 @keyframes cw-nx-glow { 0% { opacity: 0.88; } 14% { opacity: 1; } 30% { opacity: 0.92; } 31.5% { opacity: 0.7; } 33% { opacity: 0.96; } 50% { opacity: 1; } 64% { opacity: 0.9; } 78% { opacity: 1; } 90% { opacity: 0.93; } 91.2% { opacity: 0.78; } 92.5% { opacity: 0.97; } 100% { opacity: 0.88; } }
-@-webkit-keyframes cw-nx-blink { 0% { opacity: 1; } 50% { opacity: 0.3; } 100% { opacity: 1; } }
-@keyframes cw-nx-blink { 0% { opacity: 1; } 50% { opacity: 0.3; } 100% { opacity: 1; } }
+@-webkit-keyframes cw-nx-blink { 0% { opacity: 1; } 50% { opacity: 0.55; } 100% { opacity: 1; } }
+@keyframes cw-nx-blink { 0% { opacity: 1; } 50% { opacity: 0.55; } 100% { opacity: 1; } }
 @-webkit-keyframes cw-nx-out { from { opacity: 1; } to { opacity: 0; } }
 @keyframes cw-nx-out { from { opacity: 1; } to { opacity: 0; } }
 html.lighter .cw-nx-l, html.lighter .cw-nx-c, html.lighter .cw-nx-go .cw-nx-prev { -webkit-animation: none !important; animation: none !important; }

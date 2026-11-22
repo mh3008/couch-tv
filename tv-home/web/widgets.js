@@ -780,13 +780,17 @@
     var set = function () { var t = clockParts(now(), o, env).t.replace(":", ""); if (t.length === 3) t = "0" + t; for (var i = 0; i < 4; i++) cards[i].textContent = t.charAt(i); };
     set(); live(root, 1000, set);
   };
-  // The Nixie-tube clock: four glass tubes, each a fine copper mesh with one glowing digit in it, and two neon
-  // dots between the pairs, in the colour of the design's accent when that is a warm one (else the classic nixie
-  // orange). Only transform and opacity ever change (widgets.css .cw-nx-*): the glow of each tube breathes and
-  // now and then flickers (one 8 s opacity loop per tube, started at a different point), the two dots blink,
-  // and a digit that changes fades out while the new one fades in with a small flare. Lighter home / reduced
-  // motion: nothing moves and a digit just changes. Idea only (the real tubes stack ten numerals and light one):
-  // the look follows Nixie-clock projects such as the MIT-licensed ones seen in the scan; no code was copied.
+  // The Nixie-tube clock (v2): four glass tubes in the colour of the design's accent when that is a warm one (else the classic
+  // nixie orange), two neon dots between the pairs. Like a real tube each one shows a dark glass envelope with the honeycomb anode
+  // mesh, ten thin wire numerals stacked in it (the nine that are off are faintly visible behind the one that is lit), glass
+  // reflections and a dark metal base. All of that is drawn ONCE per widget on a canvas: one still picture per tube (the glass, mesh,
+  // unlit stack and base) and one strip of the ten GLOWING wire numerals (hot white-yellow core, orange neon halo, the blur is
+  // baked into the pixels), plus a small picture for the dots. A minute change only moves the strip's background-position and
+  // cross-fades (old digit fades out over the new one); nothing is blurred or filtered while it runs. Animated layers: a glow layer
+  // per tube (opacity breathing + the odd flicker), the old digit while it fades, the dots = at most 9. Only transform and opacity
+  // animate (widgets.css .cw-nx-*). Lighter home / reduced motion: nothing moves and a digit just changes. No canvas (a very old
+  // browser): plain glowing digits in text. Ideas only from the nixie-tube projects seen in the scan (no code copied): wire
+  // numerals, stacked unlit cathodes, anode mesh, glass streaks.
   function nxCalm() {
     try {
       if (document.documentElement && document.documentElement.classList && document.documentElement.classList.contains("lighter")) return true;
@@ -794,42 +798,180 @@
     } catch (e) { return false; }
   }
   function nxMix(rgb, to, f) { return [rgb[0] + (to - rgb[0]) * f, rgb[1] + (to - rgb[1]) * f, rgb[2] + (to - rgb[2]) * f]; }
+  function nxMixC(a, b, f) { return [a[0] + (b[0] - a[0]) * f, a[1] + (b[1] - a[1]) * f, a[2] + (b[2] - a[2]) * f]; }
+  // a valid rgba() only: channels 0..255 whole, alpha 0..1 (a bad value once stopped a whole page drawing)
+  function nxC(rgb, a) {
+    a = +a; if (!isFinite(a)) a = 0; a = Math.max(0, Math.min(1, Math.round(a * 1000) / 1000));
+    var f = function (v) { v = +v; return isFinite(v) ? Math.max(0, Math.min(255, Math.round(v))) : 0; };
+    return "rgba(" + f(rgb[0]) + ", " + f(rgb[1]) + ", " + f(rgb[2]) + ", " + a + ")";
+  }
+  // wire numerals on a 60 x 100 grid, one bent wire each (M move, L line, C cubic, Z close), like the cathodes of a real tube
+  var NXW = [
+    "M30 2 C9 2 4 22 4 50 C4 78 9 98 30 98 C51 98 56 78 56 50 C56 22 51 2 30 2 Z",
+    "M13 24 L36 2 L36 98",
+    "M6 26 C6 10 17 2 30 2 C45 2 54 12 54 28 C54 50 22 70 7 95 L7 98 L56 98",
+    "M6 16 C12 6 20 2 30 2 C44 2 52 10 52 24 C52 38 42 46 24 48 C44 50 54 60 54 74 C54 90 44 98 30 98 C18 98 10 92 5 82",
+    "M43 98 L43 2 L4 68 L58 68",
+    "M52 2 L13 2 L8 46 C16 40 24 38 33 38 C47 38 54 49 54 66 C54 86 44 98 30 98 C18 98 10 92 5 82",
+    "M49 7 C42 3 36 2 30 2 C12 2 5 26 5 62 C5 86 14 98 30 98 C46 98 55 86 55 68 C55 52 46 42 30 42 C18 42 8 50 5 62",
+    "M4 2 L56 2 C41 30 30 60 24 98",
+    "M30 2 C14 2 8 12 8 24 C8 36 18 46 30 48 C44 50 52 58 52 72 C52 88 44 98 30 98 C16 98 8 88 8 74 C8 58 16 50 30 48 C42 46 52 36 52 24 C52 12 44 2 30 2 Z",
+    "M49 7 C42 3 36 2 30 2 C12 2 5 26 5 62 C5 86 14 98 30 98 C46 98 55 86 55 68 C55 52 46 42 30 42 C18 42 8 50 5 62"   // the 9 is the 6 turned half way round (flip in nxTrace)
+  ];
+  function nxTrace(c, d, ox, oy, k, flip) {
+    var t = d.match(/[MLCZ]|-?[\d.]+/g), i = 0, n, j, a, cmd;
+    var X = function (v) { return ox + (flip ? 60 - v : v) * k; }, Y = function (v) { return oy + (flip ? 100 - v : v) * k; };
+    c.beginPath();
+    while (i < t.length) {
+      cmd = t[i++];
+      if (cmd === "Z") { c.closePath(); continue; }
+      n = cmd === "C" ? 6 : 2; a = [];
+      for (j = 0; j < n; j++) a.push(parseFloat(t[i++]));
+      if (cmd === "M") c.moveTo(X(a[0]), Y(a[1]));
+      else if (cmd === "L") c.lineTo(X(a[0]), Y(a[1]));
+      else c.bezierCurveTo(X(a[0]), Y(a[1]), X(a[2]), Y(a[3]), X(a[4]), Y(a[5]));
+    }
+  }
+  function nxWire(c, n, ox, oy, k) { nxTrace(c, NXW[n], ox, oy, k, n === 9); }
+  // the tube's rounded envelope: a dome on top, small corners at the foot
+  function nxEnv(c, w, h, rb) {
+    var r = w / 2;
+    c.beginPath(); c.moveTo(0, r); c.bezierCurveTo(0, r * 0.45, r * 0.45, 0, r, 0); c.bezierCurveTo(r * 1.55, 0, w, r * 0.45, w, r);
+    c.lineTo(w, h - rb); c.quadraticCurveTo(w, h, w - rb, h); c.lineTo(rb, h); c.quadraticCurveTo(0, h, 0, h - rb); c.closePath();
+  }
+  function nxCanvas(w, h) {
+    var cv = document.createElement("canvas");
+    if (!cv || !cv.getContext) return null;
+    cv.width = Math.max(1, Math.round(w)); cv.height = Math.max(1, Math.round(h));
+    var c = cv.getContext("2d");
+    return c ? { cv: cv, c: c } : null;
+  }
+  // the honeycomb lattice of the anode mesh as one path (pointy hexagons of circumradius r)
+  function nxHex(c, W, H, r) {
+    var hx = Math.sqrt(3) * r, row = 0, x, y;
+    c.beginPath();
+    for (y = H * 0.07; y < H * 0.87; y += r * 1.5, row++) {
+      for (x = W * 0.05 + (row % 2 ? hx / 2 : 0); x < W * 0.97; x += hx) {
+        c.moveTo(x, y - r); c.lineTo(x + hx / 2, y - r / 2); c.lineTo(x + hx / 2, y + r / 2); c.lineTo(x, y + r); c.lineTo(x - hx / 2, y + r / 2); c.lineTo(x - hx / 2, y - r / 2); c.closePath();
+      }
+    }
+  }
+  var NXCACHE = {}, NXN = 0;
+  function nxSprites(cw, hgt, acc, core, sc, dotw, doth) {
+    var key = [cw, hgt, sc, dotw, doth, acc.join(","), core.join(",")].join("|");
+    if (NXCACHE[key]) return NXCACHE[key];
+    var W = Math.round(cw * sc), H = Math.round(hgt * sc), out = null;
+    try {
+      var tb = nxCanvas(W, H), lt = nxCanvas(W * 11, H), dt = nxCanvas(dotw * sc, doth * sc);
+      if (tb && lt && dt) {
+        var face = [14, 9, 7], copper = nxMixC(acc, [150, 108, 78], 0.55), hot = [255, 242, 205], mid = nxMixC(acc, [255, 214, 130], 0.55);
+        var dh = H * 0.5, k = dh / 100, ox = (W - 60 * k) / 2, oy = H * 0.19, wire = Math.max(1.4 * sc, dh * 0.028), rb = Math.max(4, Math.min(18, W * 0.1));
+        var c = tb.c, g, i, x, y;
+        // ---- the still picture of one tube ----
+        c.save(); nxEnv(c, W, H, rb); c.clip();
+        g = c.createLinearGradient(0, 0, 0, H); g.addColorStop(0, nxC([24, 17, 13], 1)); g.addColorStop(0.55, nxC(face, 1)); g.addColorStop(1, nxC([6, 4, 3], 1));
+        c.fillStyle = g; c.fillRect(0, 0, W, H);
+        g = c.createRadialGradient(W / 2, H * 0.45, 0, W / 2, H * 0.45, H * 0.5); g.addColorStop(0, nxC(acc, 0.1)); g.addColorStop(1, nxC(acc, 0));
+        c.fillStyle = g; c.fillRect(0, 0, W, H);
+        // honeycomb anode mesh, strongest in the middle, fading into the glass at the edges
+        var r = Math.max(3.2 * sc, W * 0.042);
+        c.strokeStyle = nxC(copper, 0.24); c.lineWidth = Math.max(0.8, 0.8 * sc); c.lineJoin = "round"; nxHex(c, W, H, r); c.stroke();
+        g = c.createRadialGradient(W / 2, H * 0.44, H * 0.06, W / 2, H * 0.44, H * 0.5); g.addColorStop(0, nxC(face, 0)); g.addColorStop(0.6, nxC(face, 0.4)); g.addColorStop(1, nxC(face, 0.95));
+        c.fillStyle = g; c.fillRect(0, 0, W, H * 0.9);
+        // the nine numerals that are off, stacked front to back: thin dim copper wire, the far ones a little smaller and shifted
+        c.lineCap = "round"; c.lineJoin = "round";
+        for (i = 0; i < 10; i++) {
+          var d = (i * 7 + 3) % 10, kk = k * (0.93 + 0.0078 * i), sx = ox + (60 * k - 60 * kk) / 2 + (i - 4.5) * W * 0.0035, sy = oy + (100 * k - 100 * kk) / 2 - (9 - i) * H * 0.0012;
+          c.strokeStyle = nxC(copper, 0.14 + 0.011 * i); c.lineWidth = Math.max(1, wire * 0.55); nxWire(c, d, sx, sy, kk); c.stroke();
+        }
+        // dark metal base and the seal where the glass meets it
+        var by = H * 0.885;
+        g = c.createLinearGradient(0, by, 0, H); g.addColorStop(0, nxC([104, 98, 92], 1)); g.addColorStop(0.2, nxC([46, 42, 39], 1)); g.addColorStop(1, nxC([8, 7, 6], 1));
+        c.fillStyle = g; c.fillRect(0, by, W, H - by);
+        c.fillStyle = nxC([255, 255, 255], 0.2); c.fillRect(0, by, W, Math.max(1, sc));
+        c.fillStyle = nxC([0, 0, 0], 0.55); c.fillRect(0, by - Math.max(2, 2 * sc), W, Math.max(2, 2 * sc));
+        for (i = 0; i < 4; i++) { c.fillStyle = nxC([170, 150, 130], 0.22); c.fillRect(W * (0.2 + i * 0.19), by + (H - by) * 0.45, Math.max(2, W * 0.035), (H - by) * 0.4); }
+        // side shading, a warm rim on the far side (the glow lights the glass), the dome reflection, a tall soft window streak
+        g = c.createLinearGradient(0, 0, W, 0); g.addColorStop(0, nxC([0, 0, 0], 0.55)); g.addColorStop(0.2, nxC([0, 0, 0], 0.05)); g.addColorStop(0.8, nxC([0, 0, 0], 0.05)); g.addColorStop(1, nxC([0, 0, 0], 0.6));
+        c.fillStyle = g; c.fillRect(0, 0, W, H);
+        g = c.createRadialGradient(W * 1.08, H * 0.45, 0, W * 1.08, H * 0.45, W * 0.7); g.addColorStop(0, nxC(acc, 0.22)); g.addColorStop(1, nxC(acc, 0));
+        c.fillStyle = g; c.fillRect(W * 0.3, 0, W * 0.7, by);
+        c.restore();
+        c.save(); nxEnv(c, W, H, rb); c.clip();
+        var sw = Math.max(3, W * 0.07), sx0 = W * 0.13, sy0 = H * 0.15, sh = H * 0.55;
+        g = c.createLinearGradient(0, sy0, 0, sy0 + sh); g.addColorStop(0, nxC([255, 255, 255], 0.2)); g.addColorStop(0.5, nxC([255, 255, 255], 0.09)); g.addColorStop(1, nxC([255, 255, 255], 0));
+        c.fillStyle = g; c.beginPath(); c.moveTo(sx0, sy0 + sw / 2); c.quadraticCurveTo(sx0, sy0, sx0 + sw / 2, sy0); c.quadraticCurveTo(sx0 + sw, sy0, sx0 + sw, sy0 + sw / 2); c.lineTo(sx0 + sw * 0.75, sy0 + sh); c.lineTo(sx0 + sw * 0.25, sy0 + sh); c.closePath(); c.fill();
+        g = c.createLinearGradient(0, sy0, 0, sy0 + sh); g.addColorStop(0, nxC([255, 255, 255], 0.16)); g.addColorStop(1, nxC([255, 255, 255], 0));
+        c.fillStyle = g; c.fillRect(W * 0.235, sy0 + sh * 0.1, Math.max(1.5, W * 0.016), sh * 0.7);
+        c.strokeStyle = nxC([255, 255, 255], 0.22); c.lineWidth = Math.max(1, 1.5 * sc); c.beginPath(); c.arc(W / 2, W / 2, W / 2 - Math.max(3, W * 0.05), Math.PI * 1.12, Math.PI * 1.62); c.stroke();
+        c.restore();
+        c.save(); nxEnv(c, W, H, rb); c.strokeStyle = nxC([255, 255, 255], 0.14); c.lineWidth = Math.max(2, 2 * sc); c.stroke(); c.restore();
+        // ---- the strip of ten glowing numerals (+ one empty cell for a tube that is not lit) ----
+        var l = lt.c; l.lineCap = "round"; l.lineJoin = "round";
+        for (i = 0; i < 10; i++) {
+          l.save(); l.translate(i * W, 0); nxEnv(l, W, H, rb); l.clip();   // the halo stays inside the glass
+          g = l.createRadialGradient(W / 2, H * 0.44, 0, W / 2, H * 0.44, W * 0.9); g.addColorStop(0, nxC(acc, 0.5)); g.addColorStop(0.4, nxC(acc, 0.2)); g.addColorStop(1, nxC(acc, 0));
+          l.fillStyle = g; l.fillRect(0, 0, W, H * 0.88);
+          l.shadowColor = nxC(acc, 0.95); l.shadowOffsetX = 0; l.shadowOffsetY = 0;
+          l.strokeStyle = nxC(acc, 0.5); l.lineWidth = wire * 2.8; l.shadowBlur = wire * 9; nxWire(l, i, ox, oy, k); l.stroke();
+          l.strokeStyle = nxC(acc, 1); l.lineWidth = wire * 1.7; l.shadowBlur = wire * 4; nxWire(l, i, ox, oy, k); l.stroke();
+          l.shadowBlur = 0; l.shadowColor = nxC(acc, 0);
+          l.strokeStyle = nxC(mid, 1); l.lineWidth = wire * 1.1; nxWire(l, i, ox, oy, k); l.stroke();
+          l.strokeStyle = nxC(hot, 0.95); l.lineWidth = Math.max(1, wire * 0.62); nxWire(l, i, ox, oy, k); l.stroke();
+          l.strokeStyle = nxC([0, 0, 0], 0.15); l.lineWidth = Math.max(0.8, 0.8 * sc); nxHex(l, W, H, r); l.stroke();   // the digit is seen through the anode mesh
+          l.restore();
+        }
+        // ---- the two neon dots ----
+        var e = dt.c, dr = Math.max(2.6 * sc, W * 0.055), cx = dotw * sc / 2, hr = Math.min(dr * 4, cx);
+        [0.2, 0.8].forEach(function (f) {
+          var cy = doth * sc * f;
+          g = e.createRadialGradient(cx, cy, 0, cx, cy, hr); g.addColorStop(0, nxC(acc, 0.6)); g.addColorStop(1, nxC(acc, 0)); e.fillStyle = g; e.fillRect(0, cy - hr, dotw * sc, hr * 2);
+          e.shadowColor = nxC(acc, 0.95); e.shadowBlur = dr * 2.2; e.fillStyle = nxC(acc, 1); e.beginPath(); e.arc(cx, cy, dr, 0, Math.PI * 2); e.fill();
+          e.shadowBlur = 0; e.fillStyle = nxC(hot, 1); e.beginPath(); e.arc(cx, cy, dr * 0.55, 0, Math.PI * 2); e.fill();
+        });
+        out = { id: ++NXN, back: tb.cv.toDataURL("image/png"), lit: lt.cv.toDataURL("image/png"), dots: dt.cv.toDataURL("image/png") };
+      }
+    } catch (err) { out = null; }
+    var keys = Object.keys(NXCACHE); if (keys.length > 3) delete NXCACHE[keys[0]];
+    if (out) NXCACHE[key] = out;
+    return out;
+  }
   R.nixie = function (root, o, b, env) {
-    var look = env.look || {}, st = o.style || {};
+    var st = o.style || {};
     var pad = root.classList.contains("cw-bare") ? 0 : 48, dotw = 40, gap = 12;
     var cw = Math.min((b.h - pad) * 0.56, (b.w - pad - dotw - gap * 8) / 4), hgt = Math.min(b.h - pad, cw / 0.5);
     cw = Math.max(20, cw); hgt = Math.max(40, hgt);
     var acc = rgbOf(st.accent) || [255, 122, 26];   // the classic nixie orange unless the design picks a glow colour (style.accent)
     if (lum(acc) < 0.18) acc = nxMix(acc, 255, 0.35);
-    var core = nxMix(acc, 255, 0.1), face = [12, 8, 6];
-    if (contrast(core, face) < 4.5) core = [255, 236, 200];
-    var fs = Math.round(Math.min(hgt * 0.6, cw * 1.1)), rt = Math.round(cw / 2), rb = Math.round(Math.min(18, cw * 0.14));
-    var glow = "0 0 " + px(fs * 0.04) + " " + rgba(core, 1) + ", 0 0 " + px(fs * 0.1) + " " + rgba(acc, 1) + ", 0 0 " + px(fs * 0.24) + " " + rgba(acc, 1) + ", 0 0 " + px(fs * 0.5) + " " + rgba(acc, 0.75);
+    var core = nxMix(acc, 255, 0.1), doth = Math.round(hgt * 0.36);
+    cw = Math.round(cw); hgt = Math.round(hgt);
+    var sc = 1; try { sc = Math.max(1, Math.min(2, window.devicePixelRatio || 1)); } catch (e1) { sc = 1; }
+    var sp = nxSprites(cw, hgt, acc, core, sc, dotw, doth);
+    var fs = Math.round(Math.min(hgt * 0.6, cw * 1.1)), rt = Math.round(cw / 2), rb = Math.round(Math.min(18, cw * 0.1));
+    if (sp) {
+        add(root, E("style", "", "", [".cw-nxb" + sp.id + "{background-image:url(" + sp.back + ")}.cw-nxs" + sp.id + "{background-image:url(" + sp.lit + ")}.cw-nxk" + sp.id + "{background-image:url(" + sp.dots + ")}"]));
+    }
     var tubes = [];
-    var glyph = function (cls) { return E("div", "cw-nx-d " + cls, "font-size:" + px(fs) + ";color:" + rgba(core, 1) + ";text-shadow:" + glow, [""]); };
+    var delays = [0, 2.6, 5.1, 1.3];
+    var glyph = function (c2) { return E("div", "cw-nx-d " + c2 + (sp ? " cw-nxs" + sp.id : ""), sp ? "" : "font-size:" + px(fs) + ";color:" + rgba(core, 1) + ";text-shadow:0 0 " + px(fs * 0.1) + " " + rgba(acc, 1) + ", 0 0 " + px(fs * 0.3) + " " + rgba(acc, 0.8), []); };
+    var show = function (el, ch) {   // swap the sprite: move the strip, no drawing
+      el.setAttribute("data-nx", ch);
+      if (sp) el.style.backgroundPosition = (ch === "" ? 100 : (+ch) * 10) + "% 0%"; else el.textContent = ch;
+    };
     var tube = function (i) {
       var c = { val: "", at: 0 };
       c.cur = glyph("cw-nx-cur"); c.prev = glyph("cw-nx-prev");
-      var delay = "-" + ([0, 2.6, 5.1, 1.3][i]) + "s";
-      c.lit = E("div", "cw-nx-l", "background:radial-gradient(ellipse at 50% 52%, " + rgba(acc, 0.8) + " 0, " + rgba(acc, 0.34) + " 44%, " + rgba(acc, 0) + " 74%);-webkit-animation-delay:" + delay + ";animation-delay:" + delay, [c.cur, c.prev]);   // the old digit is drawn over the new one and fades out: a cross-fade with one moving layer
-      // everything that never moves is ONE picture, the tube's own background (glass shading, copper mesh, glass highlight, metal cap),
-      // so it costs no layer; what moves is the glow layer and, for 0.5 s, the old digit fading out over the new one
-      var mc = rgba(acc, 0.16), no = "rgba(0, 0, 0, 0)", hw = Math.max(3, Math.round(cw * 0.07)), hh = Math.round(hgt * 0.56), ch = Math.max(6, Math.round(hgt * 0.09));
-      var stripe = function (a) { return "repeating-linear-gradient(" + a + "deg, " + mc + " 0, " + mc + " 1px, " + no + " 1px, " + no + " 7px)"; };
-      var pic = [
-        "linear-gradient(180deg, rgba(255, 255, 255, 0.2), rgba(255, 255, 255, 0)) " + px(cw * 0.13) + " " + px(hgt * 0.14) + " / " + px(hw) + " " + px(hh) + " no-repeat",
-        "linear-gradient(180deg, #3a3633, #14110f) 0 100% / 100% " + px(ch) + " no-repeat",
-        stripe(45) + " 50% 8% / 88% 78% no-repeat", stripe(-45) + " 50% 8% / 88% 78% no-repeat",
-        "linear-gradient(90deg, rgba(0, 0, 0, 0.55), rgba(255, 255, 255, 0.07) 16%, rgba(0, 0, 0, 0.2) 50%, rgba(0, 0, 0, 0.6))", shade(face, 1)].join(", ");
-      c.el = E("div", "cw-nx", "width:" + px(cw) + ";height:" + px(hgt) + ";margin:0 " + px(gap / 2) + ";border-radius:" + px(rt) + " " + px(rt) + " " + px(rb) + " " + px(rb) +
-        ";background:" + pic + ";box-shadow:inset 0 0 0 2px rgba(255, 255, 255, 0.11), 0 0 0 1px rgba(0, 0, 0, 0.45)", [c.lit]);
+      var delay = "-" + delays[i] + "s";
+      c.lit = E("div", "cw-nx-l", "-webkit-animation-delay:" + delay + ";animation-delay:" + delay, [c.cur, c.prev]);   // the old digit is drawn over the new one and fades out: a cross-fade with one moving layer
+      c.el = E("div", "cw-nx" + (sp ? " cw-nxb" + sp.id : ""), "width:" + px(cw) + ";height:" + px(hgt) + ";margin:0 " + px(gap / 2) + ";border-radius:" + px(rt) + " " + px(rt) + " " + px(rb) + " " + px(rb) +
+        (sp ? "" : ";background:linear-gradient(180deg, #181109, #0e0907 55%, #060403);box-shadow:inset 0 0 0 2px rgba(255, 255, 255, 0.11), 0 0 0 1px rgba(0, 0, 0, 0.45)"), [c.lit]);
+      show(c.cur, ""); show(c.prev, "");
       tubes.push(c); return c.el;
     };
-    var dot = function () { var s = Math.max(8, Math.round(cw * 0.1)); return E("i", "", "display:block;width:" + px(s) + ";height:" + px(s) + ";border-radius:50%;background:" + rgba(core, 1) + ";box-shadow:0 0 " + px(s * 1.6) + " " + rgba(acc, 0.9) + ", 0 0 " + px(s * 3.4) + " " + rgba(acc, 0.5)); };
-    var colon = function () { return E("div", "cw-nx-c", "width:" + px(dotw) + ";height:" + px(hgt * 0.36) + ";margin:0 " + px(gap / 2), [dot(), dot()]); };
+    var colon = function () { return E("div", "cw-nx-c" + (sp ? " cw-nxk" + sp.id : ""), "width:" + px(dotw) + ";height:" + px(doth) + ";margin:0 " + px(gap / 2), []); };
     add(root, E("div", "cw-row cw-center", "height:100%", [tube(0), tube(1), colon(), tube(2), tube(3)]));
     var first = true;
-    var settle = function (c) { c.prev.textContent = ""; c.el.classList.remove("cw-nx-go"); c.at = 0; };
+    var settle = function (c) { show(c.prev, ""); c.el.classList.remove("cw-nx-go"); c.at = 0; };
     var set = function () {
       var t = clockParts(now(), o, env).t.replace(":", ""), still = nxCalm();
       if (t.length === 3) t = " " + t;   // a 12 hour clock leaves the first tube unlit before 10
@@ -837,8 +979,8 @@
         var c = tubes[i], ch = t.charAt(i) === " " ? "" : t.charAt(i);
         if (c.at && Date.now() - c.at > 900) settle(c);   // the fade has finished: the old digit is gone
         if (c.val === ch && !first) continue;
-        if (first || still) { c.val = ch; c.cur.textContent = ch; c.prev.textContent = ""; c.el.classList.remove("cw-nx-go"); c.at = 0; continue; }
-        c.prev.textContent = c.val; c.cur.textContent = ch;
+        if (first || still) { c.val = ch; show(c.cur, ch); show(c.prev, ""); c.el.classList.remove("cw-nx-go"); c.at = 0; continue; }
+        show(c.prev, c.val); show(c.cur, ch);
         c.el.classList.remove("cw-nx-go"); void c.el.offsetWidth; c.el.classList.add("cw-nx-go");
         c.val = ch; c.at = Date.now();
       }
