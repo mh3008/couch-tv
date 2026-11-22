@@ -361,26 +361,13 @@ html.lighter .cwd-artbg { -webkit-filter: none; filter: none; opacity: 0.18; }
 .cwd-dial .cw-t23 { font-size: 29px; color: rgba(255, 255, 255, 0.75); margin-top: 4px; }
 .cwd-room { -webkit-flex: none; flex: none; }
 
-/* Day/night globe (widgets.js R.globe): a small world map, the live night on it, a glowing dot at the TV's town. The night strip is
-   slid sideways once a minute (a transform attribute, not an animation); the only animation is the dot's pulse, transform + opacity,
-   4 s a cycle on one small layer. The Lighter home and a TV set to reduce motion get the dot standing still. */
+/* Day/night globe (widgets.js R.globe): ONE canvas (ocean, land, night, sun, the town's dot, all drawn in script: the map once, the
+   night and sun once a minute) and ONE animated layer: the dot's ping ring, transform + opacity, 4 s a cycle in 48 steps (12 frames a second: a smooth
+   ease-out would wake the compositor every frame for a ring this faint). The Lighter home and a
+   TV set to reduce motion get the ring standing still. */
 .cw-gl-map { position: relative; overflow: hidden; -webkit-flex: none; flex: none; }
-.cw-gl-sun, .cw-gl-halo, .cw-gl-ring, .cw-gl-dot { position: absolute; display: block; border-radius: 50%; }
-.cw-gl-sun { left: 0; top: 0; background: radial-gradient(circle closest-side, #fff6c8 0%, #ffd36a 45%, rgba(255, 211, 106, 0) 100%); }
-.cw-gl-ring { opacity: 0; will-change: transform; -webkit-animation: cw-gl-ping 4s ease-out infinite; animation: cw-gl-ping 4s ease-out infinite; }
-.cw-gl-note { position: absolute; left: 50%; bottom: 8px; -webkit-transform: translateX(-50%); transform: translateX(-50%); white-space: nowrap; font-size: 23px; font-weight: 700; color: var(--ink); background: rgba(0, 0, 0, 0.45); padding: 3px 14px; border-radius: 999px; }
-html.lighter .cw-gl-ring { -webkit-animation: none !important; animation: none !important; opacity: 0.5; will-change: auto !important; }
-@media (prefers-reduced-motion: reduce) { .cw-gl-ring { -webkit-animation: none !important; animation: none !important; opacity: 0.5; will-change: auto !important; } }
-@-webkit-keyframes cw-gl-ping { 0% { -webkit-transform: scale(0.5); opacity: 0.9; } 80% { opacity: 0; } 100% { -webkit-transform: scale(2.4); opacity: 0; } }
-@keyframes cw-gl-ping { 0% { transform: scale(0.5); opacity: 0.9; } 80% { opacity: 0; } 100% { transform: scale(2.4); opacity: 0; } }
-
-/* Day/night globe (widgets.js R.globe): a small world map, the live night on it, a glowing dot at the TV's town. The night strip is
-   slid sideways once a minute (a style change, not an animation); the only animation is the dot's pulse, transform + opacity,
-   4 s a cycle on one small layer. The Lighter home and a TV set to reduce motion get the dot standing still. */
-.cw-gl-map { position: relative; overflow: hidden; -webkit-flex: none; flex: none; }
-.cw-gl-sun, .cw-gl-halo, .cw-gl-ring, .cw-gl-dot { position: absolute; display: block; border-radius: 50%; }
-.cw-gl-sun { left: 0; top: 0; background: radial-gradient(circle closest-side, #fff6c8 0%, #ffd36a 45%, rgba(255, 211, 106, 0) 100%); }
-.cw-gl-ring { opacity: 0; will-change: transform; -webkit-animation: cw-gl-ping 4s ease-out infinite; animation: cw-gl-ping 4s ease-out infinite; }
+.cw-gl-cv { position: absolute; left: 0; top: 0; display: block; }
+.cw-gl-ring { position: absolute; display: block; border-radius: 50%; opacity: 0; will-change: transform; -webkit-animation: cw-gl-ping 4s steps(48) infinite; animation: cw-gl-ping 4s steps(48) infinite; }
 .cw-gl-note { position: absolute; left: 50%; bottom: 8px; -webkit-transform: translateX(-50%); transform: translateX(-50%); white-space: nowrap; font-size: 23px; font-weight: 700; color: var(--ink); background: rgba(0, 0, 0, 0.45); padding: 3px 14px; border-radius: 999px; }
 html.lighter .cw-gl-ring { -webkit-animation: none !important; animation: none !important; opacity: 0.5; will-change: auto !important; }
 @media (prefers-reduced-motion: reduce) { .cw-gl-ring { -webkit-animation: none !important; animation: none !important; opacity: 0.5; will-change: auto !important; } }
