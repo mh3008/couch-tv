@@ -33,9 +33,11 @@
     var cv = doc.createElement("canvas"); cv.width = W; cv.height = H;
     var g = cv.getContext("2d"), R = seeded(seed), k, y;
     for (k = 0; k < 3; k++) {
-      var x0 = 40 + k * 60 + (R() - 0.5) * 16, amp = 16 + R() * 14, wl = 150 + R() * 90, ph = R() * 6.28, pts = [];
+      var x0 = 58 + k * 42 + (R() - 0.5) * 10, amp = 10 + R() * 12, wl = 150 + R() * 90, ph = R() * 6.28, pts = [];
       for (y = 0; y <= H; y += 8) pts.push([x0 + Math.sin(y / wl * 6.283 + ph) * amp * (0.5 + 0.5 * Math.sin(y / H * 3.14)), y]);
-      [[26, rgba(c, 0.07), 0], [11, rgba(c, 0.13), 0], [5, "rgba(20,10,0,0.16)", 5], [3, rgba(c, 0.5), 0], [1.4, "rgba(255,255,255,0.65)", 0]].forEach(function (p) {
+      // stacked widths fake a soft edge (no blur): a broad bright band, a darker twin beside it (the light bends), a faint core
+      [[64, rgba(c, 0.035), 0], [48, rgba(c, 0.05), 0], [34, rgba(c, 0.07), 0], [22, rgba(c, 0.10), 0], [12, "rgba(40,15,0,0.07)", 26], [22, "rgba(40,15,0,0.05)", 26],
+        [9, rgba(c, 0.22), 0], [3, "rgba(255,255,255,0.32)", 0]].forEach(function (p) {
         g.strokeStyle = p[1]; g.lineWidth = p[0]; g.lineCap = "round"; g.lineJoin = "round"; g.beginPath();
         pts.forEach(function (q, i) { if (i) g.lineTo(q[0] + p[2], q[1]); else g.moveTo(q[0] + p[2], q[1]); });
         g.stroke();
@@ -51,7 +53,7 @@
   function glow(c) {
     var cv = doc.createElement("canvas"); cv.width = 1920; cv.height = GH;
     var g = cv.getContext("2d"), f = g.createLinearGradient(0, GH, 0, 0), R = seeded(5), i;
-    f.addColorStop(0, rgba(c, 0.5)); f.addColorStop(0.35, rgba(c, 0.22)); f.addColorStop(0.7, rgba(c, 0.06)); f.addColorStop(1, rgba(c, 0));
+    f.addColorStop(0, rgba(c, 0.75)); f.addColorStop(0.35, rgba(c, 0.34)); f.addColorStop(0.7, rgba(c, 0.1)); f.addColorStop(1, rgba(c, 0));
     g.fillStyle = f; g.fillRect(0, 0, 1920, GH);
     for (i = 0; i < 9; i++) {
       var x = R() * 1920, r = 160 + R() * 220, h = g.createRadialGradient(x, GH, 0, x, GH, r);
