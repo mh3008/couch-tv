@@ -780,6 +780,80 @@
     var set = function () { var t = clockParts(now(), o, env).t.replace(":", ""); if (t.length === 3) t = "0" + t; for (var i = 0; i < 4; i++) cards[i].textContent = t.charAt(i); };
     set(); live(root, 1000, set);
   };
+  // The Fibonacci clock: the time as five coloured squares, sizes 1, 1, 2, 3 and 5 (the squares of the Fibonacci
+  // spiral, packed into an 8 x 5 board). The hours (1 to 12) are the sizes of the red and the blue squares added
+  // up, the minutes in fives (0 to 11) are the green and the blue ones, a white square counts for nothing:
+  // red = hours, green = minutes, blue = both. Only transform and opacity move (widgets.css .cw-fb-*): a square
+  // that changes colour cross-fades (two stacked opacity fades) with a small pop, and a soft glint runs from
+  // square to square once every 8 s. A square keeps its colour layers stacked, so nothing but opacity changes.
+  // Lighter home / reduced motion: no glint, no pop, the colour just changes. The idea and the colour code are the
+  // Kickstarter "Fibonacci Clock" (basbrun), as re-implemented in MIT projects found in the scan; no code was copied.
+  var FB_BOX = [[0, 0, 5], [5, 0, 3], [6, 3, 2], [5, 3, 1], [5, 4, 1]];   // x, y, side of each square on the 8 x 5 board
+  var FB_ARC = ["M 0 5 A 5 5 0 0 0 5 0", "M 5 0 A 3 3 0 0 0 8 3", "M 8 3 A 2 2 0 0 0 6 5", "M 6 5 A 1 1 0 0 0 5 4", "M 5 4 A 1 1 0 0 0 6 3"];   // the spiral, one quarter circle a square
+  var FB_COL = [[244, 244, 238], [229, 57, 53], [46, 189, 103], [54, 123, 245]];   // neither, hours, minutes, both
+  function fbCalm() {
+    try {
+      if (document.documentElement && document.documentElement.classList && document.documentElement.classList.contains("lighter")) return true;
+      return !!(window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches);
+    } catch (e) { return false; }
+  }
+  function fbSubsets(v) {   // every way to make v from the five sizes, as bit masks
+    var out = [];
+    for (var m = 0; m < 32; m++) {
+      var s = 0;
+      for (var i = 0; i < 5; i++) if (m & (1 << i)) s += FB_BOX[i][2];
+      if (s === v) out.push(m);
+    }
+    return out;
+  }
+  // one fixed way for each value, so the same time always looks the same (a real one picks at random)
+  function fbMask(v) { var l = fbSubsets(v); return l[(v * 5 + 3) % l.length]; }
+  function fbState(d) {   // the colour of each square for a time: 0 neither, 1 hours, 2 minutes, 3 both
+    var h = d.getHours() % 12 || 12, m5 = Math.floor(d.getMinutes() / 5), hm = fbMask(h), mm = fbMask(m5), out = [];
+    for (var i = 0; i < 5; i++) out.push(((hm >> i) & 1) + (((mm >> i) & 1) << 1));
+    return out;
+  }
+  R.fibclock = function (root, o, b, env) {
+    var pad = root.classList.contains("cw-bare") ? 0 : 48, cap = b.h - pad >= 300, capH = cap ? 64 : 0;
+    var u = Math.max(8, Math.floor(Math.min((b.w - pad) / 8, (b.h - pad - capH) / 5))), gap = Math.max(2, Math.round(u * 0.05)), rad = Math.round(u * 0.14);
+    var sq = [];
+    var layer = function (c, i) { return E("div", "cw-fb-c", "background:" + rgba(c, 1) + ";border-radius:" + px(rad)); };
+    FB_BOX.forEach(function (bx, i) {
+      var q = { st: -1, at: 0 };
+      q.l = FB_COL.map(layer);
+      q.g = E("div", "cw-fb-g", "border-radius:" + px(rad) + ";-webkit-animation-delay:-" + (8 - i * 0.9).toFixed(1) + "s;animation-delay:-" + (8 - i * 0.9).toFixed(1) + "s");
+      q.el = E("div", "cw-fb-s", "left:" + px(bx[0] * u + gap) + ";top:" + px(bx[1] * u + gap) + ";width:" + px(bx[2] * u - gap * 2) + ";height:" + px(bx[2] * u - gap * 2), q.l.concat([q.g]));
+      sq.push(q);
+    });
+    var spiral = svg("0 0 8 5", 8 * u, 5 * u, FB_ARC.map(function (d) { return S("path", { d: d, fill: "none", stroke: "rgba(0, 0, 0, 0.34)", "stroke-width": 0.07, "stroke-linecap": "round" }); }));
+    spiral.setAttribute("class", "cw-fb-sp"); spiral.style.cssText = "position:absolute;left:0;top:0";
+    var board = E("div", "cw-fb", "width:" + px(8 * u) + ";height:" + px(5 * u), sq.map(function (q) { return q.el; }).concat([spiral]));
+    var txt = cap ? E("div", "cw-t29 cw-dim", "margin-top:14px;text-align:center", [""]) : null;
+    add(root, E("div", "cw-col cw-center", "height:100%;justify-content:center", [board, txt]));
+    var first = true;
+    var settle = function (q) {
+      q.l.forEach(function (l, k) { l.className = "cw-fb-c" + (k === q.st ? " cw-fb-on" : ""); });
+      q.el.classList.remove("cw-fb-go"); q.at = 0;
+    };
+    var set = function () {
+      var d = now(), s = fbState(d), still = fbCalm();
+      for (var i = 0; i < 5; i++) {
+        var q = sq[i];
+        if (q.at && Date.now() - q.at > 1200) settle(q);   // the fade has finished
+        if (q.st === s[i]) continue;
+        var old = q.st;
+        q.st = s[i];
+        if (first || still || old < 0) { settle(q); continue; }
+        settle(q); void q.el.offsetWidth;   // start from the resting colours, so every fade below is a new animation
+        q.l[old].className = "cw-fb-c cw-fb-fo"; q.l[q.st].className = "cw-fb-c cw-fb-on cw-fb-fi";
+        q.el.classList.add("cw-fb-go");
+        q.at = Date.now();
+      }
+      if (txt) txt.textContent = clockParts(d, o, env).t;
+      first = false;
+    };
+    set(); live(root, 1000, set);
+  };
   // the widget's own settings: To the minute (precise) and Show the day (dayline)
   R.wordclock = function (root, o, b, env) {
     var precise = setting(o, env, "precise") === true, dayline = setting(o, env, "dayline") !== false;

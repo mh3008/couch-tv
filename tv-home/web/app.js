@@ -5394,7 +5394,7 @@
   var SET_ALL = false;
   var WX_USE = ["weather", "bigtemp", "hourly", "week", "rain", "uv", "air", "surf", "date", "clock", "glassclock"];
   var PLACE_USE = WX_USE.concat(["sun", "solar", "worldclock", "commute", "moon"]);
-  var CLOCK_USE = ["clock", "tallclock", "glassclock", "flipclock", "worldclock", "analog", "timer", "agenda", "welcome", "sports"];
+  var CLOCK_USE = ["clock", "tallclock", "glassclock", "flipclock", "fibclock", "worldclock", "analog", "timer", "agenda", "welcome", "sports"];
   var PHOTO_USE = ["photo", "slideshow", "mosaic", "artframe", "memory"];
   var KW_USE = ["keep", "keeprow", "upnext", "picks"];
   var PEOPLE_USE = ["people", "keep", "keeprow", "upnext", "picks", "screentime"];
