@@ -2349,6 +2349,28 @@
   };
   CR.screentime = R.screentime;
 
+  // Pomodoro: a focus / break rhythm on the TV's own clock. No start button, nothing to set up, never empty:
+  // the day is cut into focus + break blocks from midnight (25 + 5 by default, so every half hour), and the ring
+  // shows how much of the block is left in whole minutes. It redraws twice a minute on the shared tick (no timer
+  // of its own, nothing animated), so there is nothing for the stick to do between redraws.
+  R.pomodoro = function (root, o, b) {
+    var q = op(o), f = clamp(Math.round(+q.focus) || 25, 10, 60), r = clamp(Math.round(+q.rest) || 5, 3, 20), name = q.label || "Pomodoro";
+    var draw = function () {
+      while (root.lastChild && root.lastChild.className !== "cw-bg") root.removeChild(root.lastChild);
+      var d = new Date(), m = d.getHours() * 60 + d.getMinutes(), p = m % (f + r), focus = p < f, len = focus ? f : r, left = (focus ? f : f + r) - p;
+      var wide = b.w > b.h * 1.6, s = wide ? b.h - 48 : Math.min(b.w - 48, b.h - 48 - (b.h >= 300 ? 104 : 52)), word = focus ? "Focus" : "Break", nxt = (focus ? "Break" : "Focus") + " in " + left + " min";
+      var ring = svg("0 0 100 100", s, s, [S("circle", { cx: 50, cy: 50, r: 44, fill: "none", stroke: "var(--on)", opacity: 0.22, "stroke-width": 7 }),
+        S("circle", { cx: 50, cy: 50, r: 44, fill: "none", stroke: "var(--on)", "stroke-width": 7, "stroke-linecap": "round", "stroke-dasharray": 276, "stroke-dashoffset": 276 * (1 - clamp(left / len, 0.02, 1)), transform: "rotate(-90 50 50)" })]);
+      var num = E("div", "", "text-align:center;line-height:1", [E("div", "", "font-size:" + px(clamp(s * 0.3, 30, 96)) + ";font-weight:680;letter-spacing:-.03em", [String(left)]), s >= 120 ? E("div", "cw-t23", "", ["min"]) : null]);
+      var inner = E("div", "", "position:absolute;left:0;top:0;width:" + px(s) + ";height:" + px(s) + ";display:flex;align-items:center;justify-content:center", [num]);
+      var disc = E("div", "", "position:relative;flex:none;width:" + px(s) + ";height:" + px(s), [ring, inner]);
+      if (wide) add(root, E("div", "cw-row", "height:100%", [disc, E("div", "cw-col", "margin-left:24px;min-width:0", [E("div", "cw-t23 cw-ell", "", [name]), E("div", "cw-t29 cw-ell", "font-weight:700;color:var(--on)", [word]), E("div", "cw-t25 cw-ell", "", [nxt])])]));
+      else add(root, E("div", "cw-grow cw-col cw-center", "align-items:center;justify-content:center", [disc, E("div", "cw-t29 cw-ell", "font-weight:700;color:var(--on);margin-top:8px", [word]), s >= 150 ? E("div", "cw-t23 cw-ell", "max-width:100%", [nxt]) : null]));
+    };
+    draw();
+    live(root, 30000, draw);
+  };
+
   // ---------------- one widget, a stack, the API ----------------
   function one(o, b, env) {
     var sh = shell(o, b, env), root = sh.root, st = o.style || {};
