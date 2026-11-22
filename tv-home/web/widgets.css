@@ -402,3 +402,12 @@ html.lighter .cwd-artbg { -webkit-filter: none; filter: none; opacity: 0.18; }
 .cw-ah.cw-strip > .cw-row > svg { width: 34px !important; height: 34px !important; }
 .cw-ah.cw-strip > .cw-row > .cw-col { margin-left: 0 !important; margin-top: 6px; -webkit-align-items: center; align-items: center; max-width: 100%; }
 .cw-ah.cw-strip .cw-e1 { text-align: center; font-size: 24px; line-height: 1.2; }
+
+/* Analogue clock (widgets.js R.analog): the second hand sweeps, one turn in 60 s. Only transform moves, on the compositor, one
+   small layer; the page only re-aligns it every 30 s if it has drifted. Lighter home / reduced motion: no animation, the hand
+   jumps once a second (widgets.js leaves it to the tick). */
+.cw-an-s { -webkit-transform-origin: 50px 50px; transform-origin: 50px 50px; will-change: transform; -webkit-animation: cw-an-sweep 60s linear infinite; animation: cw-an-sweep 60s linear infinite; }
+html.lighter .cw-an-s { -webkit-animation: none !important; animation: none !important; will-change: auto !important; }
+@media (prefers-reduced-motion: reduce) { .cw-an-s { -webkit-animation: none !important; animation: none !important; will-change: auto !important; } }
+@-webkit-keyframes cw-an-sweep { from { -webkit-transform: rotate(0deg); } to { -webkit-transform: rotate(360deg); } }
+@keyframes cw-an-sweep { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }

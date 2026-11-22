@@ -483,18 +483,45 @@
     add(root, E("div", "cw-col", "height:100%;justify-content:center", [tEl]));
     live(root, 1000, function () { tEl.textContent = clockParts(now(), o, env).t; });
   };
+  function anCalm() {
+    try {
+      if (document.documentElement && document.documentElement.classList && document.documentElement.classList.contains("lighter")) return true;
+      return !!(window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches);
+    } catch (e) { return false; }
+  }
+  // Analogue clock, minimal: slim hour and minute hands, twelve hour marks, and a second hand that SWEEPS (a CSS animation of
+  // transform, 60 s a turn, linear) instead of ticking once a second. The page's stylesheet does the moving: the code only
+  // sets where the hand starts (the seconds and milliseconds of the TV's clock) and re-sets it when it has drifted more than
+  // 0.25 s, checked by the loader's tick every 30 s. The hour and minute hands move on that same tick. Option seconds: false
+  // = no second hand (then nothing moves between ticks). The Lighter home and a TV set to reduce motion get a hand that
+  // jumps once a second, as before. The idea (a native animation phase-aligned to the real second, resynced) is the same as
+  // andygock/analog-clock (MIT); no code was copied.
   R.analog = function (root, o, b, env, sh) {
-    var s = Math.min(b.w, b.h) - 48, d = now(), hand = "#ff6a3d", ink = rgba(sh.ink, 1);
-    var ticks = [];
-    for (var i = 0; i < 12; i++) ticks.push(S("line", { x1: 50, y1: 5, x2: 50, y2: i % 3 ? 9 : 13, stroke: ink, "stroke-width": i % 3 ? 1.2 : 2.6, "stroke-linecap": "round", transform: "rotate(" + i * 30 + " 50 50)", opacity: i % 3 ? 0.5 : 0.95 }));
-    var hH = S("line", { x1: 50, y1: 50, x2: 50, y2: 25, stroke: ink, "stroke-width": 4.4, "stroke-linecap": "round" });
-    var mH = S("line", { x1: 50, y1: 50, x2: 50, y2: 12, stroke: ink, "stroke-width": 3, "stroke-linecap": "round" });
-    var sH = S("line", { x1: 50, y1: 58, x2: 50, y2: 10, stroke: hand, "stroke-width": 1.2, "stroke-linecap": "round" });
-    var set = function () { var t = now(), h = t.getHours() % 12, m = t.getMinutes(), sec = t.getSeconds(); hH.setAttribute("transform", "rotate(" + (h * 30 + m / 2) + " 50 50)"); mH.setAttribute("transform", "rotate(" + m * 6 + " 50 50)"); sH.setAttribute("transform", "rotate(" + sec * 6 + " 50 50)"); };
+    var s = Math.min(b.w, b.h) - 48, look = env.look || {}, st = o.style || {}, ink = rgba(sh.ink, 1), hand = st.accent || "#ff6a3d";
+    var secs = op(o).seconds !== false, g = [];
+    for (var i = 0; i < 12; i++) g.push(i % 3 ? S("circle", { cx: 50, cy: 6.6, r: 0.9, fill: ink, opacity: 0.55, transform: "rotate(" + i * 30 + " 50 50)" }) : S("line", { x1: 50, y1: 4.6, x2: 50, y2: 11.4, stroke: ink, "stroke-width": 2.1, "stroke-linecap": "round", transform: "rotate(" + i * 30 + " 50 50)" }));
+    var hH = S("line", { x1: 50, y1: 55, x2: 50, y2: 27, stroke: ink, "stroke-width": 3.6, "stroke-linecap": "round" });
+    var mH = S("line", { x1: 50, y1: 56, x2: 50, y2: 13, stroke: ink, "stroke-width": 2.4, "stroke-linecap": "round" });
+    var sH = secs ? S("g", { "class": "cw-an-s" }, [S("line", { x1: 50, y1: 61, x2: 50, y2: 9, stroke: hand, "stroke-width": 1, "stroke-linecap": "round" }), S("circle", { cx: 50, cy: 50, r: 2.2, fill: hand })]) : null;
+    var cap = S("circle", { cx: 50, cy: 50, r: secs ? 1.1 : 2.2, fill: secs ? "#fff" : ink });
+    var still = function () { try { return anCalm(); } catch (e) { return false; } };
+    var turn = function (t) { return (t.getSeconds() + t.getMilliseconds() / 1000) * 6; };
+    var set = function () {
+      var t = now(), h = t.getHours() % 12, m = t.getMinutes();
+      hH.setAttribute("transform", "rotate(" + (h * 30 + m / 2) + " 50 50)"); mH.setAttribute("transform", "rotate(" + (m * 6 + t.getSeconds() / 10) + " 50 50)");
+      if (!sH) return;
+      if (still()) { sH.setAttribute("transform", "rotate(" + t.getSeconds() * 6 + " 50 50)"); sH.setAttribute("data-still", "1"); return; }
+      // where the sweep should be right now (the clock's seconds), against where it is (the animation's own time where the
+      // engine can say, else where we last put it): re-set only when more than 0.25 s apart, so it never visibly jumps
+      var want = t.getSeconds() + t.getMilliseconds() / 1000, ms = Date.now() / 1000, anim = sH.getAnimations ? sH.getAnimations()[0] : null, got;
+      if (anim && anim.currentTime !== null && anim.currentTime !== undefined) got = (anim.currentTime / 1000) % 60;
+      else got = sH.__e === undefined ? null : (ms - sH.__e) % 60;
+      var off = 99; if (got !== null) { off = Math.abs(got - want) % 60; off = Math.min(off, 60 - off); }
+      if (off > 0.25) { sH.style.cssText = "-webkit-animation-delay:-" + want.toFixed(2) + "s;animation-delay:-" + want.toFixed(2) + "s"; sH.__e = ms - want; }
+    };
     set();
-    add(root, E("div", "cw-grow cw-row cw-center", "", [svg("0 0 100 100", s, s, ticks.concat([hH, mH, sH, S("circle", { cx: 50, cy: 50, r: 2.6, fill: hand })]))]));
-    live(root, 1000, set);
-    void d;
+    add(root, E("div", "cw-grow cw-row cw-center", "", [svg("0 0 100 100", s, s, g.concat([hH, mH, sH, cap]))]));
+    live(root, 30000, set);
   };
   R.flipclock = function (root, o, b, env) {
     var pad = root.classList.contains("cw-bare") ? 0 : 48, cw = Math.min((b.w - pad - 20 - 56) / 4, (b.h - pad) * 0.72), hgt = Math.min(b.h - pad, cw / 0.72), cards = [];
