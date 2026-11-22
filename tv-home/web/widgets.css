@@ -402,3 +402,45 @@ html.lighter .cwd-artbg { -webkit-filter: none; filter: none; opacity: 0.18; }
 .cw-ah.cw-strip > .cw-row > svg { width: 34px !important; height: 34px !important; }
 .cw-ah.cw-strip > .cw-row > .cw-col { margin-left: 0 !important; margin-top: 6px; -webkit-align-items: center; align-items: center; max-width: 100%; }
 .cw-ah.cw-strip .cw-e1 { text-align: center; font-size: 24px; line-height: 1.2; }
+
+/* Lava lamp (widgets.js R.lavalamp): a decorative glass lamp, slow wax blobs in the design's own colour. The blobs are soft
+   radial-gradient discs (no blur, no filter, no canvas) that climb, squash and stretch, and fall again: only transform and
+   opacity move, 24 s a cycle, each blob on its own path and a different phase. The stylesheet does all of it; the page does
+   nothing after the first draw. The Lighter home and a TV set to reduce motion get the lamp standing still. */
+.cw-lv-row { display: -webkit-flex; display: flex; -webkit-align-items: center; align-items: center; -webkit-justify-content: center; justify-content: center; height: 100%; }
+.cw-lv { position: relative; -webkit-flex: none; flex: none; }
+.cw-lv-glow { position: absolute; left: -11%; right: -11%; top: 8%; height: 70%; border-radius: 50%; opacity: 0.8; -webkit-animation: cw-lv-glow 12s ease-in-out infinite alternate; animation: cw-lv-glow 12s ease-in-out infinite alternate; }
+.cw-lv-cap, .cw-lv-base { position: absolute; left: 50%; }
+.cw-lv-cap { top: 0; border-radius: 40% 40% 12% 12% / 70% 70% 20% 20%; }
+.cw-lv-tube { position: absolute; left: 0; right: 0; overflow: hidden; }
+.cw-lv-base { -webkit-clip-path: polygon(16% 0, 84% 0, 100% 100%, 0 100%); clip-path: polygon(16% 0, 84% 0, 100% 100%, 0 100%); }
+.cw-lv-sheen { position: absolute; left: 11%; top: 5%; width: 9%; height: 90%; border-radius: 999px; opacity: 0.8; background: -webkit-linear-gradient(top, rgba(255, 255, 255, 0.3), rgba(255, 255, 255, 0)); background: linear-gradient(180deg, rgba(255, 255, 255, 0.3), rgba(255, 255, 255, 0)); }
+.cw-lv-b { position: absolute; bottom: 0; height: 0; border-radius: 50%; will-change: transform; -webkit-animation: cw-lv-k1 24s infinite; animation: cw-lv-k1 24s infinite;
+  -webkit-animation-timing-function: cubic-bezier(0.45, 0.05, 0.55, 0.95); animation-timing-function: cubic-bezier(0.45, 0.05, 0.55, 0.95); }
+.cw-lv-pool { position: absolute; left: -6%; width: 112%; bottom: -9%; height: 0; padding-bottom: 66%; border-radius: 50%; will-change: transform; -webkit-animation: cw-lv-pool 12s ease-in-out infinite alternate; animation: cw-lv-pool 12s ease-in-out infinite alternate; }
+.cw-lv-1 { left: 14%; width: 62%; padding-bottom: 62%; -webkit-animation-name: cw-lv-k1; animation-name: cw-lv-k1; }
+.cw-lv-2 { left: 46%; width: 46%; padding-bottom: 46%; -webkit-animation-name: cw-lv-k2; animation-name: cw-lv-k2; }
+.cw-lv-3 { left: 4%; width: 40%; padding-bottom: 40%; -webkit-animation-name: cw-lv-k3; animation-name: cw-lv-k3; }
+.cw-lv-4 { left: 42%; width: 54%; padding-bottom: 54%; -webkit-animation-name: cw-lv-k4; animation-name: cw-lv-k4; }
+.cw-lv-5 { left: 28%; width: 36%; padding-bottom: 36%; -webkit-animation-name: cw-lv-k5; animation-name: cw-lv-k5; }
+html.lighter .cw-lv-1 { -webkit-transform: translate(0, -120%); transform: translate(0, -120%); }
+html.lighter .cw-lv-2 { -webkit-transform: translate(0, -250%); transform: translate(0, -250%); }
+html.lighter .cw-lv-3 { -webkit-transform: translate(0, -60%); transform: translate(0, -60%); }
+html.lighter .cw-lv-4 { -webkit-transform: translate(0, -170%); transform: translate(0, -170%); }
+html.lighter .cw-lv-5 { -webkit-transform: translate(0, -330%); transform: translate(0, -330%); }
+html.lighter .cw-lv-b, html.lighter .cw-lv-pool, html.lighter .cw-lv-glow { -webkit-animation: none !important; animation: none !important; will-change: auto !important; }
+@media (prefers-reduced-motion: reduce) { .cw-lv-b, .cw-lv-pool, .cw-lv-glow { -webkit-animation: none !important; animation: none !important; will-change: auto !important; } }
+@-webkit-keyframes cw-lv-k1 { 0% { -webkit-transform: translate(0%, 0%) scale(1.00, 1.00); } 17% { -webkit-transform: translate(-7%, -61%) scale(1.07, 0.95); } 37% { -webkit-transform: translate(9%, -134%) scale(1.14, 0.88); } 50% { -webkit-transform: translate(0%, -217%) scale(0.95, 1.10); } 63% { -webkit-transform: translate(-9%, -143%) scale(1.05, 0.96); } 83% { -webkit-transform: translate(6%, -56%) scale(1.00, 1.00); } 100% { -webkit-transform: translate(0%, 0%) scale(1.00, 1.00); } }
+@keyframes cw-lv-k1 { 0% { transform: translate(0%, 0%) scale(1.00, 1.00); } 17% { transform: translate(-7%, -61%) scale(1.07, 0.95); } 37% { transform: translate(9%, -134%) scale(1.14, 0.88); } 50% { transform: translate(0%, -217%) scale(0.95, 1.10); } 63% { transform: translate(-9%, -143%) scale(1.05, 0.96); } 83% { transform: translate(6%, -56%) scale(1.00, 1.00); } 100% { transform: translate(0%, 0%) scale(1.00, 1.00); } }
+@-webkit-keyframes cw-lv-k2 { 0% { -webkit-transform: translate(0%, 0%) scale(1.00, 1.00); } 22% { -webkit-transform: translate(8%, -89%) scale(1.14, 0.88); } 41% { -webkit-transform: translate(-10%, -197%) scale(0.95, 1.10); } 54% { -webkit-transform: translate(0%, -318%) scale(1.05, 0.96); } 68% { -webkit-transform: translate(7%, -210%) scale(1.00, 1.00); } 88% { -webkit-transform: translate(-6%, -83%) scale(1.00, 1.00); } 100% { -webkit-transform: translate(0%, 0%) scale(1.00, 1.00); } }
+@keyframes cw-lv-k2 { 0% { transform: translate(0%, 0%) scale(1.00, 1.00); } 22% { transform: translate(8%, -89%) scale(1.14, 0.88); } 41% { transform: translate(-10%, -197%) scale(0.95, 1.10); } 54% { transform: translate(0%, -318%) scale(1.05, 0.96); } 68% { transform: translate(7%, -210%) scale(1.00, 1.00); } 88% { transform: translate(-6%, -83%) scale(1.00, 1.00); } 100% { transform: translate(0%, 0%) scale(1.00, 1.00); } }
+@-webkit-keyframes cw-lv-k3 { 0% { -webkit-transform: translate(0%, 0%) scale(1.00, 1.00); } 14% { -webkit-transform: translate(12%, -104%) scale(0.95, 1.10); } 33% { -webkit-transform: translate(6%, -230%) scale(1.05, 0.96); } 47% { -webkit-transform: translate(14%, -371%) scale(1.00, 1.00); } 60% { -webkit-transform: translate(4%, -245%) scale(1.00, 1.00); } 79% { -webkit-transform: translate(10%, -97%) scale(0.94, 1.12); } 100% { -webkit-transform: translate(0%, 0%) scale(1.00, 1.00); } }
+@keyframes cw-lv-k3 { 0% { transform: translate(0%, 0%) scale(1.00, 1.00); } 14% { transform: translate(12%, -104%) scale(0.95, 1.10); } 33% { transform: translate(6%, -230%) scale(1.05, 0.96); } 47% { transform: translate(14%, -371%) scale(1.00, 1.00); } 60% { transform: translate(4%, -245%) scale(1.00, 1.00); } 79% { transform: translate(10%, -97%) scale(0.94, 1.12); } 100% { transform: translate(0%, 0%) scale(1.00, 1.00); } }
+@-webkit-keyframes cw-lv-k4 { 0% { -webkit-transform: translate(0%, 0%) scale(1.00, 1.00); } 19% { -webkit-transform: translate(-6%, -73%) scale(1.05, 0.96); } 39% { -webkit-transform: translate(-12%, -161%) scale(1.00, 1.00); } 52% { -webkit-transform: translate(-4%, -260%) scale(1.00, 1.00); } 66% { -webkit-transform: translate(-10%, -172%) scale(0.94, 1.12); } 86% { -webkit-transform: translate(-5%, -68%) scale(1.07, 0.95); } 100% { -webkit-transform: translate(0%, 0%) scale(1.00, 1.00); } }
+@keyframes cw-lv-k4 { 0% { transform: translate(0%, 0%) scale(1.00, 1.00); } 19% { transform: translate(-6%, -73%) scale(1.05, 0.96); } 39% { transform: translate(-12%, -161%) scale(1.00, 1.00); } 52% { transform: translate(-4%, -260%) scale(1.00, 1.00); } 66% { transform: translate(-10%, -172%) scale(0.94, 1.12); } 86% { transform: translate(-5%, -68%) scale(1.07, 0.95); } 100% { transform: translate(0%, 0%) scale(1.00, 1.00); } }
+@-webkit-keyframes cw-lv-k5 { 0% { -webkit-transform: translate(0%, 0%) scale(1.00, 1.00); } 25% { -webkit-transform: translate(10%, -116%) scale(1.00, 1.00); } 44% { -webkit-transform: translate(-8%, -256%) scale(1.00, 1.00); } 57% { -webkit-transform: translate(8%, -413%) scale(0.94, 1.12); } 70% { -webkit-transform: translate(-6%, -273%) scale(1.07, 0.95); } 90% { -webkit-transform: translate(6%, -107%) scale(1.14, 0.88); } 100% { -webkit-transform: translate(0%, 0%) scale(1.00, 1.00); } }
+@keyframes cw-lv-k5 { 0% { transform: translate(0%, 0%) scale(1.00, 1.00); } 25% { transform: translate(10%, -116%) scale(1.00, 1.00); } 44% { transform: translate(-8%, -256%) scale(1.00, 1.00); } 57% { transform: translate(8%, -413%) scale(0.94, 1.12); } 70% { transform: translate(-6%, -273%) scale(1.07, 0.95); } 90% { transform: translate(6%, -107%) scale(1.14, 0.88); } 100% { transform: translate(0%, 0%) scale(1.00, 1.00); } }
+@-webkit-keyframes cw-lv-glow { from { opacity: 0.55; } to { opacity: 1; } }
+@keyframes cw-lv-glow { from { opacity: 0.55; } to { opacity: 1; } }
+@-webkit-keyframes cw-lv-pool { from { -webkit-transform: scale(1, 0.92); } to { -webkit-transform: scale(1.06, 1.08); } }
+@keyframes cw-lv-pool { from { transform: scale(1, 0.92); } to { transform: scale(1.06, 1.08); } }

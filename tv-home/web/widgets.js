@@ -511,6 +511,41 @@
     add(root, E("div", "cw-grow cw-col", "justify-content:center", [w, s]));
     live(root, 15000, function () { w.textContent = timeWords(now()); s.textContent = DAYS[now().getDay()] + " " + partOfDay(now()); });
   };
+  // Lava lamp: a decorative glass lamp with slow wax blobs, all in the design's own colour (the widget accent, else
+  // look.accent): the blobs are lighter and deeper tints of it, the glass is look.panel with the look's rim. One lamp
+  // fills a tall box; a wide box gets up to three, each a little out of step. The page's stylesheet does all the moving
+  // (widgets.css, .cw-lv): transform and opacity only, 24 s a cycle, so this code never runs again after the first draw.
+  // Nothing to set up, nothing asked. Gooey SVG-filter lamps (Saganaki22/LofiLamp, Apache-2.0; evstarkman/lava-lamp, MIT)
+  // were left out on purpose, a filter costs too much on a stick; no code was copied.
+  function lvMix(rgb, to, f) { return [rgb[0] + (to[0] - rgb[0]) * f, rgb[1] + (to[1] - rgb[1]) * f, rgb[2] + (to[2] - rgb[2]) * f]; }
+  R.lavalamp = function (root, o, b, env) {
+    var look = env.look || {}, st = o.style || {};
+    var c1 = rgbOf(st.accent) || rgbOf(look.accent) || [255, 106, 61], c2 = lvMix(c1, [255, 255, 255], 0.38), c3 = lvMix(c1, [255, 255, 255], 0.7), c0 = lvMix(c1, [0, 0, 0], 0.5);
+    var glass = rgbOf(look.panel) || [24, 22, 28], rim = look.rim || "rgba(255, 255, 255, 0.22)";
+    var pad = root.classList.contains("cw-bare") ? 0 : 48, aw = b.w - pad, ah = b.h - pad;
+    var W = Math.max(40, Math.min(aw / 1.26, ah / 2.7, 380)), n = clamp(Math.floor(aw / (W * 1.4)), 1, 3);   // a lamp and its side margins (0.12 each) must fit across
+    var capH = W * 0.14, tubeH = W * 2.05, baseH = W * 0.5, tot = capH + tubeH + baseH - W * 0.04;
+    var lamps = [];
+    for (var k = 0; k < n; k++) {
+      var step = k * 7.3, blobs = [];
+      for (var i = 1; i <= 5; i++) {
+        var base = i % 2 ? c1 : c2, delay = "-" + ((i * 4.9 + step) % 24).toFixed(1) + "s";
+        var fill = "radial-gradient(circle closest-side at 50% 46%, " + rgba(i % 2 ? c2 : c3, 1) + " 0%, " + rgba(base, 1) + " 36%, " + rgba(base, 0.96) + " 66%, " + rgba(base, 0) + " 100%)";
+        blobs.push(E("i", "cw-lv-b cw-lv-" + i, "background:" + fill + ";-webkit-animation-delay:" + delay + ";animation-delay:" + delay));
+      }
+      var pd = "-" + (k * 3.1).toFixed(1) + "s";
+      var pool = E("i", "cw-lv-pool", "background:radial-gradient(ellipse 50% 62% at 50% 62%, " + rgba(c2, 1) + " 0%, " + rgba(c1, 1) + " 40%, " + rgba(c1, 0.95) + " 72%, " + rgba(c1, 0) + " 100%);-webkit-animation-delay:" + pd + ";animation-delay:" + pd);
+      var tube = E("div", "cw-lv-tube", "top:" + px(capH - 2) + ";height:" + px(tubeH) + ";border-radius:" + px(W * 0.46) + ";border:2px solid " + rim +
+        ";background:linear-gradient(180deg, " + rgba(c1, 0.05) + ", " + rgba(c1, 0.3) + "), " + rgba(glass, 0.55), [pool].concat(blobs, [E("i", "cw-lv-sheen")]));
+      var metal = "linear-gradient(90deg, " + shade(c0, 0.7) + ", " + shade(lvMix(c0, [255, 255, 255], 0.28), 1) + " 45%, " + shade(c0, 0.62) + ")";
+      lamps.push(E("div", "cw-lv", "width:" + px(W) + ";height:" + px(tot) + ";margin:0 " + px(W * 0.12), [
+        E("div", "cw-lv-glow", "background:radial-gradient(ellipse closest-side at 50% 50%, " + rgba(c1, 0.6) + " 0%, " + rgba(c1, 0) + " 100%)"),
+        E("div", "cw-lv-cap", "width:" + px(W * 0.5) + ";height:" + px(capH) + ";margin-left:" + px(-W * 0.25) + ";background:linear-gradient(180deg, rgba(255, 255, 255, 0.22), rgba(255, 255, 255, 0) 40%), " + metal),
+        tube,
+        E("div", "cw-lv-base", "top:" + px(capH + tubeH - W * 0.06) + ";width:" + px(W * 0.84) + ";height:" + px(baseH) + ";margin-left:" + px(-W * 0.42) + ";background:" + metal)]));
+    }
+    add(root, E("div", "cw-lv-row", "", lamps));
+  };
   function arc(f) {
     f = clamp(f, 0, 1);
     var x = 10 + 280 * f, y = 110 - 4 * 75 * f * (1 - f) * 1.33;
