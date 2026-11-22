@@ -6,14 +6,15 @@
 // Made for a Fire TV stick (the rain v3 lesson: the stick's limit is the total composited layer AREA). A koi is ONE element with its
 // picture drawn once (a 160 x 64 canvas, seen from above: shadow, tail, fins, a tapered body with its pattern); its swim is ONE CSS
 // animation of transform (translate + a slow turn of the heading) on one of four paths, so the fish never wiggles its tail (that would be a
-// second layer per fish). Nothing drawn per frame, no filter, no blend mode. 2 / 4 / 7 koi of 7-11 vw: about 1 / 2 / 4 % of a screen.
+// second layer per fish). Nothing drawn per frame, no filter, no blend mode. 2 / 4 / 7 koi of 7-11 vw (koi_size medium; small 4-6, large 10-14): about 1 / 2 / 4 % of a screen (large: ~2x).
 // Under the cards. Nothing moves while the home is covered, when the TV asks for less motion, in the Lighter home, the old engine or the
 // Loop look.
 (function (root) {
   "use strict";
-  var doc = root.document, host = null, style = null, want = "off", where = "pond", off = false, paused = false;
+  var doc = root.document, host = null, style = null, want = "off", where = "pond", size = "medium", off = false, paused = false;
   var COUNT = { few: 2, some: 4, many: 7 };
   var BAND = { pond: [50, 90], all: [12, 90] };   // % from the top
+  var SIZE = { small: [4, 6], medium: [7, 11], large: [10, 14] };   // vw long: small for a distant lake, large for a close pond
   var KINDS = ["kohaku", "ogon", "showa"];
   var WAVE = [[5, 6], [-4, 7], [6, -5], [-6, -4]];   // four paths: up / down drift (vh) at 1/4 and 3/4 of the crossing
   // ?fxloop=1 (showcase videos only): 8 s cycles over a 30 vw stretch inside the screen, fading in and out, so an 8 s clip loops
@@ -78,7 +79,7 @@
     var pics = KINDS.map(koi), band = BAND[where];
     host = doc.createElement("div"); host.className = "fx-koi" + (paused ? " fx-paused" : ""); host.setAttribute("aria-hidden", "true");
     for (var k = 0; k < n; k++) {
-      var dir = k % 2 ? -1 : 1, len = rnd(7, 11), d = LOOP ? 8 : rnd(45, 75), at = LOOP ? -(k * 8 / n) : -rnd(0, d);
+      var dir = k % 2 ? -1 : 1, len = rnd(SIZE[size][0], SIZE[size][1]), d = LOOP ? 8 : rnd(45, 75), at = LOOP ? -(k * 8 / n) : -rnd(0, d);
       // live: from just off one side; LOOP: somewhere inside the screen
       var x0 = LOOP ? rnd(10, 60) + (dir > 0 ? 0 : 30) : (dir > 0 ? -len - 8 : 100 + 8);
       var el = doc.createElement("i");
@@ -92,16 +93,16 @@
   }
 
   root.AmbientKoi = {
-    // amount: off | few | some | many; where: pond | all; disabled: Lighter / old engine / Loop
-    set: function (amount, place, disabled) {
-      var a = COUNT[amount] ? amount : "off", w = BAND[place] ? place : "pond", d = !!disabled;
-      if (a === want && w === where && d === off && (host || a === "off" || d)) return;
-      want = a; where = w; off = d; build();
+    // amount: off | few | some | many; where: pond | all; big: small | medium | large; disabled: Lighter / old engine / Loop
+    set: function (amount, place, big, disabled) {
+      var a = COUNT[amount] ? amount : "off", w = BAND[place] ? place : "pond", z = SIZE[big] ? big : "medium", d = !!disabled;
+      if (a === want && w === where && z === size && d === off && (host || a === "off" || d)) return;
+      want = a; where = w; size = z; off = d; build();
     },
     pause: function () { paused = true; if (host) host.classList.add("fx-paused"); },
     resume: function () { paused = false; if (host) host.classList.remove("fx-paused"); },
     on: function () { return !!host; },
-    COUNT: COUNT, BAND: BAND, KINDS: KINDS, WAVE: WAVE
+    COUNT: COUNT, BAND: BAND, SIZE: SIZE, KINDS: KINDS, WAVE: WAVE
   };
   try { root.matchMedia("(prefers-reduced-motion: reduce)").addListener(function () { build(); }); } catch (e) {}
 })(this);

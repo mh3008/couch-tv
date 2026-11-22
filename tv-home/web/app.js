@@ -2303,7 +2303,7 @@
   // the design's koi gliding across the water (fx-koi.js), in the pond or all over: never in the Lighter home, the old engine or the Loop look
   function koiSync() {
     if (!window.AmbientKoi) return;
-    window.AmbientKoi.set(HOME.koi || "off", HOME.koi_where || "pond", LIGHTER || OLD_ENGINE || LOOP);
+    window.AmbientKoi.set(HOME.koi || "off", HOME.koi_where || "pond", HOME.koi_size || "medium", LIGHTER || OLD_ENGINE || LOOP);
   }
 
   // In the Loop look the weather paints the accent and picks the clip's time of day instead (once a

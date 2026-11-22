@@ -32,7 +32,7 @@
 
   // the look settings a design may carry (design.home); Home settings on the TV still win
   var HOME_KEYS = ["scenes", "scene_seconds", "glass", "glass_icons", "glass_amount", "clock_style", "ambient_weather",
-    "ambient_sun_grade", "video_url", "dock", "moving_tiles", "lighter", "keep_watching", "now_playing", "dock_size", "clock", "koi", "koi_where"];
+    "ambient_sun_grade", "video_url", "dock", "moving_tiles", "lighter", "keep_watching", "now_playing", "dock_size", "clock", "koi", "koi_where", "koi_size"];
   var FONTS = {
     inter: '"Inter", sans-serif',
     antonio: '"Antonio", "Arial Narrow", sans-serif',
@@ -563,7 +563,7 @@
     return out;
   }
   var HOME_PICK = { glass: ["on", "lite", "off"], clock_style: ["frosted", "liquid"], dock: ["classic", "mac"], clock: ["12h", "24h"],
-    koi: ["off", "few", "some", "many"], koi_where: ["pond", "all"] };   // fx-koi.js: koi gliding across the water
+    koi: ["off", "few", "some", "many"], koi_where: ["pond", "all"], koi_size: ["small", "medium", "large"] };   // fx-koi.js: koi gliding across the water
   var HOME_BOOL = ["glass_icons", "ambient_weather", "ambient_sun_grade", "moving_tiles", "lighter", "keep_watching", "now_playing"];
   function sanitize(raw) {
     NOTES = [];

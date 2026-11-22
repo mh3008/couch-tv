@@ -48,14 +48,14 @@ for (const [amount, n] of [["few", 2], ["some", 4], ["many", 7]]) {
   check(colours.length && colours.every(okc), amount + ": every colour a valid rgba (" + colours.filter((c) => !okc(c)).slice(0, 3).join(" ") + ")");
   check(!/var\(/.test(css) && !/filter|blend/.test(css), amount + ": no CSS variables, no filter, no blend mode");
 }
-{ const { K, body } = load(false); K.set("many", "all", false);
+{ const { K, body } = load(false); K.set("many", "all", "medium", false);
   const ys = kids(host(body)).map((t) => num(t.style.cssText, "top"));
   check(ys.every((y) => y >= 12 && y <= 82), "all: anywhere from 12 % down"); }
-{ const { K, body } = load(false); K.set("some", "sky", false); check(kids(host(body)).every((t) => num(t.style.cssText, "top") >= 50), "an unknown place: the pond"); }
-{ const { K, body } = load(false); K.set("many", "pond", false);
+{ const { K, body } = load(false); K.set("some", "sky", "medium", false); check(kids(host(body)).every((t) => num(t.style.cssText, "top") >= 50), "an unknown place: the pond"); }
+{ const { K, body } = load(false); K.set("many", "pond", "medium", false);
   const pics = new Set(kids(host(body)).map((t) => /url\(([^)]*)\)/.exec(t.style.cssText)[1]));
   check(pics.size === 3 && K.KINDS.join() === "kohaku,ogon,showa", "three varieties: kohaku, ogon, showa"); }
-{ const { K, head } = load(false); K.set("some", "pond", false);
+{ const { K, head } = load(false); K.set("some", "pond", "medium", false);
   const css = allCss(head), r = /@keyframes fx-koi0r\{([^@]*)\}/.exec(css)[1], l = /@keyframes fx-koi0l\{([^@]*)\}/.exec(css)[1];
   const pts = (kf) => [...kf.matchAll(/translate3d\((-?[\d.]+)vw,(-?[\d.]+)vh,0\) rotate\((-?[\d.]+)deg\)/g)].map((m) => [+m[1], +m[2], +m[3]]);
   const R = pts(r), L = pts(l);
@@ -67,31 +67,36 @@ for (const [amount, n] of [["few", 2], ["some", 4], ["many", 7]]) {
   check(!/(left|top|width|height|margin|background|opacity)\s*:/.test(all.replace(/transform:[^;}]*/g, "")), "live: the keyframes move transform only");
   check(/\.fx-koi i\{[^}]*opacity:\.85;/.test(css), "a koi is 85 % opaque: seen through the water");
   check(/linear/.test(css) && /fx-koi\.fx-paused i\{[^}]*paused/.test(css) && /\.lighter \.fx-koi,\.old-engine \.fx-koi/.test(css), "an even glide, pausable, off in the Lighter home / old engine"); }
-{ const { K, body } = load(false); K.set("many", "pond", false);
+{ const { K, body } = load(false); K.set("many", "pond", "medium", false);
   check(kids(host(body)).every((t) => { const d = num(t.style.cssText, "-webkit-animation-duration"); return d >= 45 && d <= 75; }), "live: 45-75 s a crossing (a slow glide)"); }
-{ const { K, body, head } = load(false, "?fxloop=1"); K.set("many", "pond", false);
+{ const { K, body, head } = load(false, "?fxloop=1"); K.set("many", "pond", "medium", false);
   const f = kids(host(body)), css = allCss(head);
   check(f.every((t) => num(t.style.cssText, "-webkit-animation-duration") === 8), "?fxloop=1: every koi on an 8 s cycle");
   check(/100%\{opacity:0;transform:translate3d\(30vw,0vh,0\)/.test(css) && /12%\{opacity:\.85\}/.test(css), "?fxloop=1: a 30 vw stretch, fading in and out");
   check(f.every((t) => { const x = num(t.style.cssText, "left"); return x >= 10 && x <= 90; }), "?fxloop=1: they start inside the screen"); }
-{ const { K, body } = load(false); K.set("off", "pond", false); check(!host(body), "off: nothing on the page"); }
-{ const { K, body } = load(false); K.set("school", "pond", false); check(!host(body), "an unknown amount: nothing"); }
-{ const { K, body } = load(true); K.set("many", "pond", false); check(!host(body), "the TV asks for less motion: nothing"); }
-{ const { K, body } = load(false); K.set("many", "pond", true); check(!host(body), "Lighter home / old engine / Loop look: nothing"); }
-{ const { K, body } = load(false); K.set("some", "pond", false);
+for (const [z, lo, hi] of [["small", 4, 6], ["large", 10, 14], ["huge", 7, 11]]) {   // koi_size: small for a distant lake, large for a close pond
+  const { K, body } = load(false); K.set("many", "pond", z, false);
+  check(kids(host(body)).every((t) => { const w = num(t.style.cssText, "width"); return w >= lo && w <= hi; }), "koi_size " + z + ": " + lo + "-" + hi + " vw" + (z === "huge" ? " (unknown: medium)" : ""));
+}
+{ const { K, body } = load(false); K.set("some", "pond", "medium", false); const first = host(body); K.set("some", "pond", "large", false); check(host(body) !== first, "a new size: rebuilt"); }
+{ const { K, body } = load(false); K.set("off", "pond", "medium", false); check(!host(body), "off: nothing on the page"); }
+{ const { K, body } = load(false); K.set("school", "pond", "medium", false); check(!host(body), "an unknown amount: nothing"); }
+{ const { K, body } = load(true); K.set("many", "pond", "medium", false); check(!host(body), "the TV asks for less motion: nothing"); }
+{ const { K, body } = load(false); K.set("many", "pond", "medium", true); check(!host(body), "Lighter home / old engine / Loop look: nothing"); }
+{ const { K, body } = load(false); K.set("some", "pond", "medium", false);
   K.pause(); check(host(body).className.indexOf("fx-paused") >= 0, "pause");
   K.resume(); check(host(body).className.indexOf("fx-paused") < 0, "resume");
-  const first = host(body); K.set("some", "pond", false); check(host(body) === first, "the same setting again: not rebuilt");
-  K.set("some", "all", false); check(host(body) !== first && host(body), "another place: rebuilt");
-  K.set("off", "all", false); check(!host(body), "back to off: the layer goes"); }
-{ const { K, body } = load(false); K.pause(); K.set("few", "pond", false); check(host(body).className.indexOf("fx-paused") >= 0, "set while covered: starts paused"); }
+  const first = host(body); K.set("some", "pond", "medium", false); check(host(body) === first, "the same setting again: not rebuilt");
+  K.set("some", "all", "medium", false); check(host(body) !== first && host(body), "another place: rebuilt");
+  K.set("off", "all", "medium", false); check(!host(body), "back to off: the layer goes"); }
+{ const { K, body } = load(false); K.pause(); K.set("few", "pond", "medium", false); check(host(body).className.indexOf("fx-paused") >= 0, "set while covered: starts paused"); }
 {
   const src = fs.readFileSync(path.join(__dirname, "..", "tv-home/web/design.js"), "utf8");
-  check(/HOME_KEYS = \[[^\]]*"koi", "koi_where"\]/.test(src), "design.js: koi, koi_where are design home keys");
-  check(/koi: \["off", "few", "some", "many"\], koi_where: \["pond", "all"\]/.test(src), "design.js: only the listed values");
+  check(/HOME_KEYS = \[[^\]]*"koi", "koi_where", "koi_size"\]/.test(src), "design.js: koi, koi_where are design home keys");
+  check(/koi: \["off", "few", "some", "many"\], koi_where: \["pond", "all"\], koi_size: \["small", "medium", "large"\]/.test(src), "design.js: only the listed values");
   check(/out\.push\(\["Koi"/.test(src) && /The koi were switched off: too slow/.test(src), "design.js: counted in the speed budget, dropped on a heavy design");
   const app = fs.readFileSync(path.join(__dirname, "..", "tv-home/web/app.js"), "utf8");
-  check(/AmbientKoi\.set\(HOME\.koi \|\| "off", HOME\.koi_where \|\| "pond", LIGHTER \|\| OLD_ENGINE \|\| LOOP\)/.test(app), "app.js: off in the Lighter home, the old engine and the Loop look");
+  check(/AmbientKoi\.set\(HOME\.koi \|\| "off", HOME\.koi_where \|\| "pond", HOME\.koi_size \|\| "medium", LIGHTER \|\| OLD_ENGINE \|\| LOOP\)/.test(app), "app.js: off in the Lighter home, the old engine and the Loop look");
   check(/updateAmbientWeather\(\);\s*koiSync\(\);/.test(app), "app.js: synced with the weather effects' settings");
   check((app.match(/AmbientKoi\.pause\(\)/g) || []).length >= 2 && (app.match(/AmbientKoi\.resume\(\)/g) || []).length >= 3, "app.js: paused while covered, resumed after");
   check(/<script src="fx-koi\.js"><\/script>/.test(fs.readFileSync(path.join(__dirname, "..", "tv-home/web/index.html"), "utf8")), "index.html loads fx-koi.js");
@@ -103,9 +108,9 @@ for (const [amount, n] of [["few", 2], ["some", 4], ["many", 7]]) {
   sb.window = sb; sb.addEventListener = noop;
   vm.createContext(sb); vm.runInContext(fs.readFileSync(path.join(__dirname, "..", "tv-home/web/design.js"), "utf8"), sb);
   const plain = (v) => JSON.parse(JSON.stringify(v)), D = sb.CouchDesign;
-  const out = plain(D.sanitize({ home: { koi: "many", koi_where: "all" } }));
-  check(out.home && out.home.koi === "many" && out.home.koi_where === "all", "sanitize keeps koi + koi_where");
-  const bad = plain(D.sanitize({ home: { koi: "shoal", koi_where: "sky" } }));
-  check(!(bad.home && (bad.home.koi || bad.home.koi_where)), "sanitize drops a bad amount and a bad place");
+  const out = plain(D.sanitize({ home: { koi: "many", koi_where: "all", koi_size: "small" } }));
+  check(out.home && out.home.koi === "many" && out.home.koi_where === "all" && out.home.koi_size === "small", "sanitize keeps koi + koi_where + koi_size");
+  const bad = plain(D.sanitize({ home: { koi: "shoal", koi_where: "sky", koi_size: "huge" } }));
+  check(!(bad.home && (bad.home.koi || bad.home.koi_where || bad.home.koi_size)), "sanitize drops a bad amount, place and size");
 }
 console.log("All " + ok + " koi tests passed.");
