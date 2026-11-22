@@ -60,6 +60,11 @@ for (const [amount, n, top, budget] of [["low", 2, 10, 0.25], ["some", 3, 14, 0.
   const kfAll = (css.match(/@keyframes[^@]*/g) || []).join("");
   check(!/(left|top|width|height|margin|background|opacity)\s*:/.test(kfAll.replace(/transform:[^;}]*/g, "")), "the keyframes move transform only");
   check(/linear/.test(css) && /fx-waves\.fx-paused i\{[^}]*paused/.test(css) && /\.lighter \.fx-waves,\.old-engine \.fx-waves/.test(css), "linear drift, pausable, off in the Lighter home / old engine"); }
+for (const amount of ["low", "some", "high"]) {   // every colour the canvas gets is a real rgba (a browser throws on NaN; the fake canvas would not)
+  const { W, stops, strokes } = load(false); W.set(amount, "#2a7f9e", false);
+  const okc = (c) => { const m = /^rgba\((\d{1,3}),(\d{1,3}),(\d{1,3}),([\d.]+)\)$/.exec(c); return !!m && [1, 2, 3].every((i) => +m[i] <= 255) && +m[4] >= 0 && +m[4] <= 1; };
+  check(stops.length && stops.every(okc) && strokes.every(okc), amount + ": every gradient stop and crest is a valid rgba (" + stops.concat(strokes).filter((c) => !okc(c)).join(" ") + ")");
+}
 { const { W, strokes } = load(false); W.set("high", "", false);
   check(strokes.length === 1, "only the front strip has a crest line"); }
 for (const [col, rgb] of [["#3366ff", "51,102,255"], ["", "34,120,150"], ["sea", "34,120,150"]]) {

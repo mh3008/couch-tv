@@ -30,7 +30,7 @@
   function mix(rgb, to, t) { return rgb.map(function (v, i) { return Math.round(v + (to[i] - v) * t); }); }
   // one wave period: a smooth crest (two half sines, a long gentle one and a shorter one, so the strip doesn't look machine-made),
   // filled with the water colour fading down, and a pale crest line along the top when `crest`
-  function wave(rgb, a, crest, k) {
+  function wave(rgb, a, crest, k) {   // a: the strip's alpha, a NUMBER (a "0.50" string made rgba(...,NaN) and a page error, 22 Nov)
     var w = 256, h = 96, c = doc.createElement("canvas"); c.width = w; c.height = h;
     var g = c.getContext("2d"), y = function (x) { var t = x / w * Math.PI * 2; return 26 + 14 * Math.sin(t + k) + 5 * Math.sin(2 * t + 2 * k + 1); };
     g.beginPath(); g.moveTo(0, h);
@@ -74,7 +74,7 @@
       // back to front: darker and more see-through at the back, lighter with a crest at the front
       var front = k === n - 1, rgb = k === 0 ? mix(base, [0, 0, 0], 0.3) : front ? mix(base, [255, 255, 255], 0.12) : base;
       var s = strips[k], d = LOOP ? 8 : s[1], el = doc.createElement("i");
-      el.style.cssText = "height:" + s[0] + "vh;background-image:url(" + wave(rgb, (0.5 + 0.18 * k).toFixed(2), front, k * 1.7) + ");" +
+      el.style.cssText = "height:" + s[0] + "vh;background-image:url(" + wave(rgb, +(0.5 + 0.18 * k).toFixed(2), front, k * 1.7) + ");" +
         "-webkit-animation-name:fx-wave" + k + ";animation-name:fx-wave" + k + ";-webkit-animation-duration:" + d + "s;animation-duration:" + d + "s;" +
         "-webkit-animation-delay:-" + (LOOP ? 0 : (d * k / n).toFixed(2)) + "s;animation-delay:-" + (LOOP ? 0 : (d * k / n).toFixed(2)) + "s";
       host.appendChild(el);
