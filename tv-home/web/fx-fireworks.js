@@ -51,6 +51,11 @@
   function kf(name, body) { return "@-webkit-keyframes " + name + "{" + body.replace(/transform:/g, "-webkit-transform:") + "}@keyframes " + name + "{" + body + "}"; }
   function px(v) { return (Math.round(v * 10) / 10) + "px"; }
   function tr(x, y, a, s) { return "transform:translate(" + px(x) + "," + px(y) + ") rotate(" + a + "deg) scaleX(" + s + ")"; }
+  // a spark's flight, one row per keyframe: [% of the cycle, how far out (1 = its full radius), tail length (scaleX), opacity]. The sparks
+  // shoot out fast and slow down smoothly (ease-out) while they sink (gravity grows with the square of the time) and glitter (the
+  // opacity flicker); many small steps instead of three long ones, so the speed never jumps at a keyframe.
+  var FLIGHT = [[10, 0, 0.4, 1], [13, 0.34, 0.7, 1], [17, 0.58, 1, 1], [22, 0.77, 1, 1], [27, 0.88, 0.9, 0.55], [31, 0.94, 0.8, 1],
+    [35, 0.97, 0.7, 0.5], [40, 0.99, 0.55, 0.85], [46, 1, 0.4, 0.45]];
   function css(sparks, pal) {
     if (!style) { style = doc.createElement("style"); doc.head.appendChild(style); }
     var out = ".fx-fireworks{position:fixed;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:0;overflow:hidden}" +
@@ -76,12 +81,12 @@
     // one keyframe set per spark: out along its own angle with a droop (gravity) and a tail that shortens; gone by 52 % of the cycle
     for (var k = 0; k < sparks; k++) {
       var a = k * 360 / sparks, rad = a * Math.PI / 180, r = RADII[k % RADII.length], x = r * Math.cos(rad), y = r * Math.sin(rad), A = a.toFixed(1);
-      out += kf("fx-fwk" + k, "0%,9%{opacity:0;" + tr(0, 0, A, 0.3) + "}10%{opacity:1;" + tr(0, 0, A, 0.4) + "}15%{opacity:1;" + tr(x * 0.6, y * 0.6 + DROOP * 0.03, A, 1) + "}" +
-        "26%{opacity:1;" + tr(x * 0.9, y * 0.9 + DROOP * 0.2, A, 0.9) + "}" +
-        // glitter: the sparks flicker as they sink
-        "30%{opacity:.55;" + tr(x * 0.94, y * 0.94 + DROOP * 0.32, A, 0.75) + "}33%{opacity:1;" + tr(x * 0.96, y * 0.96 + DROOP * 0.42, A, 0.7) + "}" +
-        "38%{opacity:.5;" + tr(x * 0.98, y * 0.98 + DROOP * 0.58, A, 0.55) + "}43%{opacity:.85;" + tr(x * 0.99, y * 0.99 + DROOP * 0.78, A, 0.4) + "}" +
-        "52%,100%{opacity:0;" + tr(x, y + DROOP, A, 0.25) + "}");
+      var body = "0%,9%{opacity:0;" + tr(0, 0, A, 0.3) + "}";
+      FLIGHT.forEach(function (f) {
+        var g = Math.pow((f[0] - 10) / 42, 2);
+        body += f[0] + "%{opacity:" + f[3] + ";" + tr(x * f[1], y * f[1] + DROOP * g, A, f[2]) + "}";
+      });
+      out += kf("fx-fwk" + k, body + "52%,100%{opacity:0;" + tr(x, y + DROOP, A, 0.25) + "}");
     }
     style.textContent = out;
   }
