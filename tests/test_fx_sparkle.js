@@ -27,7 +27,7 @@ const num = (css, k) => +(new RegExp("(?:^|;)" + k + ":(-?[\\d.]+)").exec(css) |
 const kids = (h) => h.childNodes.filter((n) => String(n.tagName).toLowerCase() === "i");
 const allCss = (head) => head.childNodes.map((s) => s.textContent).join("");
 
-for (const [amount, n] of [["few", 30], ["some", 60], ["many", 100]]) {
+for (const [amount, n] of [["few", 14], ["some", 22], ["many", 28]]) {
   const { S, body, head } = load(false);
   S.set(amount, "ground", false);
   const h = host(body), g = kids(h), css = allCss(head);

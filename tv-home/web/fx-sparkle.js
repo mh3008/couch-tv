@@ -5,13 +5,13 @@
 //
 // Made for a Fire TV stick (the rain v3 lesson: the stick's limit is the total composited layer AREA). A glint is ONE small element
 // (0.7-1.5 vw) with its star picture drawn once; the glint is ONE CSS animation of transform (scale + a small turn) + opacity, hidden for
-// 80 % of its own 3-7 s cycle. Nothing drawn per frame, no filter, no blend mode. 30 / 60 / 100 glints: under 2 % of a screen in
+// 80 % of its own 3-7 s cycle. Nothing drawn per frame, no filter, no blend mode. 14 / 22 / 28 glints (was 30 / 60 / 100, capped at ~30 animated layers 22 Nov): under 2 % of a screen in
 // all, ~12 % of them visible at a time. Under the cards. Nothing moves while the home is covered, when the TV asks for less motion, in
 // the Lighter home, the old engine or the Loop look.
 (function (root) {
   "use strict";
   var doc = root.document, host = null, style = null, want = "off", where = "ground", off = false, paused = false;
-  var COUNT = { few: 30, some: 60, many: 100 };
+  var COUNT = { few: 14, some: 22, many: 28 };   // at most 28 animated layers (Design Lessons 15b: the stick's cost is the number of animated layers)
   var BAND = { ground: [62, 96], all: [5, 96] };   // % from the top
   // ?fxloop=1 (showcase videos only): cycles of 4 or 8 s, spread through them, so an 8 s clip loops without a jump
   var LOOP = /[?&]fxloop=1(?:&|$)/.test((root.location && root.location.search) || "");
