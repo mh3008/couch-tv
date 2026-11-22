@@ -42,7 +42,7 @@ const sec = (v) => parseFloat(v);
 const sp = (el, n) => { const m = new RegExp("(?:^|;)" + n + ":([^;]*)").exec(el.style.cssText); return m ? m[1] : ""; };
 const W = 1920, H = 1080;
 
-for (const [amount, birds, pct] of [["few", 9, 5], ["flock", 16, 10], ["many", 27, 16]]) {
+for (const [amount, birds, pct] of [["few", 9, 3], ["flock", 16, 8], ["many", 27, 11]]) {
   const { F, body, head } = load(false);
   F.set(amount, "dark", false);
   const h = host(body);
