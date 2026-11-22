@@ -26,7 +26,7 @@
     var g = c.getContext("2d"), m = w / 2;
     for (var k = 0; k < 6; k++) {
       var s = 1 - k * 0.15, top = 0.06 * w * s, bot = 0.5 * w * s, v = g.createLinearGradient(0, 0, 0, h);
-      v.addColorStop(0, "rgba(" + rgb + ",0)"); v.addColorStop(0.07, "rgba(" + rgb + ",0.2)"); v.addColorStop(0.45, "rgba(" + rgb + ",0.12)"); v.addColorStop(1, "rgba(" + rgb + ",0)");
+      v.addColorStop(0, "rgba(" + rgb + ",0)"); v.addColorStop(0.06, "rgba(" + rgb + ",0.4)"); v.addColorStop(0.4, "rgba(" + rgb + ",0.26)"); v.addColorStop(0.75, "rgba(" + rgb + ",0.1)"); v.addColorStop(1, "rgba(" + rgb + ",0)");
       g.fillStyle = v; g.beginPath(); g.moveTo(m - top, 0); g.lineTo(m + top, 0); g.lineTo(m + bot, h); g.lineTo(m - bot, h); g.closePath(); g.fill();
     }
     return c.toDataURL("image/png");
@@ -66,7 +66,7 @@
     var n = COUNT[want];
     if (!n || off || calm() || !doc.body) return;
     var angles = fan(n, from), sun = FROM[from], rgb = TONE[tone];
-    css(angles, want === "many" ? 0.25 : 0.2, want === "few" ? 0.8 : 0.7);
+    css(angles, 0.35, want === "few" ? 1 : 0.9);
     var pic = beam(rgb);
     host = doc.createElement("div"); host.className = "fx-rays" + (paused ? " fx-paused" : ""); host.setAttribute("aria-hidden", "true");
     var gl = doc.createElement("b"), gs = 34, gd = LOOP ? 8 : 12;   // the glow at the sun: 34vw across, mostly above the top edge
