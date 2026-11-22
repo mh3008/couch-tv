@@ -68,13 +68,14 @@
     else if (k === "svg" && p) { p.className = "face tool input-ic"; p.innerHTML = n.getAttribute("data-svg"); }
     else if (k === "word" && p) { p.className = "face word"; p.textContent = n.getAttribute("data-name"); }
     else if (k === "name" && p) p.textContent = n.getAttribute("data-n");
+    else if (k === "sletter" && p) { var s = document.createElement("span"); s.className = "sicon none"; s.textContent = n.getAttribute("data-n") || ""; p.replaceChild(s, n); }
     else if (k === "kwretry" && window.kwArtRetry) window.kwArtRetry(n);   // a Keep watching picture is asked for again (#274)
   }, true);
   // No place set yet (no config.json weather, nothing picked in Home settings, Location): no weather and
   // no made up town. The weather tiles ask for a town instead (widgets.js noWx), never a sample place.
   var WX_NONE = { lat: null, lon: null, place: "", timezone: "auto" };
   var WXCFG = WX_NONE;
-  var QUICK_ALL = ["sleep", "picture", "look", "soundscape", "screen_off", "headphones", "input", "bluetooth", "network", "tvsettings", "screensaver", "extend"];
+  var QUICK_ALL = ["sleep", "picture", "look", "soundscape", "screen_off", "headphones", "input", "bluetooth", "network", "tvsettings", "screensaver", "extend", "reminder"];
   // The most personal photos this TV keeps (also MAX_PHOTOS in bridge/server.py and MainActivity.kt).
   var MAX_PHOTOS = 50;
   var ON_TV = false;   // served by the on-TV app (config "mode"), which can open the TV's own settings screens
@@ -350,6 +351,7 @@
     switch: '<svg viewBox="0 0 24 24"><rect x="5" y="4" width="6" height="16" rx="3"/><rect x="13" y="4" width="6" height="16" rx="3"/><circle cx="8" cy="8" r="1" class="fill"/><circle cx="16" cy="14" r="1" class="fill"/></svg>',
     hdmi: '<svg viewBox="0 0 24 24"><path d="M4 8h16v5l-3 4H7l-3-4z"/><path d="M8 8v3M11 8v3M13 8v3M16 8v3"/></svg>',
     screensaver: '<svg viewBox="0 0 24 24"><rect x="2.5" y="4" width="19" height="14" rx="2.5"/><path d="M15.2 7.3a3.4 3.4 0 1 0 2.1 5 3.9 3.9 0 0 1-2.1-5z"/></svg>',
+    reminder: '<svg viewBox="0 0 24 24"><path d="M6 16.5V11a6 6 0 0 1 12 0v5.5l1.5 2h-15z"/><path d="M10 20.5a2 2 0 0 0 4 0"/></svg>',
     headphones: '<svg viewBox="0 0 24 24"><path d="M3 14h3a2 2 0 0 1 2 2v3a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-7a9 9 0 0 1 18 0v7a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3"/></svg>',
     bluetooth: '<svg viewBox="0 0 24 24"><path d="M6.5 7.5l11 9-5.5 4.5v-18l5.5 4.5-11 9"/></svg>',
     network: '<svg viewBox="0 0 24 24"><path d="M2.5 9a14 14 0 0 1 19 0M5.7 12.5a9.5 9.5 0 0 1 12.6 0M8.9 16a4.8 4.8 0 0 1 6.2 0"/><circle cx="12" cy="19.3" r="1"/></svg>',
@@ -911,6 +913,9 @@
     var iov = $("idle-ambient-overlay");
     if (iov) iov.classList.toggle("quiet-hours", isQuietHours(SMART_IDLE.quiet_hours));
     fitDate();
+    mood(false);
+
+    if (window.Reminders) window.Reminders.tick();
     document.body.classList.toggle("night", h >= 21 || h < 6);
     if (NIGHT) { glassClock(hm); if (SUN_SYNC) applySunSync(); updateAmbientWeather(); }
     if (quickReady) renderQuick();
@@ -1648,22 +1653,50 @@
   function pauseVideo() { stopSoundscape(); if (window.AmbientWeather) window.AmbientWeather.pause(); widgetsStill(true); var v = $("bgvid"); if (v.getAttribute("src")) v.pause(); sceneVideos(false); if (LOOP) loopPause(); }
   document.addEventListener("visibilitychange", function () {
     if (document.hidden) { saveFocusNow(); pauseVideo(); }
-    else { setIdleAmbient(false); resetSmartIdle(); startVideo(); sceneVideos(true); if (window.AmbientWeather) window.AmbientWeather.resume(); widgetsStill(false); resetIdlePhoto(); }
+    else { setIdleAmbient(false); resetSmartIdle(); startVideo(); clipWake(); sceneVideos(true); mood(true); if (window.AmbientWeather) window.AmbientWeather.resume(); widgetsStill(false); resetIdlePhoto(); }
   });
 
   // A scene's own clip (home.my_scenes[].video): only the scene on screen plays, and only while the
   // home is showing. The photo under it stays until the clip really plays; a clip that fails just
-  // leaves the photo. Lighter home, the whole-home video (home.video_url), the OLED and Classic
-  // looks, the ambient clock, screen off and the system's reduced motion setting leave clips off.
+  // leaves the photo. The whole-home video (home.video_url), the OLED and Classic looks, the ambient
+  // clock, screen off and the system's reduced motion setting leave clips off. Lighter home does
+  // too, unless home.scene_clips_lighter is true (a small clip the TV decodes in hardware).
+  // A playing <video> makes the WebView hold KEEP_SCREEN_ON, which stops Android's own screensaver
+  // from ever starting. So clips pause on their current frame after the Home settings "Home screen
+  // idle after" time (Smart Idle, the quiet hours one during quiet hours) without a key press, and
+  // play on with the next key. Set to Off, they pause after 15 minutes so the screensaver still can.
+  var clipsIdle = false, clipIdleTimer = null;
+  function clipWake() {
+    clearTimeout(clipIdleTimer);
+    var was = clipsIdle;
+    clipsIdle = false;
+    var qh = SMART_IDLE.quiet_hours;
+    var mins = qh && qh.enabled && isQuietHours(qh) ? qh.idle_minutes : SMART_IDLE.home_idle_minutes;
+    if (!mins) mins = 15;
+    // home.scene_clips_idle false: the clips never pause and nothing starts the TV's screensaver
+    if (HOME.scene_clips_idle === false) mins = 0;
+    // Letting go of KEEP_SCREEN_ON counts as user activity, so Android's own countdown would only
+    // start now. Where the screensaver button can work, start the TV's screensaver right away.
+    if (mins > 0) clipIdleTimer = setTimeout(function () {
+      clipsIdle = true;
+      sceneVideos(false);
+      if (document.hidden || screenOffActive || idleAmbientActive || sndPlaying) return;
+      try { if (TV && TV.canStartScreensaver && TV.canStartScreensaver()) TV.startScreensaver(); } catch (e) {}
+    }, mins * 60000);
+    if (was) sceneVideos(true);
+  }
   function sceneVideos(on) {
     var calm = false;
     try { calm = !!(window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches); } catch (e) {}
-    on = on && NIGHT && !calm && !idleAmbientActive && !screenOffActive;
+    on = on && NIGHT && !calm && !idleAmbientActive && !screenOffActive && !clipsIdle;
+    var lighterOff = LIGHTER && HOME.scene_clips_lighter !== true;
+    var curEl = sceneEls[scene];
+    var curClip = !!(on && curEl && curEl.querySelector(".svid") && !lighterOff && !VIDEO_ON && !document.hidden);
     sceneEls.forEach(function (el, k) {
       var v = el.querySelector(".svid");
       if (!v) return;
       var s = SCENES[k];
-      if (on && k === scene && !LIGHTER && !VIDEO_ON && !document.hidden) {
+      if (on && k === scene && !lighterOff && !VIDEO_ON && !document.hidden) {
         if (!v.getAttribute("src")) {
           v.onplaying = function () { v.classList.add("playing"); };
           v.onerror = function () { v.classList.remove("playing"); };
@@ -1673,7 +1706,10 @@
         if (p && p.catch) p.catch(function () {});
       } else if (v.getAttribute("src")) {
         v.pause();
-        if (k !== scene || !NIGHT || calm) {   // off screen: let go of the decoder and the memory
+        // Off screen, a clip keeps its place (a boat sailing across a minute-long loop carries on
+        // where it was when its scene comes back), unless the scene now showing has a clip of its own
+        // and needs the decoder, or clips are off altogether: then it lets go of the decoder and memory.
+        if (!NIGHT || calm || !on || (k !== scene && curClip)) {
           v.classList.remove("playing");
           v.removeAttribute("src");
           try { v.load(); } catch (e) {}
@@ -1718,13 +1754,19 @@
       root.className = root.className.replace(/\b(scene|mine)-\w+/g, "").replace(/\s+/g, " ").trim() + cls;
       date.classList.remove("swap");
       fitDate();
+      placeMood();
     }, 600);
+    sceneEls[i].classList.remove("out");
     sceneEls[i].classList.add("on");
-    if (prev !== i) sceneEls[prev].classList.remove("on");
+    // .out keeps the old scene's depth zoom going while it fades, instead of snapping back
+    if (prev !== i) { sceneEls[prev].classList.add("out"); sceneEls[prev].classList.remove("on"); }
+    // home.scene_zoom: the built-in scenes push in slowly (app.css, .depth-zoom); off unless true
+    document.documentElement.classList.toggle("depth-zoom", HOME.scene_zoom === true);
+    document.documentElement.style.setProperty("--zoom-ms", (SCENE_MS + 4000) + "ms");
     // after the fade, give the other scenes' pictures back; the next one is readied just before its turn
     var lead = SCENE_MS > 10000 ? SCENE_MS - PRE_READY_MS : 2000;
     setTimeout(function () {
-      sceneEls.forEach(function (el, k) { if (k !== scene && k !== pendingScene && (lead > 2000 || k !== nextFrom(scene))) unreadyScene(k); });
+      sceneEls.forEach(function (el, k) { if (k !== scene) el.classList.remove("out"); if (k !== scene && k !== pendingScene && (lead > 2000 || k !== nextFrom(scene))) unreadyScene(k); });
       sceneVideos(true);   // the old scene's clip stops now it has faded out; this one's starts
     }, 2000);
     clearTimeout(preReadyTimer);
@@ -1763,6 +1805,154 @@
     if (hitLeft || (LOOP && near(leftBox))) d.style.left = (leftBox.right + 1.5 * rem) + "px";
     if (d.scrollWidth > d.clientWidth + 1) d.classList.add("tight");
     if (d.scrollWidth > d.clientWidth + 1) d.classList.add("tighter");
+  }
+
+  // ---------------- Night: a greeting and a short line under the clock ----------------
+  // A warm greeting for whoever is watching, picked at random for the time of day, and a short
+  // encouraging line. A new pair when the home comes back on screen, when someone else is picked,
+  // and every 10 minutes. It sits under the scene's clock and steps aside (the line first, then
+  // the greeting) when there is no room above Keep watching.
+  var GREET = {
+    morning: ["Good morning, {n}", "Rise and shine, {n}", "Morning, {n}. Coffee first?", "Hello, sunshine", "A fresh start, {n}"],
+    afternoon: ["Good afternoon, {n}", "Hey {n}, taking a break?", "Afternoon, {n}", "Nice to see you, {n}", "Time for a breather, {n}"],
+    evening: ["Good evening, {n}", "Evening, {n}. Time to unwind", "Cozy night in, {n}?", "Welcome home, {n}", "Kick back, {n}"],
+    night: ["Hello, night owl", "Still up, {n}?", "One more episode, {n}?", "Late show, {n}?", "Quiet hours, {n}"],
+    any: ["Welcome back, {n}", "Hey there, {n}", "Settle in, {n}", "Make yourself comfy, {n}"]
+  };
+  var QUOTES = [
+    "Small steps still move you forward.",
+    "Rest is part of the work.",
+    "You don't have to do it all today.",
+    "Be gentle with yourself. You're doing fine.",
+    "The best things take a little time.",
+    "Today counts, even the quiet parts.",
+    "Breathe in. Let it go. Begin again.",
+    "Little joys add up to a good life.",
+    "Good enough is often just right.",
+    "You've handled hard days before.",
+    "Make room for what makes you smile.",
+    "Slow mornings, kind words, good company.",
+    "Every day is a new page.",
+    "Progress, not pressure.",
+    "Good things grow in calm places.",
+    "Share a laugh. It helps more than you think.",
+    "Tomorrow is a fresh try.",
+    "Curiosity keeps the heart young.",
+    "Home is where you can just be.",
+    "Choose the kind thought.",
+    "Your pace is the right pace.",
+    "Celebrate the small wins.",
+    "A cozy night is time well spent.",
+    "Good company makes any night better.",
+    "Some days are for doing, some for resting."
+  ];
+  // Each person's own style (home.person_styles in config.json, { "<person id>": "gentle" | "electric" }):
+  // their own greetings and lines, and the look in app.css (html.who-gentle, html.who-electric).
+  var STYLE_WORDS = {
+    gentle: {
+      greet: {
+        morning: ["Good morning, sweet {n}", "Rise and shine, {n}", "Hello, sunshine {n}", "Morning, {n}. Tea and cuddles?", "A soft new day, {n}"],
+        afternoon: ["Hi there, lovely {n}", "Afternoon, {n}. Snack time?", "Hey {n}, you're doing great", "A cozy afternoon, {n}", "Hello, sweet pea"],
+        evening: ["Good evening, lovely {n}", "Blankets and snacks, {n}?", "Welcome home, sweet {n}", "Cozy time, {n}", "Hi {n}, time to unwind"],
+        night: ["Sweet dreams soon, {n}", "Still up, little owl?", "One more episode, {n}?", "Snuggle in, {n}", "Hello, sleepy {n}"],
+        any: ["Hi {n}, so happy you're here", "Hello, lovely {n}", "Make yourself comfy, {n}"]
+      },
+      quotes: [
+        "You're a little ray of sunshine.", "Be soft. Be kind. Be you.", "Little joys are big joys.",
+        "You are loved more than you know.", "Rest, cuddle, repeat.", "Bloom at your own pace.",
+        "Kindness looks good on you.", "Every day has a tiny bit of magic.", "You deserve the cozy blanket.",
+        "A warm drink and a good show: just right.", "Smile, you're doing beautifully.", "Gentle days make strong hearts.",
+        "Sprinkle a little joy today.", "You make this home brighter.", "Soft hearts are strong hearts."
+      ]
+    },
+    electric: {
+      greet: {
+        morning: ["Systems online, {n}", "The day is waiting, {n}", "Morning, {n}. Charge up", "Wake the storm, {n}", "New signal, {n}"],
+        afternoon: ["Still running hot, {n}", "Afternoon, {n}. Stay sharp", "The current is yours, {n}", "Keep the spark, {n}", "In the zone, {n}"],
+        evening: ["The night is calling, {n}", "Evening, {n}. Lights low", "Enter the night, {n}", "Shadows rising, {n}", "Plug in, {n}"],
+        night: ["The city sleeps. Not you, {n}", "Midnight mode, {n}", "Into the unknown, {n}?", "Hello, night runner", "After hours, {n}"],
+        any: ["Welcome back, {n}", "Signal found, {n}", "Access granted, {n}"]
+      },
+      quotes: [
+        "Every storm begins with a spark.", "The quiet ones carry the thunder.", "Some doors only open at night.",
+        "Charge up. Then light it up.", "Be the signal, not the noise.", "Stars only shine in the dark.",
+        "Stay curious. Stay electric.", "There's power in the pause.", "The unknown is where it gets good.",
+        "Run on your own current.", "Sharpen the edge, keep the calm.", "Every legend starts in the shadows.",
+        "Trust the static. Something is coming.", "Fortune favours the restless.", "Focus is a kind of lightning."
+      ]
+    }
+  };
+  function styleOf(id) {
+    var m = HOME && HOME.person_styles, v = m && typeof m === "object" ? m[id] : null;
+    return STYLE_WORDS[v] ? v : "";
+  }
+  function applyStyle() {
+    var st = styleOf(who), root = document.documentElement;
+    root.classList.toggle("who-gentle", st === "gentle");
+    root.classList.toggle("who-electric", st === "electric");
+    return st;
+  }
+  var moodAt = 0, moodWho = null, moodLast = { hi: "", q: "" };
+  function anyOf(list, not) {
+    var pool = list.filter(function (x) { return x !== not; });
+    return (pool.length ? pool : list)[Math.floor(Math.random() * (pool.length || list.length))];
+  }
+  // home.greeting: off unless true, and only while the home speaks English (the words are English)
+  function greetingOn() {
+    var loc = "";
+    try { loc = String(I18N.locale() || ""); } catch (e) {}
+    return HOME.greeting === true && /^en/i.test(loc || "en");
+  }
+  function mood(force) {
+    var el = $("mood");
+    if (!el) return;
+    applyStyle();
+    if (!NIGHT || !greetingOn()) { el.classList.remove("on"); return; }
+    var now = Date.now();
+    if (!force && moodWho === who && now - moodAt < 600000 && moodLast.hi) { placeMood(); return; }
+    moodAt = now; moodWho = who;
+    var words = STYLE_WORDS[applyStyle()] || { greet: GREET, quotes: QUOTES };
+    var h = new Date().getHours(), part = h >= 5 && h < 12 ? "morning" : h < 17 && h >= 12 ? "afternoon" : h >= 17 && h < 21 ? "evening" : "night";
+    var p = personById(who), name = p && p.name ? p.name : "";
+    var list = words.greet[part].concat(words.greet.any);
+    if (!name) list = list.filter(function (g) { return g.indexOf("{n}") < 0 || /, \{n\}$/.test(g); });
+    var hi = anyOf(list, moodLast.hi);
+    moodLast.hi = hi;
+    hi = name ? hi.replace("{n}", name) : hi.replace(/,? \{n\}\??$/, function (m) { return m.slice(-1) === "?" ? "?" : ""; }).replace("{n}", "");
+    var q = anyOf(words.quotes, moodLast.q);
+    moodLast.q = q;
+    el.classList.remove("on");
+    setTimeout(function () {
+      $("mood-hi").textContent = hi;
+      $("mood-q").textContent = q;
+      placeMood();
+    }, 450);
+  }
+  // Under the clock of the scene on screen, lined up with it (centre, left or right).
+  function placeMood() {
+    var el = $("mood"), sc = sceneEls[scene];
+    if (!el || !NIGHT || !sc) return;
+    if (!greetingOn()) { el.classList.remove("on"); return; }
+    var c = sc.querySelector(".gclock");
+    if (!c || !c.offsetHeight) { el.classList.remove("on"); return; }
+    var rem = innerWidth / 120, cs = getComputedStyle(c), fs = parseFloat(cs.fontSize) || 25 * rem;
+    var water = !!SCENES[scene].water;
+    // under the clock's digits (its box, or about 1.05 of the font size for a tall line height),
+    // then a clear gap
+    var top = c.offsetTop + Math.min(c.offsetHeight || fs, fs * 1.05) + 2 * rem;
+    var shelf = $("shelf-section"), limit = innerHeight - 14 * rem;
+    if (shelf && shelf.offsetHeight && getComputedStyle(shelf).display !== "none" && $("shelf").children.length) limit = shelf.getBoundingClientRect().top - 0.75 * rem;
+    el.classList.remove("left", "right", "noq");
+    var align = cs.textAlign;
+    if (align === "left" || align === "start") { el.classList.add("left"); el.style.left = c.getBoundingClientRect().left + 0.5 * rem + "px"; el.style.right = "auto"; }
+    else if (align === "right" || align === "end") { el.classList.add("right"); el.style.right = (innerWidth - c.getBoundingClientRect().right + 0.5 * rem) + "px"; el.style.left = "auto"; }
+    else { el.style.left = ""; el.style.right = ""; }
+    el.style.top = top + "px";
+    var full = el.offsetHeight || 7 * rem, hiOnly = $("mood-hi").offsetHeight || 3.5 * rem;
+    if (water || top + hiOnly > limit) { el.classList.remove("on"); return; }
+    if (top + full > limit) el.classList.add("noq");
+    el.classList.toggle("dark", !!(SCENES[scene].mine && SCENES[scene].dark));
+    el.classList.add("on");
   }
 
   // Sun-synchronized day/night calculation (astronomical solar altitude from lat, lon and time)
@@ -2550,6 +2740,7 @@
       if (q === "bluetooth" || q === "network") return nativeSettingsScreen() || (ON_TV && !OFFLINE);
       if (q === "tvsettings") return !!(TV && (TV.launch || TV.openSettings)) || !OFFLINE;
       if (q === "extend") return devOn();
+      if (q === "reminder") return !!window.Reminders;
       return false;
     });
   }
@@ -2608,6 +2799,9 @@
         el.innerHTML = ICONS[q] + "<span>" + esc(t(q)) + "</span>";
       } else if (q === "tvsettings") {
         el.innerHTML = ICONS.gear + "<span>" + esc(t("gear_tv")) + "</span>";
+      } else if (q === "reminder") {
+        el.innerHTML = ICONS.reminder + "<span>" + esc(t("quick_reminder")) + "</span>";
+        el.setAttribute("aria-label", t("quick_reminder"));
       }
     });
     var sv = $("q-screensaver");   // an icon only look (Night) still says what it is, to the eye and to a screen reader
@@ -2725,6 +2919,7 @@
   var lastSmartActivityAt = Date.now();
   function resetSmartIdle() {
     lastSmartActivityAt = Date.now();
+    clipWake();   // a changed idle time takes effect at once
   }
   function isQuietHours(qh) {
     if (!qh || !qh.enabled) return false;
@@ -2913,6 +3108,32 @@
     else if (q === "extend") devExtend();
     else if (q === "bluetooth" || q === "network") openSettingsScreen(q);
     else if (q === "tvsettings") openTvSettings();
+    else if (q === "reminder") openReminders();
+  }
+
+  // ---------------- reminders (reminders.js): said into the remote's mic, kept on this TV ----------------
+  var remPrev = "quick";
+  function openReminders() {
+    if (!window.Reminders) return;
+    remPrev = zone; zone = "remind"; clearFocus();
+    window.Reminders.open();
+  }
+  function remindersInit() {
+    if (!window.Reminders) return;
+    window.Reminders.init({
+      keep: keep, kept: kept, toast: toast,
+      who: function () { var p = personById(who); return p ? p.name : ""; },
+      clock24: function () { return CLOCK24; },
+      canListen: function () { try { return !!(TV && TV.canListen && TV.canListen()); } catch (e) { return false; } },
+      listen: function (prompt) { try { return !!(TV && TV.listen && TV.listen(prompt)); } catch (e) { return false; } },
+      // a due reminder pops up only over the plain home, never over Settings, a menu or kids mode
+      canAlert: function () {
+        return NIGHT && !document.hidden && !lift && !expanded && !kidsOn() && !idleAmbientActive && !screenOffActive &&
+          ["grid", "shelf", "quick", "people"].indexOf(zone) >= 0;
+      },
+      takeKeys: function () { remPrev = zone; zone = "remind"; clearFocus(); },
+      done: function () { zone = ["grid", "shelf", "quick", "people"].indexOf(remPrev) >= 0 ? remPrev : "grid"; paintFocus(); }
+    });
   }
   // Headphones: the TV's own Bluetooth screen. The launcher opens it itself, the on-TV app through
   // its /api/launch, and the bridge with a fixed ADB command (POST /api/bluetooth-audio, no body).
@@ -3013,6 +3234,7 @@
     if (!NOBODY) api("POST", "/api/who", { who: who }).catch(function () {});
     renderShelf();
     kidSync();
+    mood(true);
   }
   // A person switch made elsewhere (the phone, another TV): when the bridge's "who" changes, show
   // that person here too.
@@ -3065,6 +3287,7 @@
     else if (zone === "menu") closeMenu();
     else if (zone === "inputs") closeInputMenu();
     else if (zone === "smart") closeSmart();
+    else if (zone === "remind") { remPrev = "grid"; window.Reminders.close(); }
     else if (zone === "updask") { $("gear-pop").classList.remove("on", "ask"); document.documentElement.classList.remove("gearing"); }
     else if (zone === "ambient") { ambientOpen = false; ambientDismissed = true; renderAmbientMusic(); }
     if (lift) dropLift();
@@ -3577,7 +3800,8 @@
   // Quit app / Restart app: the bridge force stops the app (restart also opens it again on what was playing).
   // Restart says what it is doing at once, since it takes a few seconds; Quit says so when it is done.
   function bridgeCanStop(a) {
-    return !OFFLINE && !PREVIEW && a.package && a.package !== "app.couchtv.launcher" && data.bridge !== false;
+    // the on-TV app has no /api/quit-app or /api/restart-app, so it must not offer them (#308)
+    return !OFFLINE && !PREVIEW && !ON_TV && a.package && a.package !== "app.couchtv.launcher" && data.bridge !== false;
   }
   function stopApp(a, path, body, doneKey, failKey, early) {
     if (early) flash(t(doneKey, { name: a.name }));
@@ -3883,6 +4107,78 @@
     return "";
   }
 
+  // Put the tiles for these HTML strings in the grid, in order, keeping every tile that is already
+  // there with the same HTML instead of making it again. Rebuilding them all made each icon go blank
+  // and draw again whenever More apps opened or closed (an LG OLED65CX decodes every new <img> anew).
+  // A kept tile gets back the classes it was made with (focus, pressed, off-window, end-row and the
+  // like are put on again after this) and loses the dock's magnify transform (magnify sets it again).
+  // Tiles taken out of the grid (More apps folded away) wait here, out of the page, for the next time
+  // they are wanted, so opening More apps again does not make and draw their icons again.
+  var tileCache = {}, tileCached = 0;
+  function makeTile(html) {
+    var tmp = document.createElement("div");
+    tmp.innerHTML = html;
+    var made = tmp.firstChild;
+    made._html = html; made._cls = made.className;
+    return made;
+  }
+  function cachePut(el) {
+    if (tileCached >= 300) { tileCache = {}; tileCached = 0; }   // apps came and went a lot: start again
+    (tileCache[el._html] = tileCache[el._html] || []).push(el);
+    tileCached++;
+  }
+  function cacheTake(html) {
+    var a = tileCache[html];
+    while (a && a.length) {
+      var el = a.shift(); tileCached--;
+      // an icon that failed while out of the page never reached the error handler (it listens on the
+      // page), so it would stay a broken picture: make that tile again instead
+      var im = el.querySelector("img");
+      if (!(im && im.complete && !im.naturalWidth)) return el;
+    }
+    return null;
+  }
+  function placeTiles(grid, htmls) {
+    var pool = {}, kids = grid.children, i, el;
+    for (i = 0; i < kids.length; i++) {
+      el = kids[i];
+      if (el._html !== undefined) (pool[el._html] = pool[el._html] || []).push(el);
+    }
+    var els = htmls.map(function (html) {
+      var old = (pool[html] && pool[html].shift()) || cacheTake(html);
+      if (old) { old.className = old._cls; old.style.transform = ""; return old; }
+      return makeTile(html);
+    });
+    // move only what is out of place, so tiles that stay put are not taken out of the page
+    els.forEach(function (want, at) { if (kids[at] !== want) grid.insertBefore(want, kids[at] || null); });
+    while (kids.length > els.length) {
+      el = grid.removeChild(kids[kids.length - 1]);
+      if (el._html !== undefined) cachePut(el);
+    }
+    return els;
+  }
+  // A little after the dock is drawn, make the tiles More apps will show and decode their icons, out
+  // of the page, so even the first Down into More apps finds them ready.
+  var warmTimer = 0;
+  function warmMoreApps() {
+    clearTimeout(warmTimer);
+    warmTimer = setTimeout(function () {
+      if (expanded || lift || !gridItems.some(function (x) { return x.kind === "more"; })) return;
+      var htmls;
+      expanded = true;
+      try { htmls = gridList().map(appHTML); } catch (e) { htmls = []; } finally { expanded = false; }
+      var have = {}, kids = $("grid").children, i;
+      for (i = 0; i < kids.length; i++) have[kids[i]._html] = (have[kids[i]._html] || 0) + 1;
+      htmls.forEach(function (html) {
+        if (have[html]) { have[html]--; return; }
+        if (tileCache[html] && tileCache[html].length) return;
+        var el = makeTile(html), im = el.querySelector("img");
+        cachePut(el);
+        if (im && im.decode) im.decode().then(null, function () {});
+      });
+    }, 2000);
+  }
+
   function renderGrid() {
     document.documentElement.classList.toggle("expanded", expanded);
     document.documentElement.classList.toggle("lifting", !!lift);
@@ -3898,8 +4194,7 @@
       if (!expanded && typeof CouchDesign !== "undefined" && CouchDesign.on()) GRID_COLS = CouchDesign.cols(GRID_COLS, gridItems.length);
       $("grid").style.gridTemplateColumns = "repeat(" + GRID_COLS + ", " + dockTileRem() + "rem)";
     }
-    $("grid").innerHTML = gridItems.map(appHTML).join("");
-    gridEls = Array.prototype.slice.call($("grid").children);
+    gridEls = placeTiles($("grid"), gridItems.map(appHTML));
     if (OLD_ENGINE) {
       // no grid: app.css wraps the tiles in a flex box. The Night dock is exactly as wide as GRID_COLS
       // tiles and their gaps (its padding too); Classic and OLED fill the width the grid would, as the
@@ -3916,6 +4211,7 @@
     }
     clearIcons();
     renderHint();
+    if (!expanded) warmMoreApps();
   }
 
   // Glass app icons, Apple's clear style (#25): each icon's glyph without its background
@@ -4028,6 +4324,7 @@
     followSync();   // the row follows the app tile the remote is on (home.shelf_follows_app)
     if (zone === "settings") { renderSettings(); return; }
     if (zone === "smart") { window.smartHome.paint(); return; }
+    if (zone === "remind") { window.Reminders.paint(); return; }
     if (zone === "ambient") { renderAmbientMusic(); return; }
     clearFocus();
     renderHint();
@@ -4112,6 +4409,7 @@
     if (document.documentElement.dir === "rtl") dx = -dx;
     if (zone === "settings") { setMove(dx, dy); return; }
     if (zone === "smart") { window.smartHome.move(dx, dy); return; }
+    if (zone === "remind") { window.Reminders.move(dx, dy); return; }
     if (zone === "gear") { if (dy) { gi = Math.max(0, Math.min(gearItems().length - 1, gi + dy)); renderGear(); } return; }
     if (zone === "appmenu") { if (dy) { amI = Math.max(0, Math.min(amItems.length - 1, amI + dy)); renderAppMenu(); } return; }
     if (zone === "shelfmenu") { if (dy) { smI = Math.max(0, Math.min(smItems.length - 1, smI + dy)); renderShelfMenu(); } return; }
@@ -4245,6 +4543,16 @@
           var nx = g + dx;
           g = nx > last ? first : nx < first ? last : nx;
         }
+      } else if (dy < 0 && row === 0 && expanded) {
+        // Up from the top row of More apps folds it back to the dock first, the next Up leaves it:
+        // on the same app if it is in the dock, else the app it was opened from, else More apps
+        var was = gridItems[g] ? gridKey(gridItems[g]) : null, from = dockBack;
+        expanded = false; dockBack = null; renderGrid();
+        var pick = function (key) { var at = -1; if (key) gridItems.forEach(function (x, i) { if (at < 0 && gridKey(x) === key) at = i; }); return at; };
+        var at = pick(was);
+        if (at < 0) at = pick(from);
+        if (at < 0) gridItems.forEach(function (x, i) { if (at < 0 && x.kind === "more") at = i; });
+        zone = "grid"; g = Math.max(0, at);
       } else if (dy < 0 && row === 0) {
         if (footballEnabled && NIGHT && !LOOP && npReach() && gridEls[g] && gridEls[g].getBoundingClientRect().left < $("np").getBoundingClientRect().right) zone = "np";
         else if (footballEnabled && NIGHT && !LOOP && (!cards.length || (gridEls[g] && gridEls[g].getBoundingClientRect().left < $("football-scores").getBoundingClientRect().right))) zone = "football";
@@ -4425,6 +4733,7 @@
     }
     if (zone === "settings") { setBack(); return; }
     if (zone === "smart") { closeSmart(); paintFocus(); return; }
+    if (zone === "remind") { window.Reminders.back(); return; }
     if (zone === "gear") { closeGear(); paintFocus(); return; }
     if (zone === "appmenu") { closeAppMenu(); paintFocus(); return; }
     if (zone === "shelfmenu") { closeShelfMenu(); paintFocus(); return; }
@@ -4453,7 +4762,7 @@
   function hold() {
     touched = true;
     if (zone === "settings") return setHold();
-    if (zone === "gear" || zone === "smart" || zone === "updask" || zone === "inputs" || zone === "shelfmenu") return false;
+    if (zone === "gear" || zone === "smart" || zone === "remind" || zone === "updask" || zone === "inputs" || zone === "shelfmenu") return false;
     if (lift) { dropLift(); return true; }
     if (zone === "pmenu") {
       if (plift) dropPeople();
@@ -4469,6 +4778,7 @@
     touched = true;
     if (zone === "settings") { setActivate(); return; }
     if (zone === "smart") { window.smartHome.ok(); return; }
+    if (zone === "remind") { window.Reminders.ok(); return; }
     if (zone === "gear") { var gIt = gearItems()[gi]; if (gIt) gIt.act(); return; }
     if (zone === "appmenu") { doAppMenu(); return; }
     if (zone === "shelfmenu") { doShelfMenu(); return; }
@@ -5831,6 +6141,7 @@
       renderSettings();
       return;
     }
+    var hadConfirm = SET.confirm;
     SET.confirm = null;
     if (SET.col === "secs") {
       if (dy) {
@@ -5847,13 +6158,36 @@
         SET.peek = dy;   // renderSettings scrolls, after it has rebuilt the list
         SET.peeks = (SET.peeks || 0) + 1;   // so the press does not also go round to the other end
       }
+      var from = SET.ri;
       SET.ri = to;
       SET.keyFocus = rows[SET.ri] ? rows[SET.ri].key : null;
+      if (to !== from && !hadConfirm && !SET.peek && moveFocusInPlace(rows, from, to)) return;
     } else if (dx && rows[SET.ri] && rows[SET.ri].adjust) {
       rows[SET.ri].adjust(document.documentElement.dir === "rtl" ? -dx : dx);
       SET.keyFocus = rows[SET.ri].key;
     } else if (dx < 0) leaveRows();
     renderSettings();
+  }
+  // Up or Down inside the same list only moves the focus: move the "focus" class from one row to
+  // the other and scroll, instead of rebuilding every row. A full rebuild cost 80 to 190 ms a press
+  // on an LG OLED65CX (webOS 5, 2020), with every app icon in the Apps list made again, so presses
+  // landed late and the labels jumped; the home's own rows take 20 to 40 ms there. Anything that
+  // changes a row's text (a confirm, a lifted row, another page) still goes through renderSettings.
+  function moveFocusInPlace(rows, from, to) {
+    var box = $("set-rows");
+    if (!box || SET.col !== "rows" || SET.lift || SET.typing || box.children.length !== rows.length) return false;
+    var a = box.children[from], b = box.children[to];
+    if (!b || !/\bsrow\b/.test(b.className) || !focusable(rows[to])) return false;
+    if (a) a.classList.remove("focus");
+    b.classList.add("focus");
+    SET.peeked = null;
+    var cur = rows[to];
+    $("set-hint").textContent = cur && cur.move ? t("hint_rows_move") : cur && cur.adjust ? t("hint_slider") : t("hint_rows");
+    // the same "a quarter of the list from either edge" rule as renderSettings
+    var top = b.offsetTop, bottom = top + b.offsetHeight, view = box.clientHeight, edge = view / 4;
+    if (top - edge < box.scrollTop) box.scrollTop = Math.max(0, top - edge);
+    else if (bottom + edge > box.scrollTop + view) box.scrollTop = bottom + edge - view;
+    return true;
   }
   function setActivate() {
     if (SET.lift) { dropRow(); return; }
@@ -5903,7 +6237,10 @@
     var cls = "srow k-" + r.kind + (f ? " focus" : "") + (lifted ? " lifted" : "") + (r.danger ? " danger" : "");
     var lead = "";
     if (r.avatar) lead = avatarHTML(r.avatar);
-    else if (r.icon && iconUrl(r.icon)) lead = '<img class="sicon" src="' + esc(iconUrl(r.icon)) + '" alt="" data-err="remove">';
+    // a logo that fails becomes the first letter in the same box, so the label never slides over (an
+    // LG OLED65CX answered no icon for Hulu or Fandango at Home, and those rows jumped on every redraw)
+    else if (r.icon && iconUrl(r.icon)) lead = '<img class="sicon" src="' + esc(iconUrl(r.icon)) + '" alt="" data-err="sletter" data-n="' +
+      esc((r.label || "?").charAt(0).toUpperCase()) + '">';
     else if (r.kind === "item") lead = '<span class="sicon none">' + (r.icon.indexOf("screen:") === 0 ? ICONS.screen : esc((r.label || "?").charAt(0).toUpperCase())) + "</span>";
     else if (r.thumb) lead = '<img class="sthumb" src="' + esc(r.thumb) + '" alt="" decoding="async" data-err="remove">';
     var label = SET.confirm === r.key ? r.confirmText || t("confirm_remove") : r.label;
@@ -6089,7 +6426,7 @@
   function settingsKey() {
     if (kidsOn()) { window.KidsMode.askPin(); return; }
     if (idlePhotoInput(null)) return;
-    if (zone === "gear" || zone === "settings" || zone === "smart" || zone === "appmenu" || zone === "shelfmenu" || zone === "updask" || zone === "inputs") { goHome(); return; }
+    if (zone === "gear" || zone === "settings" || zone === "smart" || zone === "remind" || zone === "appmenu" || zone === "shelfmenu" || zone === "updask" || zone === "inputs") { goHome(); return; }
     openGear();
   }
 
@@ -6238,6 +6575,7 @@
 
   document.addEventListener("keydown", function (e) {
     lastKeyAt = Date.now();
+    clipWake();
     resetSmartIdle();
     if (screenOffActive) {
       e.preventDefault();
@@ -6395,7 +6733,7 @@
   var refreshAt = 0, refreshing = null;
   function refresh() {
     // never reshuffle under something being moved, or under the settings screen
-    if (lift || zone === "pmenu" || zone === "settings" || zone === "gear" || zone === "smart" || zone === "updask") return Promise.resolve();
+    if (lift || zone === "pmenu" || zone === "settings" || zone === "gear" || zone === "smart" || zone === "remind" || zone === "updask") return Promise.resolve();
     if (refreshing && Date.now() - refreshAt < 1500) return refreshing;
     refreshAt = Date.now();
     return refreshing = refreshNow();
@@ -6472,7 +6810,7 @@
     ];
     return Promise.all(jobs.map(function (p) { return p.then(function () { return true; }, function () { return false; }); }))
       .then(function (ok) {
-        if (lift || zone === "pmenu" || zone === "settings" || zone === "gear" || zone === "smart" || zone === "updask") return;
+        if (lift || zone === "pmenu" || zone === "settings" || zone === "gear" || zone === "smart" || zone === "remind" || zone === "updask") return;
         data.bridge = ok[0] || ok[2];
         var apps = TV ? nativeApps() : (window.MOCK_APPS ? window.MOCK_APPS.slice() : null);
         if (!apps) apps = (data.bridgeApps || []).filter(function (a) { return a.installed !== false && a.id !== "home"; })
@@ -7104,19 +7442,21 @@
   // the native side calls these
   // Home on the remote also re-reads the lists, so an order arranged on the phone shows straight away
   window.tv = { back: function () { if (typeof CouchShare !== "undefined" && CouchShare.close()) return; if (typeof CouchDesign !== "undefined" && CouchDesign.back && CouchDesign.back()) return; if (idleAmbientActive) { setIdleAmbient(false); resetSmartIdle(); return; } if (idlePhotoInput(null)) return; goHome(); resetIdlePhoto(); resetSmartIdle(); },
-    home: function () { forgetFocus(); if (idleAmbientActive) { setIdleAmbient(false); resetSmartIdle(); return; } if (idlePhotoInput(null)) return; if (zone === "settings") closeSettings(); else goHome(); refresh(); resetIdlePhoto(); resetSmartIdle(); },
+    home: function () { forgetFocus(); clipWake(); if (idleAmbientActive) { setIdleAmbient(false); resetSmartIdle(); return; } if (idlePhotoInput(null)) return; if (zone === "settings") closeSettings(); else goHome(); refresh(); resetIdlePhoto(); resetSmartIdle(); },
     screenOff: function () { toggleScreenOff(true); },
     wakeScreen: function () { toggleScreenOff(false); },
     isScreenOff: function () { return screenOffActive; },
     noDream: function () { note(t("no_dream")); },
     // the remote's Settings/gear key, caught by the launcher natively (MainActivity.dispatchKeyEvent)
     settingsKey: function () { blip(0, 0); settingsKey(); },
-    resume: function () { PAGE_PAUSED = false; clock(); designVideo("away", false); toggleScreenOff(false); setIdleAmbient(false); resetSmartIdle(); okReset(); refresh(); if (!OFFLINE) refreshQuick(); refreshWeather(); startVideo(); sceneVideos(true); refreshMusic(); refreshCards(true); if (window.AmbientWeather) window.AmbientWeather.resume(); widgetsStill(false); resetIdlePhoto(); },
+    resume: function () { PAGE_PAUSED = false; clock(); designVideo("away", false); toggleScreenOff(false); setIdleAmbient(false); resetSmartIdle(); okReset(); refresh(); if (!OFFLINE) refreshQuick(); refreshWeather(); startVideo(); clipWake(); sceneVideos(true); refreshMusic(); refreshCards(true); if (window.AmbientWeather) window.AmbientWeather.resume(); widgetsStill(false); resetIdlePhoto(); },
     // an app is in front: the video background stops until the home is back
     // (and a design's video background lets go of the TV's decoder, which the app may need)
     pause: function () { saveFocusNow(); PAGE_PAUSED = true; pauseVideo(); designVideo("away", true); },
     // the launcher's file picker has copied the chosen photos into its own storage (Home settings)
     photosAdded: function (names) { photosAdded(names); },
+    // Android's speech screen closed (MainActivity.listen): what was said, or null
+    heard: function (text) { if (window.Reminders) window.Reminders.heard(text); },
     // the launcher's updater has news (Updater.kt)
     update: function (state) { updChanged(state); },
     // Android's "default home app" chooser closed (HomeRole.kt, #98)
@@ -7400,6 +7740,7 @@
     document.addEventListener(PTR + "down", resetSmartIdle, { passive: true });
     document.addEventListener("wheel", resetSmartIdle, { passive: true });
     initSettings();
+    remindersInit();
     // Home settings gets an Updates section, before About, where the launcher can update itself
     if (updRead() && UPD.supported) SECS.splice(SECS.length - 1, 0, ["updates", "download"]);
     mark("app-start");
@@ -7420,7 +7761,7 @@
       showScene(Math.max(0, SCENES.map(function (s) { return s.own ? "own" : s.id; }).indexOf(first)));
       if (SCENES.length > 1) setInterval(nextScene, SCENE_MS);
       // the clock font must be in before the glass is measured
-      if (document.fonts) document.fonts.load("300 10px Antonio").then(function () { glassShown = ""; clock(); });
+      if (document.fonts) document.fonts.load("300 10px Antonio").then(function () { glassShown = ""; clock(); mood(true); });
     }
     if (NIGHT) {
       // the soft tap's audio context, made while the home is idle: made on the first key press it
@@ -7457,6 +7798,7 @@
     updateOledShift();
     setInterval(updateOledShift, 60000);
     setInterval(checkSmartIdle, 10000);
+    clipWake();
     // couch-tv Studio's home widgets: the calendar, photo dates, screen time and a new day
     if (AH) { setTimeout(ahTick, 2500); setInterval(ahTick, 60000); }
     setInterval(function () { if (!covered()) { if (!screenOffActive) renderQuick(); refreshBedtimeDim(); } }, 30000);
