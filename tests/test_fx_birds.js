@@ -1,4 +1,4 @@
-// fx-birds.js (design.home.birds + birds_style): flocks per amount, two small layers per bird (body + wings), the layer area budget,
+// fx-birds.js (design.home.birds + birds_style): flocks per amount, at most 30 separately animated layers (a flock = 1 layer with every body in one picture, + 1 per bird for the wings),
 // pictures drawn once, keyframes (transform only, off the screen at both ends so the wrap is invisible), the wing beat (scale only),
 // formations holding (one path + one delay per flock), the ?fxloop=1 clip repeating exactly in 8 s, every style, nothing when off /
 // calm / Lighter / Loop, pause + resume, design.js keeping the keys and app.js wiring, and every colour a valid hex / rgba.
@@ -42,29 +42,35 @@ const sec = (v) => parseFloat(v);
 const sp = (el, n) => { const m = new RegExp("(?:^|;)" + n + ":([^;]*)").exec(el.style.cssText); return m ? m[1] : ""; };
 const W = 1920, H = 1080;
 
-for (const [amount, birds, pct] of [["few", 9, 3], ["flock", 16, 8], ["many", 27, 11]]) {
+// layers: a flock = one layer (path + every body as one picture), each beating pair of wings = one more. Worst case (many) = 30, never more.
+const wingsOf = (h) => h.childNodes.reduce((a, f) => a.concat(f.childNodes), []);
+const layersOf = (h) => h.childNodes.length + wingsOf(h).length;
+for (const [amount, flocks, layers] of [["few", 2, 11], ["flock", 3, 19], ["many", 4, 30]]) {
   const { F, body, head } = load(false);
   F.set(amount, "dark", false);
   const h = host(body);
-  check(h.childNodes.length === birds, amount + ": " + birds + " birds, got " + h.childNodes.length);
+  check(h.childNodes.length === flocks, amount + ": " + flocks + " flocks (one layer each), got " + h.childNodes.length);
+  check(layersOf(h) === layers && layersOf(h) <= 30, amount + ": " + layersOf(h) + " separately animated layers (cap 30)");
   check(body.childNodes.indexOf(h) === 1, amount + ": right after the weather layer (under the cards)");
-  check(h.childNodes.every((b) => b.childNodes.length === 1 && String(b.childNodes[0].tagName).toLowerCase() === "u" && b.childNodes[0].childNodes.length === 0), amount + ": a bird is a body with one wings child, two layers");
-  // worst-case layer area: body + wings boxes, widened a little for the bob
-  let area = 0;
-  h.childNodes.forEach((b) => { const s = sec(sp(b, "width")); check(s >= 35 && s <= 226, amount + ": wing span 35-226 px (" + s + ")"); check(Math.abs(sec(sp(b, "height")) - s / 2) <= 0.5, amount + ": a bird is 2:1"); area += 2 * s * (s / 2) * 1.15; });
-  check(area / (W * H) <= pct / 100, amount + ": layer area " + (100 * area / (W * H)).toFixed(1) + " % of a screen (bar " + pct + " %)");
+  check(h.childNodes.every((f) => String(f.tagName).toLowerCase() === "i" && /background-image:url\(data:image\/png/.test(f.style.cssText) && f.childNodes.every((u) => String(u.tagName).toLowerCase() === "u" && u.childNodes.length === 0)), amount + ": a flock is one picture with its wings as children (no deeper)");
+  // the wings: worst-case layer area (wing boxes), and the flock pictures (sparse: only the bodies are drawn in them)
+  let area = 0, pic = 0;
+  wingsOf(h).forEach((u) => { const s = sec(sp(u, "width")); check(s >= 35 && s <= 226, amount + ": wing span 35-226 px (" + s + ")"); check(Math.abs(sec(sp(u, "height")) - s / 2) <= 0.5, amount + ": wings 2:1"); area += s * (s / 2); });
+  h.childNodes.forEach((f) => { pic += sec(sp(f, "width")) * sec(sp(f, "height")); });
+  check(area / (W * H) <= 0.06, amount + ": wing layer area " + (100 * area / (W * H)).toFixed(1) + " % of a screen (bar 6 %; the flock pictures are sparse: " + (100 * pic / (W * H)).toFixed(0) + " % of a screen as boxes)");
   const css = cssOf(head);
   check(!/var\(/.test(css), amount + ": no CSS variables");
-  check(!/blur|filter|box-shadow|text-shadow|mix-blend|backdrop/.test(css + h.childNodes.map((c) => c.style.cssText + c.childNodes[0].style.cssText).join("")), amount + ": no blur, filter, shadow or blend mode");
-  check(h.childNodes.every((b) => /background-image:url\(data:image\/png/.test(b.style.cssText) && /background-image:url\(data:image\/png/.test(b.childNodes[0].style.cssText)), amount + ": pictures are drawn once as data URLs");
+  check(!/blur|filter|box-shadow|text-shadow|mix-blend|backdrop/.test(css + h.childNodes.map((f) => f.style.cssText + f.childNodes.map((u) => u.style.cssText).join("")).join("")), amount + ": no blur, filter, shadow or blend");
+  check(wingsOf(h).every((u) => /background-image:url\(data:image\/png/.test(u.style.cssText)), amount + ": the wings are a picture drawn once");
 }
-// 4 canvases drawn in all (body + wings, small + big), whatever the number of birds
-{ drawn = 0; const { F } = load(false); F.set("many", "dark", false); check(drawn === 4, "4 canvases drawn in all, got " + drawn); }
+// wings: 3 pictures (small far, small mid, big close); each flock's bodies: 1 picture per flock; nothing drawn per bird or per frame
+{ drawn = 0; const { F } = load(false); F.set("many", "dark", false); check(drawn === 3 + 4, "7 canvases drawn in all (3 wing pictures + 1 per flock), got " + drawn); }
+{ drawn = 0; const { F } = load(false); F.set("few", "dark", false); check(drawn === 3 + 2, "few: 5 canvases drawn in all, got " + drawn); }
 { // keyframes: transform only; every path starts and ends off the screen, so the wrap never shows; the wings beat by scaleY alone
   const { F, head } = load(false); F.set("many", "dark", false);
   const css = cssOf(head);
   const sets = css.match(/@keyframes [\w-]+\{[^@]*\}\}?/g) || [];
-  check(sets.length === 2 + 4 * 2, "10 keyframe sets (2 wing beats + 4 flocks x 2 path variants), got " + sets.length);
+  check(sets.length === 2 + 4, "6 keyframe sets (2 wing beats + 4 flock paths), got " + sets.length);
   sets.forEach((s) => check(!/(left|top|width|height|margin|background|color|opacity)\s*:/.test(s.replace(/transform:[^;}]*/g, "")), "keyframes move transform only"));
   const flapc = sets.find((x) => x.indexOf("@keyframes fx-bflapc{") === 0), flapb = sets.find((x) => x.indexOf("@keyframes fx-bflapb{") === 0);
   for (const s of [flapc, flapb]) {
@@ -74,49 +80,49 @@ for (const [amount, birds, pct] of [["few", 9, 3], ["flock", 16, 8], ["many", 27
     check(rows.every((r, i) => i === 0 || r[0] >= rows[i - 1][0]), "keyframe offsets only go forward");
   }
   check(/\{transform:scaleY\(0\.4\)\}/.test(flapb), "a burst glides with the wings held up");
-  for (let fi = 0; fi < 4; fi++) for (let v = 0; v < 2; v++) {
-    const s = sets.find((x) => x.indexOf("@keyframes fx-bpath" + fi + "_" + v + "{") === 0);
+  for (let fi = 0; fi < 4; fi++) {
+    const s = sets.find((x) => x.indexOf("@keyframes fx-bpath" + fi + "{") === 0);
     const rows = [...s.matchAll(/([\d.]+)%\{transform:translate3d\((-?[\d.]+)px,(-?[\d.]+)px,0\) scaleX\((-?1)\)\}/g)].map((m) => [+m[1], +m[2], +m[3], +m[4]]);
-    check(rows.length >= 49 && rows[0][0] === 0 && rows[rows.length - 1][0] === 100, "path " + fi + "_" + v + ": 49+ sampled steps, 0 % to 100 %");
+    check(rows.length >= 49 && rows[0][0] === 0 && rows[rows.length - 1][0] === 100, "path " + fi + ": 49+ sampled steps, 0 % to 100 %");
     const dir = rows[0][3], first = rows[0][1], last = rows[rows.length - 1][1];
-    if (dir > 0) check(first <= -100 && last >= W + 100, "path " + fi + "_" + v + ": off the left edge to off the right (" + first + " -> " + last + ")");
-    else check(first >= W + 100 && last <= -100, "path " + fi + "_" + v + ": off the right edge to off the left (" + first + " -> " + last + ")");
-    check(rows.every((r) => r[2] > -20 && r[2] < 0.6 * H), "path " + fi + "_" + v + ": stays in the sky (y " + Math.min(...rows.map((r) => r[2])) + ".." + Math.max(...rows.map((r) => r[2])) + ")");
-    check(rows.every((r) => r[3] === dir), "path " + fi + "_" + v + ": faces one way");
+    if (dir > 0) check(first <= -100 && last >= W + 100, "path " + fi + ": off the left edge to off the right (" + first + " -> " + last + ")");
+    else check(first >= W + 100 && last <= -100, "path " + fi + ": off the right edge to off the left (" + first + " -> " + last + ")");
+    check(rows.every((r) => r[2] > -20 && r[2] < 0.6 * H), "path " + fi + ": stays in the sky (y " + Math.min(...rows.map((r) => r[2])) + ".." + Math.max(...rows.map((r) => r[2])) + ")");
+    check(rows.every((r) => r[3] === dir), "path " + fi + ": faces one way");
   }
   check(/fx-birds\.fx-paused i,\.fx-birds\.fx-paused u\{[^}]*paused/.test(css) && /\.lighter \.fx-birds,\.old-engine \.fx-birds/.test(css), "pausable, and off in the Lighter home / old engine");
 }
-{ // live: a flock shares one path and one delay (so the formation holds); a crossing + the empty sky; already flying at once (negative delays)
+{ // live: a flock is one layer on its own path and its own delay (the formation holds); a crossing + the empty sky; already flying at once (negative delays)
   const { F, body, head } = load(false); F.set("many", "dark", false);
-  const h = host(body), names = {};
-  h.childNodes.forEach((b) => { const nm = sp(b, "animation-name").replace(/_\d$/, ""); (names[nm] = names[nm] || []).push(b); });
-  check(Object.keys(names).length === 4 && Object.keys(names).every((k) => /^fx-bpath\d$/.test(k)), "4 flocks, each on its own path");
-  const sizes = Object.keys(names).sort().map((k) => names[k].length);
-  check(JSON.stringify(sizes) === JSON.stringify([10, 7, 3, 7]), "flocks of 10 / 7 / 3 / 7 (" + sizes + ")");
-  Object.keys(names).forEach((k) => {
-    const set = names[k];
-    check(new Set(set.map((b) => sp(b, "animation-delay"))).size === 1 && new Set(set.map((b) => sp(b, "animation-duration"))).size === 1, k + ": one delay and one duration for the whole flock");
-    set.forEach((b) => { const d = sec(sp(b, "animation-duration")), at = sec(sp(b, "animation-delay")); check(d >= 20 && d <= 60 && at <= 0 && at > -d, k + ": a crossing + the empty sky, already flying (" + d + " s, " + at + ")"); });
-    const s = cssOf(head).match(new RegExp("@keyframes fx-bpath" + k.slice(-1) + "_0\\{[^@]*\\}\\}?"))[0];
-    check(/100%\{transform:translate3d\(/.test(s) && /9\d\.\d%\{|100%/.test(s), k + ": holds off the screen after the crossing");
+  const h = host(body);
+  check(h.childNodes.every((f, k) => sp(f, "animation-name") === "fx-bpath" + k), "4 flocks, each on its own path");
+  const sizes = h.childNodes.map((f) => f.childNodes.length);
+  check(JSON.stringify(sizes) === JSON.stringify([10, 7, 3, 6]), "wing layers per flock 10 / 7 / 3 / 6 (the last far bird glides: the budget), got " + sizes);
+  h.childNodes.forEach((f, k) => {
+    const d = sec(sp(f, "animation-duration")), at = sec(sp(f, "animation-delay"));
+    check(d >= 20 && d <= 60 && at <= 0 && at > -d, "flock " + k + ": a crossing + the empty sky, already flying (duration " + d + ", delay " + at + ")");
+    const s = cssOf(head).match(new RegExp("@keyframes fx-bpath" + k + "\\{[^@]*\\}\\}?"))[0];
+    check(/100%\{transform:translate3d\(/.test(s) && /9\d\.\d%\{|100%/.test(s), "flock " + k + ": holds off the screen after the crossing");
+    check(/transform-origin:-?[\d.]+px 0/.test(f.style.cssText), "flock " + k + ": turns round about the leader's centre line");
   });
   // wings beat out of step, at a believable rate: 1 to 3 beats a second
-  const wdur = h.childNodes.map((b) => sec(sp(b.childNodes[0], "animation-duration"))), wdel = new Set(h.childNodes.map((b) => sp(b.childNodes[0], "animation-delay")));
-  check(wdur.every((d) => d === 4 || (d >= 0.3 && d <= 0.9)) && wdel.size > h.childNodes.length * 0.6, "wings beat at their own rate and phase (" + wdel.size + " different delays)");
-  check(h.childNodes.every((b) => sec(sp(b.childNodes[0], "animation-delay")) <= 0), "every wing starts already beating");
+  const ws = wingsOf(h), wdel = new Set(ws.map((u) => sp(u, "animation-delay")));
+  check(ws.every((u) => { const d = sec(sp(u, "animation-duration")); return d === 4 || (d >= 0.3 && d <= 0.9); }) && wdel.size > ws.length * 0.6, "wings beat at their own rate and phase (" + wdel.size + " different delays)");
+  check(ws.every((u) => sec(sp(u, "animation-delay")) <= 0), "every wing starts already beating");
+  check(ws.every((u) => sec(sp(u, "left")) >= 0 && sec(sp(u, "top")) >= 0), "every wing sits inside its flock's box");
 }
 { // ?fxloop=1: every cycle divides 8 s, the same sky every load, so the clip repeats exactly; the crossing fills the whole cycle (no empty sky)
   const a = load(false, "?fxloop=1"); a.F.set("many", "dark", false);
   const b = load(false, "?fxloop=1"); b.F.set("many", "dark", false);
-  const all = (body, head) => JSON.stringify(host(body).childNodes.map((x) => x.style.cssText + x.childNodes[0].style.cssText)) + cssOf(head);
+  const all = (body, head) => JSON.stringify(host(body).childNodes.map((x) => x.style.cssText + x.childNodes.map((u) => u.style.cssText).join(""))) + cssOf(head);
   check(all(a.body, a.head) === all(b.body, b.head), "?fxloop=1: the same every load (the clip repeats exactly)");
-  host(a.body).childNodes.forEach((x) => { check(8 % sec(sp(x, "animation-duration")) === 0, "?fxloop=1: a path cycle divides 8 s"); check(8 % sec(sp(x.childNodes[0], "animation-duration")) < 1e-9 || Math.abs(8 / sec(sp(x.childNodes[0], "animation-duration")) - Math.round(8 / sec(sp(x.childNodes[0], "animation-duration")))) < 0.001, "?fxloop=1: a wing beat fits a whole number of times in 8 s"); });
-  { const ps = cssOf(a.head).match(/@keyframes fx-bpath0_0\{[^@]*\}\}?/)[0]; check((ps.match(/%\{transform:translate3d/g) || []).length === 49, "?fxloop=1: crossing fills the cycle (49 steps, no empty-sky hold)"); }
+  host(a.body).childNodes.forEach((x) => { check(8 % sec(sp(x, "animation-duration")) === 0, "?fxloop=1: a path cycle divides 8 s"); x.childNodes.forEach((u) => { const n = 8 / sec(sp(u, "animation-duration")); check(Math.abs(n - Math.round(n)) < 1e-6, "?fxloop=1: a wing cycle divides 8 s (" + n.toFixed(2) + " beats)"); }); });
+  { const ps = cssOf(a.head).match(/@keyframes fx-bpath0\{[^@]*\}\}?/)[0]; check((ps.match(/%\{transform:translate3d/g) || []).length === 49, "?fxloop=1: crossing fills the cycle (49 steps, no empty sky)"); }
   const c = load(false), d = load(false); c.F.set("many", "dark", false); d.F.set("many", "dark", false);
   check(all(c.body, c.head) !== all(d.body, d.head), "live: a different sky each time");
 }
-for (const style of ["dark", "light", "dusk"]) { const { F, body } = load(false); F.set("flock", style, false); check(host(body).childNodes.length === 16, style + ": builds"); }
-{ const { F, body } = load(false); F.set("flock", "nonsense", false); check(host(body).childNodes.length === 16, "an unknown style falls back to dark"); }
+for (const style of ["dark", "light", "dusk"]) { const { F, body } = load(false); F.set("flock", style, false); check(layersOf(host(body)) === 19, style + ": builds (19 layers)"); }
+{ const { F, body } = load(false); F.set("flock", "nonsense", false); check(layersOf(host(body)) === 19, "an unknown style falls back to dark"); }
 { const { F, body } = load(false); F.set("off", "dark", false); check(!host(body), "off: nothing on the page"); }
 { const { F, body } = load(false); F.set("lots", "dark", false); check(!host(body), "an unknown amount: nothing"); }
 { const { F, body } = load(true); F.set("many", "dark", false); check(!host(body), "the TV asks for less motion: nothing"); }
