@@ -415,3 +415,6 @@ html.lighter .cwd-artbg { -webkit-filter: none; filter: none; opacity: 0.18; }
 @keyframes cw-bd-fall { 0% { transform: translate3d(0,0,0) rotate(0); opacity: 0; } 8% { opacity: 1; } 100% { transform: translate3d(24px,420px,0) rotate(540deg); opacity: 0.2; } }
 html.lighter .cw-bd-fx { display: none; }
 @media (prefers-reduced-motion: reduce) { .cw-bd-fx { display: none; } }
+
+/* While the home is covered (app.js widgetsStill: settings, another app, asleep) every card animation stands still. */
+html.cw-still [class*="cw-"], html.cw-still [class*="cw-"] * { -webkit-animation-play-state: paused !important; animation-play-state: paused !important; }
