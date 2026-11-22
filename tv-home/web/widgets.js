@@ -811,14 +811,18 @@
       var c = { val: "", at: 0 };
       c.cur = glyph("cw-nx-cur"); c.prev = glyph("cw-nx-prev");
       var delay = "-" + ([0, 2.6, 5.1, 1.3][i]) + "s";
-      c.lit = E("div", "cw-nx-l", "background:radial-gradient(ellipse at 50% 52%, " + rgba(acc, 0.8) + " 0, " + rgba(acc, 0.34) + " 44%, " + rgba(acc, 0) + " 74%);-webkit-animation-delay:" + delay + ";animation-delay:" + delay, [c.prev, c.cur]);
-      var mesh = "repeating-linear-gradient(45deg, " + rgba(acc, 0.16) + " 0, " + rgba(acc, 0.16) + " 1px, rgba(0, 0, 0, 0) 1px, rgba(0, 0, 0, 0) 7px), repeating-linear-gradient(-45deg, " + rgba(acc, 0.16) + " 0, " + rgba(acc, 0.16) + " 1px, rgba(0, 0, 0, 0) 1px, rgba(0, 0, 0, 0) 7px)";
+      c.lit = E("div", "cw-nx-l", "background:radial-gradient(ellipse at 50% 52%, " + rgba(acc, 0.8) + " 0, " + rgba(acc, 0.34) + " 44%, " + rgba(acc, 0) + " 74%);-webkit-animation-delay:" + delay + ";animation-delay:" + delay, [c.cur, c.prev]);   // the old digit is drawn over the new one and fades out: a cross-fade with one moving layer
+      // everything that never moves is ONE picture, the tube's own background (glass shading, copper mesh, glass highlight, metal cap),
+      // so it costs no layer; what moves is the glow layer and, for 0.5 s, the old digit fading out over the new one
+      var mc = rgba(acc, 0.16), no = "rgba(0, 0, 0, 0)", hw = Math.max(3, Math.round(cw * 0.07)), hh = Math.round(hgt * 0.56), ch = Math.max(6, Math.round(hgt * 0.09));
+      var stripe = function (a) { return "repeating-linear-gradient(" + a + "deg, " + mc + " 0, " + mc + " 1px, " + no + " 1px, " + no + " 7px)"; };
+      var pic = [
+        "linear-gradient(180deg, rgba(255, 255, 255, 0.2), rgba(255, 255, 255, 0)) " + px(cw * 0.13) + " " + px(hgt * 0.14) + " / " + px(hw) + " " + px(hh) + " no-repeat",
+        "linear-gradient(180deg, #3a3633, #14110f) 0 100% / 100% " + px(ch) + " no-repeat",
+        stripe(45) + " 50% 8% / 88% 78% no-repeat", stripe(-45) + " 50% 8% / 88% 78% no-repeat",
+        "linear-gradient(90deg, rgba(0, 0, 0, 0.55), rgba(255, 255, 255, 0.07) 16%, rgba(0, 0, 0, 0.2) 50%, rgba(0, 0, 0, 0.6))", shade(face, 1)].join(", ");
       c.el = E("div", "cw-nx", "width:" + px(cw) + ";height:" + px(hgt) + ";margin:0 " + px(gap / 2) + ";border-radius:" + px(rt) + " " + px(rt) + " " + px(rb) + " " + px(rb) +
-        ";background:linear-gradient(90deg, rgba(0, 0, 0, 0.55), rgba(255, 255, 255, 0.07) 16%, rgba(0, 0, 0, 0.2) 50%, rgba(0, 0, 0, 0.6)), " + shade(face, 1) +
-        ";box-shadow:inset 0 0 0 2px rgba(255, 255, 255, 0.11), 0 0 0 1px rgba(0, 0, 0, 0.45)",
-        [E("div", "cw-nx-m", "background:" + mesh), c.lit,
-         E("i", "cw-nx-hl", "border-radius:" + px(cw * 0.06)),
-         E("i", "cw-nx-cap", "border-radius:0 0 " + px(rb) + " " + px(rb))]);
+        ";background:" + pic + ";box-shadow:inset 0 0 0 2px rgba(255, 255, 255, 0.11), 0 0 0 1px rgba(0, 0, 0, 0.45)", [c.lit]);
       tubes.push(c); return c.el;
     };
     var dot = function () { var s = Math.max(8, Math.round(cw * 0.1)); return E("i", "", "display:block;width:" + px(s) + ";height:" + px(s) + ";border-radius:50%;background:" + rgba(core, 1) + ";box-shadow:0 0 " + px(s * 1.6) + " " + rgba(acc, 0.9) + ", 0 0 " + px(s * 3.4) + " " + rgba(acc, 0.5)); };

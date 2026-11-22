@@ -122,7 +122,7 @@ K.sizes(K.home().C, "nixie").forEach(([id, w, h]) => {
   const css = fs.readFileSync(path.join(web, "widgets.css"), "utf8");
   const sec = css.slice(css.indexOf("the Nixie clock"), css.indexOf("things typed at home"));
   const frames = sec.match(/@keyframes cw-nx-[a-z]+ \{[^@]*?\} \}/g) || [];
-  ok(frames.length === 4, "four keyframe blocks for the nixie (" + frames.length + ")");
+  ok(frames.length === 3, "three keyframe blocks for the nixie: glow, blink, out (" + frames.length + ")");
   ok(frames.every((f) => !/(left|top|width|height|margin|filter|box-shadow|background|color|text-shadow)\s*:/.test(f.replace(/@keyframes[^{]*\{/, ""))), "keyframes touch only transform / opacity");
   ok(/html\.lighter \.cw-nx-l/.test(sec) && /prefers-reduced-motion: reduce\) \{ \.cw-nx-l/.test(sec), "the stylesheet stops the glow, the dots and the fades on a lighter home and for reduced motion");
   ok(!/will-change/.test(sec), "no will-change");
@@ -130,6 +130,17 @@ K.sizes(K.home().C, "nixie").forEach(([id, w, h]) => {
   const js = fs.readFileSync(path.join(web, "widgets.js"), "utf8");
   const blk = js.slice(js.indexOf("R.nixie = function"), js.indexOf("the widget's own settings: To the minute"));
   ok(!/setInterval|setTimeout|requestAnimationFrame/.test(blk), "no timer of its own (the loader's one 1 s tick does all)");
+  // LAYER COUNT (the stick's cost): what can be animated at once, worst case = every digit changing together
+  {
+    const Pw = page(at(23, 59, 30)), ew = draw(Pw, 760, 300);
+    tubes(ew).forEach((t) => ok(t.childNodes.filter((n) => n.nodeType === 1).length === 1 && has(t, "cw-nx-l").length === 1, "a tube is one static picture plus one glow layer (no mesh / highlight / cap elements over it)"));
+    Pw.D.set(at(24, 0, 0)); Pw.tick();
+    const moving = has(ew, "cw-nx-l").length + has(ew, "cw-nx-c").length + has(ew, "cw-nx-go").length;   // glows + dots + one fading old digit per changing tube
+    const old = has(ew, "cw-nx-prev").filter((p) => p.textContent !== "").length;
+    ok(old === 4 && moving === 4 + 1 + 4, "worst case (23:59 to 00:00): 4 glows + 1 dots + 4 fading old digits = " + moving + " animated layers");
+    ok(moving <= 10, "at most 10 separately animated layers (" + moving + ")");
+    ok(!/animation/.test(has(ew, "cw-nx-cur").map((c) => c.style.cssText).join("")) && !/cw-nx-go \.cw-nx-cur/.test(fs.readFileSync(path.join(web, "widgets.css"), "utf8")), "the new digit is never animated: the old one fades out over it");
+  }
   // composited area while it glows: four glow layers (the tubes) + the dots, as a share of the 1920 x 1080 screen
   const P = page(at(19, 7, 30)), el = draw(P, 760, 300);
   let area = 0;

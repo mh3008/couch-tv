@@ -363,28 +363,22 @@ html.lighter .cwd-artbg { -webkit-filter: none; filter: none; opacity: 0.18; }
 .cwd-room { -webkit-flex: none; flex: none; }
 
 /* the Nixie clock (widgets.js R.nixie): four glass tubes. The glow layer of each tube breathes and flickers (opacity, one 8 s loop,
-   a different start per tube), the two dots blink (opacity, 2 s), a digit that changes cross-fades (opacity + a small scale).
+   a different start per tube), the two dots blink (opacity, 2 s), the old digit fades out over the new one (opacity).
    Only transform and opacity change. Lighter home / reduced motion: nothing runs and a digit just changes. */
 .cw-nx { position: relative; -webkit-flex: none; flex: none; }
-.cw-nx-m { position: absolute; left: 6%; right: 6%; top: 8%; bottom: 14%; border-radius: 40% 40% 6% 6%; opacity: 0.9; }
 .cw-nx-l { position: absolute; left: 0; top: 0; width: 100%; height: 100%; -webkit-animation: cw-nx-glow 8s linear infinite; animation: cw-nx-glow 8s linear infinite; }
 .cw-nx-d { position: absolute; left: 0; top: 0; width: 100%; height: 100%; display: -webkit-flex; display: flex; -webkit-align-items: center; align-items: center; -webkit-justify-content: center; justify-content: center; font-weight: 400; line-height: 1; padding-bottom: 6%; box-sizing: border-box; }
 .cw-nx-prev { opacity: 0; }
-.cw-nx-hl { position: absolute; left: 13%; top: 14%; width: 7%; height: 56%; background: linear-gradient(180deg, rgba(255, 255, 255, 0.2), rgba(255, 255, 255, 0)); }
-.cw-nx-cap { position: absolute; left: 0; right: 0; bottom: 0; height: 9%; background: linear-gradient(180deg, #3a3633, #14110f); }
 .cw-nx-c { position: relative; -webkit-flex: none; flex: none; display: -webkit-flex; display: flex; -webkit-flex-direction: column; flex-direction: column; -webkit-align-items: center; align-items: center; -webkit-justify-content: space-between; justify-content: space-between; -webkit-animation: cw-nx-blink 2s ease-in-out infinite; animation: cw-nx-blink 2s ease-in-out infinite; }
 .cw-nx-go .cw-nx-prev { -webkit-animation: cw-nx-out 0.5s ease-in both; animation: cw-nx-out 0.5s ease-in both; }
-.cw-nx-go .cw-nx-cur { -webkit-animation: cw-nx-in 0.7s ease-out both; animation: cw-nx-in 0.7s ease-out both; }
 @-webkit-keyframes cw-nx-glow { 0% { opacity: 0.88; } 14% { opacity: 1; } 30% { opacity: 0.92; } 31.5% { opacity: 0.7; } 33% { opacity: 0.96; } 50% { opacity: 1; } 64% { opacity: 0.9; } 78% { opacity: 1; } 90% { opacity: 0.93; } 91.2% { opacity: 0.78; } 92.5% { opacity: 0.97; } 100% { opacity: 0.88; } }
 @keyframes cw-nx-glow { 0% { opacity: 0.88; } 14% { opacity: 1; } 30% { opacity: 0.92; } 31.5% { opacity: 0.7; } 33% { opacity: 0.96; } 50% { opacity: 1; } 64% { opacity: 0.9; } 78% { opacity: 1; } 90% { opacity: 0.93; } 91.2% { opacity: 0.78; } 92.5% { opacity: 0.97; } 100% { opacity: 0.88; } }
 @-webkit-keyframes cw-nx-blink { 0% { opacity: 1; } 50% { opacity: 0.3; } 100% { opacity: 1; } }
 @keyframes cw-nx-blink { 0% { opacity: 1; } 50% { opacity: 0.3; } 100% { opacity: 1; } }
 @-webkit-keyframes cw-nx-out { from { opacity: 1; } to { opacity: 0; } }
 @keyframes cw-nx-out { from { opacity: 1; } to { opacity: 0; } }
-@-webkit-keyframes cw-nx-in { 0% { opacity: 0; -webkit-transform: scale(0.93); } 40% { opacity: 1; -webkit-transform: scale(1.06); } 100% { opacity: 1; -webkit-transform: scale(1); } }
-@keyframes cw-nx-in { 0% { opacity: 0; transform: scale(0.93); } 40% { opacity: 1; transform: scale(1.06); } 100% { opacity: 1; transform: scale(1); } }
-html.lighter .cw-nx-l, html.lighter .cw-nx-c, html.lighter .cw-nx-go .cw-nx-prev, html.lighter .cw-nx-go .cw-nx-cur { -webkit-animation: none !important; animation: none !important; }
-@media (prefers-reduced-motion: reduce) { .cw-nx-l, .cw-nx-c, .cw-nx-go .cw-nx-prev, .cw-nx-go .cw-nx-cur { -webkit-animation: none !important; animation: none !important; } }
+html.lighter .cw-nx-l, html.lighter .cw-nx-c, html.lighter .cw-nx-go .cw-nx-prev { -webkit-animation: none !important; animation: none !important; }
+@media (prefers-reduced-motion: reduce) { .cw-nx-l, .cw-nx-c, .cw-nx-go .cw-nx-prev { -webkit-animation: none !important; animation: none !important; } }
 
 /* things typed at home (athome.js): the note, a list to tick, the Wi-Fi code, the guide, screen time, the agenda's day */
 .cwd-note { max-width: 1500px; font-weight: 700; line-height: 1.16; letter-spacing: -0.015em; white-space: pre-line; overflow-wrap: break-word; text-align: center; max-height: 700px; overflow: hidden; }
