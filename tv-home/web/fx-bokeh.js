@@ -27,7 +27,7 @@
   function disc(rgb, a) {
     var px = 96, c = doc.createElement("canvas"); c.width = c.height = px;
     var g = c.getContext("2d"), r = px / 2, o = g.createRadialGradient(r, r, 0, r, r, r), s = function (x) { return "rgba(" + rgb + "," + (x * a).toFixed(3) + ")"; };
-    o.addColorStop(0, s(0.3)); o.addColorStop(0.7, s(0.36)); o.addColorStop(0.86, s(0.62)); o.addColorStop(0.93, s(0.4)); o.addColorStop(1, s(0));
+    o.addColorStop(0, s(0.42)); o.addColorStop(0.68, s(0.5)); o.addColorStop(0.86, s(0.85)); o.addColorStop(0.94, s(0.45)); o.addColorStop(1, s(0));
     g.fillStyle = o; g.beginPath(); g.arc(r, r, r, 0, Math.PI * 2); g.fill();
     return c.toDataURL("image/png");
   }
@@ -49,9 +49,9 @@
     var n = COUNT[want];
     if (!n || off || calm() || !doc.body) return;
     css();
-    var base = hex(colour), tints = [base, mixWhite(base, 0.3), mixWhite(base, 0.55)];
+    var base = hex(colour), tints = [base, mixWhite(base, 0.18), mixWhite(base, 0.36)];
     // per tint: a far picture (small, bright) and a near one (big, faint)
-    var pics = tints.map(function (t) { return [disc(t, 1), disc(t, 0.55)]; });
+    var pics = tints.map(function (t) { return [disc(t, 1), disc(t, 0.6)]; });
     host = doc.createElement("div"); host.className = "fx-bokeh" + (paused ? " fx-paused" : ""); host.setAttribute("aria-hidden", "true");
     for (var k = 0; k < n; k++) {
       var near = Math.random() < 0.3, s = near ? rnd(7, 11) : rnd(2.5, 6), d = LOOP ? 8 : rnd(16, 30), at = LOOP ? -(k * 8 / n) : -rnd(0, d);
