@@ -30,7 +30,7 @@
   function mix(rgb, to, t) { return rgb.map(function (v, i) { return Math.round(v + (to[i] - v) * t); }); }
   // one wave period: a smooth crest (two half sines, a long gentle one and a shorter one, so the strip doesn't look machine-made),
   // filled with the water colour fading down, and a pale crest line along the top when `crest`
-  function wave(rgb, a, crest, k) {   // a: the strip's alpha, a NUMBER (a "0.50" string made rgba(...,NaN) and a page error, 22 Nov)
+  function wave(rgb, a, crest, k) {   // a: the strip's alpha, a NUMBER (a "0.50" string made the colour's alpha NaN and the page threw, 22 Nov)
     var w = 256, h = 96, c = doc.createElement("canvas"); c.width = w; c.height = h;
     var g = c.getContext("2d"), y = function (x) { var t = x / w * Math.PI * 2; return 26 + 14 * Math.sin(t + k) + 5 * Math.sin(2 * t + 2 * k + 1); };
     g.beginPath(); g.moveTo(0, h);
