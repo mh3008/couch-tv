@@ -350,7 +350,7 @@
   // a style from fixed lists and plain colours, and a few options per kind, each on an allow list.
   // A design never carries a widget's data: the TV reads its own (the clock, its weather, its photos,
   // its apps, Home Assistant) or says plainly what is missing. No link, no number typed as words.
-  var WKINDS = ["clock", "tallclock", "glassclock", "analog", "flipclock", "wordclock", "solar", "worldclock", "countdown", "date", "month", "timer",
+  var WKINDS = ["clock", "tallclock", "glassclock", "analog", "flipclock", "wordclock", "solar", "orrery", "worldclock", "countdown", "date", "month", "timer",
     "weather", "bigtemp", "hourly", "week", "rain", "uv", "sun", "moon", "air", "surf",
     "photo", "slideshow", "mosaic", "artframe", "memory",
     "keep", "keeprow", "upnext", "picks",
@@ -361,7 +361,7 @@
     "card", "quote", "word", "news", "sports", "stocks", "commute",
     "welcome", "quick", "wifi", "guide", "screentime", "ask", "agent", "stack"];
   // which panel each kind has when its style does not say (glass, solid, colour, paper, none)
-  var WPANEL = { clock: "none", tallclock: "none", glassclock: "none", flipclock: "none", date: "none", welcome: "none", quote: "none", quick: "none",
+  var WPANEL = { clock: "none", tallclock: "none", glassclock: "none", flipclock: "none", orrery: "colour", date: "none", welcome: "none", quote: "none", quick: "none",
     photo: "none", slideshow: "none", mosaic: "none", artframe: "none", memory: "none", keep: "none", keeprow: "none", upnext: "none", picks: "none",
     app: "none", appgrid: "none", camera: "none", stack: "none", analog: "colour", wordclock: "colour", countdown: "colour", weather: "colour",
     bigtemp: "colour", hourly: "colour", week: "colour", uv: "colour", surf: "colour", screentime: "colour", note: "colour", word: "paper",
@@ -371,7 +371,7 @@
   // Timers, the weather the forecast, a photo the slideshow; a widget with nothing real to show opens
   // its setup record, so it is a stop too, decided when it is drawn)
   var WACT = ["keep", "keeprow", "upnext", "picks", "app", "folder", "dock", "appgrid", "games", "nowplaying", "soundscape", "aircon", "scenes", "controls", "people", "quick", "stack",
-    "clock", "tallclock", "glassclock", "analog", "flipclock", "wordclock", "timer", "solar", "worldclock", "date", "month", "agenda",
+    "clock", "tallclock", "glassclock", "analog", "flipclock", "wordclock", "timer", "solar", "orrery", "worldclock", "date", "month", "agenda",
     "weather", "bigtemp", "hourly", "week", "rain", "uv", "sun", "moon", "air", "surf", "photo", "slideshow", "mosaic", "artframe",
     "camera", "doorbell", "card", "news", "sports", "memory", "queue", "speakers", "energy", "sensor", "battery", "note", "list", "stocks", "commute", "wifi", "guide", "screentime", "ask", "agent"];
   var WSIZES = ["line", "wline", "tile", "wtile", "small", "tall", "medium", "wide", "large", "xl", "hero", "full", "row8", "row12", "row18"];
@@ -415,6 +415,7 @@
     quick: function (v) { return SAN.list(v, 6, function (q) { return SAN.pick(q, QUICK_IDS); }); },
     scene: function (v) { return SAN.pick(v, SCENE_IDS); }, sound: function (v) { return SAN.pick(v, ["rain", "fire", "waves", "brown"]); },
     night: SAN.b, place: SAN.b, hilo: SAN.b, sport: SAN.b,
+    pace: function (v) { return SAN.pick(v, ["now", "spin"]); },   // orrery (feat/orrery): today's positions, or a time-lapse (1 s = 1 day)
     entity: function (v) { return typeof v === "string" && /^climate\.[a-z0-9_]{1,64}$/.test(v) && !secretish(v) ? v : undefined; },
     controls: function (v) { return SAN.list(v, 8, function (c) { c = obj(c); var o = {}; put(o, "icon", SAN.pick(c.icon, CTL_ICONS)); put(o, "name", SAN.w(c.name, 24)); return o.icon ? o : undefined; }); },
     shows: function (v) { return SAN.n(v, 1, 5, true); },
@@ -443,7 +444,7 @@
   var WEB_LEAGUES = ["afl", "nrl", "aleague", "epl", "nba", "bbl", "cricket"];
   var WEB_FEEDS = ["abc", "abc-justin", "abc-sport", "abc-business", "sbs", "guardian", "bbc", "rnz"];
   var WOPT = {
-    clock: "format ampm seconds date align", tallclock: "format align", glassclock: "format scene", analog: "seconds numbers", flipclock: "format",
+    clock: "format ampm seconds date align", tallclock: "format align", glassclock: "format scene", analog: "seconds numbers", flipclock: "format", orrery: "label pace",
     wordclock: "precise dayline", solar: "", worldclock: "label cities format", countdown: "label month day year unit icon", date: "show dfmt align place", month: "wstart", timer: "label minutes",
     weather: "place hilo night", bigtemp: "place", hourly: "place hours", week: "place", rain: "label", uv: "label", sun: "label", moon: "", air: "label", surf: "label",
     photo: "image fit caption sub", slideshow: "seconds_each caption sub shuffle", mosaic: "count", artframe: "image mat caption sub", memory: "align range ago",

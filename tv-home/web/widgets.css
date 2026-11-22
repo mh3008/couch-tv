@@ -403,3 +403,21 @@ html.lighter .cwd-artbg { -webkit-filter: none; filter: none; opacity: 0.18; }
 .cw-ah.cw-strip > .cw-row > svg { width: 34px !important; height: 34px !important; }
 .cw-ah.cw-strip > .cw-row > .cw-col { margin-left: 0 !important; margin-top: 6px; -webkit-align-items: center; align-items: center; max-width: 100%; }
 .cw-ah.cw-strip .cw-e1 { text-align: center; font-size: 24px; line-height: 1.2; }
+
+/* Orrery (widgets.js R.orrery): the sun's glow breathes; in pace "spin" each planet's arm turns once per orbit (one second = one day).
+   Transform + opacity only; standing still on the Lighter home and with reduced motion. */
+.cw-orrery i { position: absolute; display: block; }
+.cw-orb-sun { border-radius: 50%; background: radial-gradient(circle, #fff6d8 0%, #ffd15e 35%, rgba(255,170,40,.45) 62%, rgba(255,150,30,0) 100%); will-change: transform, opacity;
+  -webkit-animation: cw-orb-glow 6s ease-in-out infinite; animation: cw-orb-glow 6s ease-in-out infinite; }
+.cw-orb-arm { width: 0; height: 0; }
+.cw-orb-go { will-change: transform; -webkit-animation-name: cw-orb-turn; animation-name: cw-orb-turn; -webkit-animation-timing-function: linear; animation-timing-function: linear;
+  -webkit-animation-iteration-count: infinite; animation-iteration-count: infinite; }
+.cw-orb-planet { border-radius: 50%; }
+.cw-orb-ringed::after { content: ""; position: absolute; left: -45%; top: 35%; width: 190%; height: 30%; border-radius: 50%; border: 1px solid rgba(240,220,170,.75); }
+.cw-orb-you { border-radius: 50%; border: 1.5px solid rgba(120,180,255,.75); }
+@-webkit-keyframes cw-orb-glow { 0%, 100% { -webkit-transform: scale(0.94); opacity: 0.85; } 50% { -webkit-transform: scale(1.06); opacity: 1; } }
+@keyframes cw-orb-glow { 0%, 100% { transform: scale(0.94); opacity: 0.85; } 50% { transform: scale(1.06); opacity: 1; } }
+@-webkit-keyframes cw-orb-turn { from { -webkit-transform: rotate(0deg); } to { -webkit-transform: rotate(-360deg); } }
+@keyframes cw-orb-turn { from { transform: rotate(0deg); } to { transform: rotate(-360deg); } }
+html.lighter .cw-orb-sun, html.lighter .cw-orb-go { -webkit-animation: none !important; animation: none !important; will-change: auto !important; }
+@media (prefers-reduced-motion: reduce) { .cw-orb-sun, .cw-orb-go { -webkit-animation: none !important; animation: none !important; } }

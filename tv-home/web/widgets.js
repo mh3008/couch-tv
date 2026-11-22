@@ -1022,6 +1022,55 @@
   };
 
   // weather
+  // ---------------- orrery (feat/orrery) ----------------
+  // The eight planets round the sun at where they really are, worked out from their orbits (no outside data): each planet's mean
+  // longitude from its J2000 elements plus the equation of the centre (eccentricity), about a degree from the truth, seen from above the
+  // north pole (anticlockwise). The rings are evenly spaced, not to scale (Neptune would be 80 times Mercury's). opts.pace "now" (the
+  // default): today's positions, the sun's glow breathing, redrawn every hour; "spin": a time-lapse, one second = one day, tied to the
+  // wall clock (so a redraw never jumps; the positions are today's real ones only at midnight). Moves by transform + opacity only.
+  var PLANETS = [   // name, mean longitude at J2000 (deg), deg a day, eccentricity, longitude of perihelion (deg), colour, size (of the box's min side / 100)
+    ["Mercury", 252.25084, 4.09233445, 0.2056, 77.456, "#b8b2a8", 1.4], ["Venus", 181.97973, 1.60213034, 0.0068, 131.533, "#e9c27c", 2.1],
+    ["Earth", 100.46435, 0.98560910, 0.0167, 102.947, "#4f9dff", 2.2], ["Mars", 355.45332, 0.52403840, 0.0934, 336.041, "#d6593b", 1.8],
+    ["Jupiter", 34.40438, 0.08308676, 0.0484, 14.753, "#d9a067", 3.6], ["Saturn", 49.94432, 0.03346063, 0.0542, 92.432, "#e4ca8c", 3.1],
+    ["Uranus", 313.23218, 0.01173129, 0.0472, 170.964, "#8fd4e0", 2.5], ["Neptune", 304.88003, 0.00598106, 0.0086, 44.971, "#5a76e3", 2.5]];
+  var J2000 = Date.UTC(2000, 0, 1, 12, 0, 0);
+  // where a planet is (heliocentric ecliptic longitude, degrees 0-360) at a time (ms)
+  function planetAt(p, ms) {
+    var d = (ms - J2000) / 86400000, L = p[1] + p[2] * d, M = (L - p[4]) * Math.PI / 180, e = p[3];
+    var C = (2 * e - e * e * e / 4) * Math.sin(M) + 1.25 * e * e * Math.sin(2 * M) + (13 / 12) * e * e * e * Math.sin(3 * M);   // radians
+    return (((L + C * 180 / Math.PI) % 360) + 360) % 360;
+  }
+  // the time-lapse's date: from this morning's midnight, one second of the wall clock = one day
+  function spinDate(ms) { var m = new Date(ms); m.setHours(0, 0, 0, 0); return m.getTime() + (ms - m.getTime()) * 86400; }
+  R.orrery = function (root, o, b, env) {
+    var pace = op(o).pace === "spin" ? "spin" : "now", nowMs = now().getTime(), at = pace === "spin" ? spinDate(nowMs) : nowMs;
+    // the disc: room left for the padding, the label and the line under it
+    var side = Math.min(b.w - 48, b.h - (b.h > 300 ? 140 : 48)), R0 = side / 2 - side * 0.04, step = (R0 - side * 0.12) / 7, cx = side / 2;
+    var sky = E("div", "cw-orrery", "position:relative;width:" + px(side) + ";height:" + px(side) + ";margin:0 auto;flex:none");
+    // the orbits: one still svg
+    add(sky, svg("0 0 " + side + " " + side, px(side), px(side), PLANETS.map(function (p, i) {
+      return S("circle", { cx: cx, cy: cx, r: (side * 0.12 + i * step).toFixed(1), fill: "none", stroke: "rgba(255,255,255," + (i === 2 ? 0.32 : 0.16) + ")", "stroke-width": i === 2 ? 1.6 : 1 });
+    }), "position:absolute;left:0;top:0"));
+    var sun = side * 0.085;
+    add(sky, E("i", "cw-orb-sun", "left:" + px(cx - sun) + ";top:" + px(cx - sun) + ";width:" + px(2 * sun) + ";height:" + px(2 * sun)));
+    PLANETS.forEach(function (p, i) {
+      var r = side * 0.12 + i * step, a = planetAt(p, at), d = Math.max(5, side * p[6] / 100);
+      // an arm: a still turn to where the planet is (anticlockwise = minus); in "spin" a spinner inside it turns on, one lap per period
+      // (two elements: an animation on the arm itself would replace its still turn, and animation-composition is too new for a TV)
+      var arm = E("i", "cw-orb-arm", "left:" + px(cx) + ";top:" + px(cx) + ";-webkit-transform:rotate(" + (-a).toFixed(2) + "deg);transform:rotate(" + (-a).toFixed(2) + "deg)");
+      var hold = pace === "spin" ? E("i", "cw-orb-arm cw-orb-go", "left:0;top:0;-webkit-animation-duration:" + (360 / p[2]).toFixed(1) + "s;animation-duration:" + (360 / p[2]).toFixed(1) + "s") : arm;
+      if (hold !== arm) add(arm, hold);
+      var dot = E("i", "cw-orb-planet" + (p[0] === "Saturn" ? " cw-orb-ringed" : ""), "left:" + px(r - d / 2) + ";top:" + px(-d / 2) + ";width:" + px(d) + ";height:" + px(d) + ";background:" + p[5] + ";box-shadow:0 0 " + px(d * 0.9) + " " + p[5]);
+      dot.setAttribute("data-planet", p[0]);
+      add(hold, dot); add(sky, arm);
+      if (p[0] === "Earth") add(hold, E("i", "cw-orb-you", "left:" + px(r - d * 1.1) + ";top:" + px(-d * 1.1) + ";width:" + px(d * 2.2) + ";height:" + px(d * 2.2)));
+    });
+    var d0 = new Date(at);
+    add(root, [b.h > 300 ? lab("sun", pace === "spin" ? "The planets" : "The planets today", "rgba(255,255,255,.88)") : null,
+      E("div", "cw-grow"), sky, E("div", "cw-grow"),
+      b.h > 300 ? E("div", "cw-t23 cw-ell", "color:var(--sub);text-align:center", [pace === "spin" ? "1 day a second · " + d0.getDate() + " " + MONTHS[d0.getMonth()].slice(0, 3) : "Earth in blue · not to scale"]) : null]);
+    if (pace === "now") live(root, 3600000, function () { /* positions move about a degree a day: the hourly redraw is plenty */ });
+  };
   function noWx(root, b, env, o) {
     var d = dataOf(env), p = pickedPlace(o, env);
     if (d.wxOff) return empty(root, b, "partly-cloudy", "Weather is off on this TV", "Turn it on in Home settings, Weather");
@@ -3327,7 +3376,7 @@
       appNode: appNode, appsFor: appsFor, appName: appName, appIcon: appIcon, demoImg: demoImg, bgImg: bgImg,
       sunToday: sunToday, sunTimes: sunTimes, moon: moon, tzTime: tzTime, CITY: CITY, DAYS: DAYS, MONTHS: MONTHS, longDate: longDate, clockParts: clockParts,
       roomsOf: roomsOf, roomOn: roomOn, roomMode: roomMode, MODE_WORD: MODE_WORD, MODE_COL: MODE_COL, tdeg: tdeg, scenesOf: scenesOf,
-      airOf: airOf, aqiBand: aqiBand, airIn: airIn, surfOf: surfOf, surfUnits: surfUnits, waveIn: waveIn, windIn: windIn, moonSouth: moonSouth, wxHead: wxHead, uvLine: uvLine, surfPlace: surfPlace, pickedPlace: pickedPlace, compass: compass,
+      airOf: airOf, aqiBand: aqiBand, airIn: airIn, surfOf: surfOf, planetAt: planetAt, spinDate: spinDate, PLANETS: PLANETS, surfUnits: surfUnits, waveIn: waveIn, windIn: windIn, moonSouth: moonSouth, wxHead: wxHead, uvLine: uvLine, surfPlace: surfPlace, pickedPlace: pickedPlace, compass: compass,
       // this widget's own settings and honest headings (WIDGET-SETTINGS-CONTRACT.md)
       setting: setting, tvSet: tvSet, devName: devName, webName: webName, feedFor: feedFor, unitF: unitF, roomUnit: roomUnit, tconv: tconv, sensorConv: sensorConv, Timer: Timer, mmss: mmss, ring: ring, dial: dial, dayIndex: dayIndex, fmt12: fmt12,
       // things typed at home (athome.js through app.js)

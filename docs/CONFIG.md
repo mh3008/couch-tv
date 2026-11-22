@@ -423,7 +423,7 @@ scene, Keep watching every show with Resume, an app folder every app. A widget w
 things (a row of scenes, a poster row) keeps them, and its layer is the first item of Hold OK. What
 each widget needs, where that is set up, which TVs can run it and the sizes it comes in are in
 `tv-home/web/widget-caps.js`; a TV with nothing real for a widget shows that record's setup card, and
-OK on the card opens the whole record. It never shows pretend data. The air quality and surf widgets
+OK on the card opens the whole record. It never shows pretend data. The Orrery widget (`orrery`, option `pace`: `now` or `spin`) works the planets out itself: no data, no account. The air quality and surf widgets
 ask Open-Meteo's free air quality and marine services, only while one is on the home.
 
 **Things typed at home (Home settings, Designs, At home).** The Family note, List, Guest
