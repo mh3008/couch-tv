@@ -511,40 +511,122 @@
     add(root, E("div", "cw-grow cw-col", "justify-content:center", [w, s]));
     live(root, 15000, function () { w.textContent = timeWords(now()); s.textContent = DAYS[now().getDay()] + " " + partOfDay(now()); });
   };
-  // Lava lamp: a decorative glass lamp with slow wax blobs, all in the design's own colour (the widget accent, else
-  // look.accent): the blobs are lighter and deeper tints of it, the glass is look.panel with the look's rim. One lamp
-  // fills a tall box; a wide box gets up to three, each a little out of step. The page's stylesheet does all the moving
-  // (widgets.css, .cw-lv): transform and opacity only, 24 s a cycle, so this code never runs again after the first draw.
-  // Nothing to set up, nothing asked. Gooey SVG-filter lamps (Saganaki22/LofiLamp, Apache-2.0; evstarkman/lava-lamp, MIT)
-  // were left out on purpose, a filter costs too much on a stick; no code was copied.
+  // Lava lamp: a decorative glass lamp in the design's own colour (the widget accent, else look.accent). It is built from
+  // pre-rendered sprites (inline SVG images, drawn once by the page and never again): an opaque glass body with a warm
+  // glow, a chrome cap and base, glossy wax blobs, a wax pool, and little "neck" sprites that grow between two blobs (or a
+  // blob and the pool) when they meet and thin out and snap when they part. The stylesheet moves them (widgets.css, .cw-lv):
+  // transform and opacity only, 24 s a cycle, so this code never runs again after the first draw: no filter, no blur, no
+  // canvas, no timer. Nothing to set up, nothing asked. Prior art (ideas only, no code copied): the gooey blur +
+  // colour-matrix lamps (Saganaki22/LofiLamp, Apache-2.0; evstarkman/lava-lamp, MIT; Liquid-Gooey-Effect, MIT) get the merge by
+  // thresholding a blur, which costs a filter pass per frame; here the merge is a pre-drawn neck sprite between two circles
+  // (the vector-metaball idea, Dillion/VectorMetaballs, MIT) and the rise-and-fall follows the heat / buoyancy idea of
+  // AngelJumbo/lavat (MIT) and Egv2/lava-lamp (MIT), written fresh as a pre-computed path (tools: lava_v2_gen.py).
   function lvMix(rgb, to, f) { return [rgb[0] + (to[0] - rgb[0]) * f, rgb[1] + (to[1] - rgb[1]) * f, rgb[2] + (to[2] - rgb[2]) * f]; }
+  function lvHex(c) { function h(n) { n = Math.max(0, Math.min(255, Math.round(n))); return (n < 16 ? "0" : "") + n.toString(16); } return "#" + h(c[0]) + h(c[1]) + h(c[2]); }
+  function lvN(n) { return (Math.round(n * 10) / 10).toString(); }
+  // the glass's half width by height (0 = top of the tube, 1 = its bottom), in units of a lamp 100 wide; the same table is in
+  // the generator that wrote the keyframes, so the wax never touches the glass
+  var LV_HW = [[0, 21], [0.08, 22.5], [0.25, 28], [0.5, 36], [0.72, 43], [0.86, 47], [0.93, 44.5], [0.98, 38.5], [1, 33]];
+  function lvHw(u) {
+    u = Math.max(0, Math.min(1, u));
+    for (var i = 1; i < LV_HW.length; i++) {
+      if (u <= LV_HW[i][0]) {
+        var a = LV_HW[i - 1], b = LV_HW[i], t = (1 - Math.cos(Math.PI * (u - a[0]) / (b[0] - a[0]))) / 2;
+        return a[1] + (b[1] - a[1]) * t;
+      }
+    }
+    return LV_HW[LV_HW.length - 1][1];
+  }
+  function lvUri(svg) { return "url(\"data:image/svg+xml," + encodeURIComponent(svg) + "\")"; }
+  function lvSvg(vb, body) { return "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"" + vb + "\" preserveAspectRatio=\"none\">" + body + "</svg>"; }
+  function lvStop(o, c, a) { return "<stop offset=\"" + o + "\" stop-color=\"" + lvHex(c) + "\"" + (a === undefined ? "" : " stop-opacity=\"" + a + "\"") + "/>"; }
   R.lavalamp = function (root, o, b, env) {
     var look = env.look || {}, st = o.style || {};
-    var c1 = rgbOf(st.accent) || rgbOf(look.accent) || [255, 106, 61], c2 = lvMix(c1, [255, 255, 255], 0.38), c3 = lvMix(c1, [255, 255, 255], 0.7), c0 = lvMix(c1, [0, 0, 0], 0.5);
-    var glass = rgbOf(look.panel) || [24, 22, 28], rim = look.rim || "rgba(255, 255, 255, 0.22)";
+    var c1 = rgbOf(st.accent) || rgbOf(look.accent) || [255, 106, 61];
+    var glass = rgbOf(look.panel) || [24, 22, 28];
+    var WHITE = [255, 255, 255], BLACK = [0, 0, 0];
+    var wd = lvMix(c1, BLACK, 0.45), wl = lvMix(c1, WHITE, 0.3), wh = lvMix(c1, WHITE, 0.72);            // wax: edge, bright, highlight
+    var dark = lvMix(lvMix(glass, c1, 0.2), BLACK, 0.55);                                                  // the liquid: deep, warmer toward the bulb
+    var l0 = lvMix(dark, BLACK, 0.3), l1 = lvMix(dark, c1, 0.1), l2 = lvMix(dark, c1, 0.28);
+    var metal = lvMix(lvMix(c1, [128, 128, 136], 0.8), BLACK, 0.5);
     var pad = root.classList.contains("cw-bare") ? 0 : 48, aw = b.w - pad, ah = b.h - pad;
-    var W = Math.max(40, Math.min(aw / 1.26, ah / 2.7, 380)), n = clamp(Math.floor(aw / (W * 1.4)), 1, 3);   // a lamp and its side margins (0.12 each) must fit across
-    var capH = W * 0.14, tubeH = W * 2.05, baseH = W * 0.5, tot = capH + tubeH + baseH - W * 0.04;
-    var lamps = [];
-    for (var k = 0; k < n; k++) {
-      var step = k * 7.3, blobs = [];
-      for (var i = 1; i <= 5; i++) {
-        var base = i % 2 ? c1 : c2, delay = "-" + ((i * 4.9 + step) % 24).toFixed(1) + "s";
-        var fill = "radial-gradient(circle closest-side at 50% 46%, " + rgba(i % 2 ? c2 : c3, 1) + " 0%, " + rgba(base, 1) + " 36%, " + rgba(base, 0.96) + " 66%, " + rgba(base, 0) + " 100%)";
-        blobs.push(E("i", "cw-lv-b cw-lv-" + i, "background:" + fill + ";-webkit-animation-delay:" + delay + ";animation-delay:" + delay));
-      }
-      var pd = "-" + (k * 3.1).toFixed(1) + "s";
-      var pool = E("i", "cw-lv-pool", "background:radial-gradient(ellipse 50% 62% at 50% 62%, " + rgba(c2, 1) + " 0%, " + rgba(c1, 1) + " 40%, " + rgba(c1, 0.95) + " 72%, " + rgba(c1, 0) + " 100%);-webkit-animation-delay:" + pd + ";animation-delay:" + pd);
-      var tube = E("div", "cw-lv-tube", "top:" + px(capH - 2) + ";height:" + px(tubeH) + ";border-radius:" + px(W * 0.46) + ";border:2px solid " + rim +
-        ";background:linear-gradient(180deg, " + rgba(c1, 0.05) + ", " + rgba(c1, 0.3) + "), " + rgba(glass, 0.55), [pool].concat(blobs, [E("i", "cw-lv-sheen")]));
-      var metal = "linear-gradient(90deg, " + shade(c0, 0.7) + ", " + shade(lvMix(c0, [255, 255, 255], 0.28), 1) + " 45%, " + shade(c0, 0.62) + ")";
-      lamps.push(E("div", "cw-lv", "width:" + px(W) + ";height:" + px(tot) + ";margin:0 " + px(W * 0.12), [
-        E("div", "cw-lv-glow", "background:radial-gradient(ellipse closest-side at 50% 50%, " + rgba(c1, 0.6) + " 0%, " + rgba(c1, 0) + " 100%)"),
-        E("div", "cw-lv-cap", "width:" + px(W * 0.5) + ";height:" + px(capH) + ";margin-left:" + px(-W * 0.25) + ";background:linear-gradient(180deg, rgba(255, 255, 255, 0.22), rgba(255, 255, 255, 0) 40%), " + metal),
-        tube,
-        E("div", "cw-lv-base", "top:" + px(capH + tubeH - W * 0.06) + ";width:" + px(W * 0.84) + ";height:" + px(baseH) + ";margin-left:" + px(-W * 0.42) + ";background:" + metal)]));
+    var W = Math.max(40, Math.min(aw / 1.3, ah / 2.56, 230));          // one lamp, 2.56 wide-units tall; capped so the moving layers stay small
+    var tot = W * 2.56, halo = Math.max(0, Math.min(W * 0.28, (aw - W) / 2 - 2));
+    // ---- the back: cap, glass (opaque), base, in one still picture ----
+    var Y0 = 16, i, k, u, edge = [];
+    for (k = 0; k <= 24; k++) { u = k / 24; edge.push([50 - lvHw(u), Y0 + u * 190]); }
+    var left = edge.map(function (p, j) { return (j ? "L" : "M") + lvN(p[0]) + "," + lvN(p[1]); }).join(" ");
+    var right = edge.slice().reverse().map(function (p) { return "L" + lvN(100 - p[0]) + "," + lvN(p[1]); }).join(" ");
+    var body = left + " " + right + " Z";
+    var gl = [], gr = [], g2 = [], g3 = [];
+    for (k = 0; k <= 10; k++) {   // the glass's reflections: a long streak down the left wall, a thin one on the right
+      var gy = 30 + k * 14, ex = 50 - lvHw((gy - Y0) / 190) + 3.4, rx = 50 + lvHw((gy - Y0) / 190) - 6.2;
+      gl.push(lvN(ex) + "," + lvN(gy)); gr.push(lvN(ex + 3.8) + "," + lvN(gy)); g2.push(lvN(rx) + "," + lvN(gy)); g3.push(lvN(rx + 1.8) + "," + lvN(gy));
     }
-    add(root, E("div", "cw-lv-row", "", lamps));
+    var cone = "M24,208 L76,208 C79,224 88,242 97,256 L3,256 C12,242 21,224 24,208 Z", dome = "M28,19 C28,7 38,2 50,2 C62,2 72,7 72,19 Z";
+    var back = "<defs>" +
+      "<linearGradient id=\"lq\" x1=\"0\" y1=\"" + Y0 + "\" x2=\"0\" y2=\"" + (Y0 + 190) + "\" gradientUnits=\"userSpaceOnUse\">" + lvStop(0, l0) + lvStop(0.55, l1) + lvStop(1, l2) + "</linearGradient>" +
+      "<radialGradient id=\"lb\" cx=\"50\" cy=\"" + (Y0 + 190) + "\" r=\"74\" gradientUnits=\"userSpaceOnUse\">" + lvStop(0, c1, 0.5) + lvStop(0.5, c1, 0.14) + lvStop(1, c1, 0) + "</radialGradient>" +
+      "<linearGradient id=\"le\" x1=\"3\" y1=\"0\" x2=\"97\" y2=\"0\" gradientUnits=\"userSpaceOnUse\">" + lvStop(0, BLACK, 0.5) + lvStop(0.16, BLACK, 0) + lvStop(0.84, BLACK, 0) + lvStop(1, BLACK, 0.5) + "</linearGradient>" +
+      "<linearGradient id=\"lm\" x1=\"0\" y1=\"0\" x2=\"1\" y2=\"0\">" + lvStop(0, lvMix(metal, BLACK, 0.5)) + lvStop(0.2, lvMix(metal, WHITE, 0.22)) + lvStop(0.38, lvMix(metal, WHITE, 0.72)) + lvStop(0.55, lvMix(metal, WHITE, 0.2)) + lvStop(0.8, metal) + lvStop(1, lvMix(metal, BLACK, 0.6)) + "</linearGradient>" +
+      "<linearGradient id=\"lv\" x1=\"0\" y1=\"0\" x2=\"0\" y2=\"1\">" + lvStop(0, wl, 0.34) + lvStop(0.4, BLACK, 0) + lvStop(1, BLACK, 0.4) + "</linearGradient>" +
+      "<linearGradient id=\"lr\" x1=\"0\" y1=\"30\" x2=\"0\" y2=\"170\" gradientUnits=\"userSpaceOnUse\"><stop offset=\"0\" stop-color=\"#fff\" stop-opacity=\"0\"/><stop offset=\"0.2\" stop-color=\"#fff\" stop-opacity=\"0.4\"/><stop offset=\"0.75\" stop-color=\"#fff\" stop-opacity=\"0.16\"/><stop offset=\"1\" stop-color=\"#fff\" stop-opacity=\"0\"/></linearGradient>" +
+      "</defs>" +
+      // base: a collar and a flared cone, the bulb's light leaking at the seam
+      "<path d=\"" + cone + "\" fill=\"url(#lm)\"/><path d=\"" + cone + "\" fill=\"url(#lv)\"/>" +
+      "<rect x=\"17\" y=\"203\" width=\"66\" height=\"7\" rx=\"3\" fill=\"url(#lm)\"/>" +
+      "<rect x=\"19\" y=\"203\" width=\"62\" height=\"1.6\" rx=\"0.8\" fill=\"" + lvHex(wh) + "\" fill-opacity=\"0.6\"/>" +
+      // the glass: opaque liquid, the bulb's glow, darker toward both walls, then the reflections and the rim
+      "<path d=\"" + body + "\" fill=\"url(#lq)\"/>" +
+      "<path d=\"" + body + "\" fill=\"url(#lb)\"/>" +
+      "<path d=\"" + body + "\" fill=\"url(#le)\"/>" +
+      "<polygon points=\"" + gl.join(" ") + " " + gr.slice().reverse().join(" ") + "\" fill=\"url(#lr)\"/>" +
+      "<polygon points=\"" + g2.join(" ") + " " + g3.slice().reverse().join(" ") + "\" fill=\"url(#lr)\" fill-opacity=\"0.6\"/>" +
+      "<path d=\"" + body + "\" fill=\"none\" stroke=\"#ffffff\" stroke-opacity=\"0.34\" stroke-width=\"1.1\"/>" +
+      // cap: a chrome dome on a collar
+      "<path d=\"" + dome + "\" fill=\"url(#lm)\"/><path d=\"" + dome + "\" fill=\"url(#lv)\"/>" +
+      "<ellipse cx=\"41\" cy=\"8\" rx=\"7\" ry=\"2.2\" fill=\"#ffffff\" fill-opacity=\"0.5\" transform=\"rotate(-18 41 8)\"/>" +
+      "<rect x=\"25\" y=\"16.5\" width=\"50\" height=\"5\" rx=\"2.4\" fill=\"url(#lm)\"/>" +
+      "<rect x=\"26\" y=\"16.5\" width=\"48\" height=\"1.2\" rx=\"0.6\" fill=\"#ffffff\" fill-opacity=\"0.5\"/>";
+    // ---- wax: a glossy blob, the pool, and the neck ----
+    var blobImg = lvUri(lvSvg("0 0 100 100",
+      "<defs><radialGradient id=\"w\" cx=\"50\" cy=\"66\" r=\"58\" gradientUnits=\"userSpaceOnUse\">" + lvStop(0, wl) + lvStop(0.32, lvMix(c1, WHITE, 0.1)) + lvStop(0.62, c1) + lvStop(0.9, lvMix(c1, BLACK, 0.2)) + lvStop(1, lvMix(c1, BLACK, 0.36)) + "</radialGradient>" +
+      "<radialGradient id=\"s\"><stop offset=\"0\" stop-color=\"#fff\" stop-opacity=\"0.7\"/><stop offset=\"1\" stop-color=\"#fff\" stop-opacity=\"0\"/></radialGradient>" +
+      "<radialGradient id=\"r\"><stop offset=\"0\" stop-color=\"" + lvHex(wh) + "\" stop-opacity=\"0.32\"/><stop offset=\"1\" stop-color=\"" + lvHex(wh) + "\" stop-opacity=\"0\"/></radialGradient></defs>" +
+      "<circle cx=\"50\" cy=\"50\" r=\"49.5\" fill=\"url(#w)\"/>" +
+      "<ellipse cx=\"50\" cy=\"80\" rx=\"28\" ry=\"13\" fill=\"url(#r)\"/>" +
+      "<ellipse cx=\"35\" cy=\"26\" rx=\"14\" ry=\"8\" transform=\"rotate(-35 35 26)\" fill=\"url(#s)\"/>"));
+    var pl = [], pr = [];
+    for (k = 0; k <= 12; k++) { var yy = 6 + k * (30 / 12); u = (154 + yy) / 190; pl.push([50 - lvHw(u) + 1.4, yy]); pr.push([50 + lvHw(u) - 1.4, yy]); }
+    // the surface is not a straight line: a low swell on the left, a higher one on the right (wax that has just pulled back)
+    var pbody = "M" + lvN(pl[0][0]) + ",6 C" + lvN(pl[0][0] + 10) + ",0 36,8 50,3 S" + lvN(pr[0][0] - 8) + ",-3 " + lvN(pr[0][0]) + ",6 " +
+      pr.slice(1).map(function (p) { return "L" + lvN(p[0]) + "," + lvN(p[1]); }).join(" ") + " " +
+      pl.slice(1).reverse().map(function (p) { return "L" + lvN(p[0]) + "," + lvN(p[1]); }).join(" ") + " Z";
+    var poolImg = lvUri(lvSvg("0 0 100 36",
+      "<defs><linearGradient id=\"p\" x1=\"0\" y1=\"0\" x2=\"0\" y2=\"36\" gradientUnits=\"userSpaceOnUse\">" + lvStop(0, wl) + lvStop(0.14, lvMix(c1, BLACK, 0.18)) + lvStop(0.5, lvMix(c1, BLACK, 0.06)) + lvStop(1, c1) + "</linearGradient>" +
+      "<radialGradient id=\"c\" cx=\"50\" cy=\"36\" r=\"48\" gradientUnits=\"userSpaceOnUse\">" + lvStop(0, wh, 0.55) + lvStop(0.55, wl, 0.2) + lvStop(1, wl, 0) + "</radialGradient>" +
+      "<linearGradient id=\"e\" x1=\"0\" y1=\"0\" x2=\"100\" y2=\"0\" gradientUnits=\"userSpaceOnUse\">" + lvStop(0, BLACK, 0.4) + lvStop(0.22, BLACK, 0) + lvStop(0.78, BLACK, 0) + lvStop(1, BLACK, 0.4) + "</linearGradient>" +
+      "<radialGradient id=\"s\"><stop offset=\"0\" stop-color=\"#fff\" stop-opacity=\"0.7\"/><stop offset=\"1\" stop-color=\"#fff\" stop-opacity=\"0\"/></radialGradient></defs>" +
+      "<path d=\"" + pbody + "\" fill=\"url(#p)\"/><path d=\"" + pbody + "\" fill=\"url(#c)\"/><path d=\"" + pbody + "\" fill=\"url(#e)\"/>" +
+      "<ellipse cx=\"36\" cy=\"4.2\" rx=\"18\" ry=\"2.2\" fill=\"url(#s)\"/>"));
+    var np = [], nq = [];
+    for (k = 0; k <= 16; k++) { var x = k * 100 / 16, hh = 60 - 27 * Math.pow(Math.sin(Math.PI * x / 100), 1.3); np.push(lvN(x) + "," + lvN(30 - hh / 2)); nq.push(lvN(x) + "," + lvN(30 + hh / 2)); }
+    var neckImg = lvUri(lvSvg("0 0 100 60",
+      "<defs><linearGradient id=\"n\" x1=\"0\" y1=\"0\" x2=\"0\" y2=\"60\" gradientUnits=\"userSpaceOnUse\">" + lvStop(0, wd) + lvStop(0.3, c1) + lvStop(0.52, lvMix(c1, WHITE, 0.14)) + lvStop(0.74, c1) + lvStop(1, wd) + "</linearGradient></defs>" +
+      "<polygon points=\"" + np.join(" ") + " " + nq.reverse().join(" ") + "\" fill=\"url(#n)\"/>"));
+    var bulbImg = lvUri(lvSvg("0 0 70 38",
+      "<defs><radialGradient id=\"h\" cx=\"35\" cy=\"38\" r=\"40\" gradientUnits=\"userSpaceOnUse\">" + lvStop(0, wl, 0.7) + lvStop(0.45, c1, 0.3) + lvStop(1, c1, 0) + "</radialGradient></defs><rect width=\"70\" height=\"38\" fill=\"url(#h)\"/>"));
+    var bg = function (img) { return "background-image:" + img; };
+    var blobs = [];
+    for (i = 1; i <= 4; i++) blobs.push(E("i", "cw-lv-b cw-lv-" + i, bg(blobImg)));
+    var necks = [];
+    for (i = 1; i <= 5; i++) necks.push(E("i", "cw-lv-n cw-lv-n" + i, bg(neckImg)));
+    var stage = E("div", "cw-lv-stage", "", [E("i", "cw-lv-bulb", bg(bulbImg))].concat(necks, blobs, [E("i", "cw-lv-pool", bg(poolImg))]));
+    var lamp = E("div", "cw-lv", "width:" + px(W) + ";height:" + px(tot), [
+      E("div", "cw-lv-halo", "left:" + px(-halo) + ";right:" + px(-halo) + ";background:radial-gradient(ellipse closest-side at 50% 50%, " + rgba(c1, 0.5) + " 0%, " + rgba(c1, 0.16) + " 55%, " + rgba(c1, 0) + " 100%)"),
+      E("div", "cw-lv-back", bg(lvUri(lvSvg("0 0 100 256", back)))),
+      stage]);
+    add(root, E("div", "cw-lv-row", "", [lamp]));
   };
   function arc(f) {
     f = clamp(f, 0, 1);
