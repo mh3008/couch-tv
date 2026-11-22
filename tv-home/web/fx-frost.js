@@ -31,26 +31,26 @@
   function corner(seed, c) {
     var cv = doc.createElement("canvas"); cv.width = CW; cv.height = CH;
     var g = cv.getContext("2d"), R = seeded(seed), tips = [], white = mix(c, 0.7), core = mix(c, 0.45);
-    var haze = g.createRadialGradient(0, 0, 0, 0, 0, 640);
-    haze.addColorStop(0, rgba(c, 0.62)); haze.addColorStop(0.35, rgba(c, 0.36)); haze.addColorStop(0.7, rgba(c, 0.13)); haze.addColorStop(1, rgba(c, 0));
+    var haze = g.createRadialGradient(0, 0, 0, 0, 0, 720);
+    haze.addColorStop(0, rgba(c, 0.9)); haze.addColorStop(0.3, rgba(c, 0.62)); haze.addColorStop(0.62, rgba(c, 0.28)); haze.addColorStop(1, rgba(c, 0));
     g.fillStyle = haze; g.fillRect(0, 0, CW, CH);
-    for (var p = 0; p < 130; p++) {        // milky frost patches, thicker near the corner
-      var rr = Math.pow(R(), 0.8) * 560, aa = R() * Math.PI / 2, x = rr * Math.cos(aa), y = rr * Math.sin(aa), s = 6 + R() * 22;
-      g.fillStyle = rgba(c, 0.05 + 0.13 * (1 - rr / 560)); g.beginPath(); g.arc(x, y, s, 0, Math.PI * 2); g.fill();
+    for (var p = 0; p < 340; p++) {        // milky frost patches, thicker near the corner
+      var rr = Math.pow(R(), 0.85) * 640, aa = R() * Math.PI / 2, x = rr * Math.cos(aa), y = rr * Math.sin(aa), s = 8 + R() * 30;
+      g.fillStyle = rgba(c, 0.07 + 0.2 * (1 - rr / 640)); g.beginPath(); g.arc(x, y, s, 0, Math.PI * 2); g.fill();
     }
     function limb(x, y, ang, len, depth, w) {     // a fern limb: wobbling stem, side branches on both sides, a bright tip
       var step = depth === 0 ? 20 : depth === 1 ? 12 : 8, n = Math.max(3, Math.floor(len / step)), px = x, py = y, a = ang, pts = [[x, y]], k;
       for (k = 1; k <= n; k++) {
         a += (R() - 0.5) * 0.16; px += Math.cos(a) * step; py += Math.sin(a) * step; pts.push([px, py]);
       }
-      [[w * 3.4, 0.16, c], [w, 0.92, white]].forEach(function (pass) {     // a wide faint stroke under a thin bright one = glow without a blur
+      [[w * 3.6, 0.2, c], [w, 0.95, white]].forEach(function (pass) {     // a wide faint stroke under a thin bright one = glow without a blur
         g.strokeStyle = rgba(pass[2], pass[1]); g.lineWidth = pass[0]; g.lineCap = "round";
         g.beginPath(); g.moveTo(pts[0][0], pts[0][1]); for (var i = 1; i < pts.length; i++) g.lineTo(pts[i][0], pts[i][1]); g.stroke();
       });
-      if (depth < 2) {
-        for (k = 2; k < pts.length; k += (depth === 0 ? 1 : 2)) {
+      if (depth < 3) {
+        for (k = 2; k < pts.length; k += (depth === 0 ? 1 : depth === 1 ? 1 : 3)) {
           var t = k / pts.length, bl = len * (depth === 0 ? 0.42 : 0.5) * (1 - t * 0.75), side = (k % 2 ? 1 : -1) * (0.85 + R() * 0.3);
-          if (bl > 14) limb(pts[k][0], pts[k][1], a + side, bl, depth + 1, Math.max(0.7, w * 0.62));
+          if (bl > 14) limb(pts[k][0], pts[k][1], a + side, bl, depth + 1, Math.max(1.1, w * 0.7));
         }
       }
       var e = pts[pts.length - 1];
@@ -59,8 +59,8 @@
         if (depth === 0 || (depth === 1 && R() < 0.3)) tips.push([e[0], e[1]]);
       }
     }
-    var stems = 8, s0;
-    for (s0 = 0; s0 < stems; s0++) limb(0, 0, (4 + (s0 + R() * 0.7) * (82 / stems)) * Math.PI / 180, 430 + R() * 260, 0, 3.4);
+    var stems = 11, s0;
+    for (s0 = 0; s0 < stems; s0++) limb(0, 0, (4 + (s0 + R() * 0.7) * (82 / stems)) * Math.PI / 180, 460 + R() * 280, 0, 4.4);
     // crisp rime dots near the corner
     for (p = 0; p < 90; p++) { var q = Math.pow(R(), 1.5) * 380, b = R() * Math.PI / 2; g.fillStyle = "rgba(255,255,255," + (0.35 + R() * 0.5) + ")"; g.beginPath(); g.arc(q * Math.cos(b), q * Math.sin(b), 0.8 + R() * 1.4, 0, Math.PI * 2); g.fill(); }
     return { url: cv.toDataURL("image/png"), tips: tips };
@@ -69,11 +69,11 @@
   function strip(c) {
     var cv = doc.createElement("canvas"); cv.width = 1920; cv.height = EDGE_H;
     var g = cv.getContext("2d"), R = seeded(77), f = g.createLinearGradient(0, 0, 0, EDGE_H);
-    f.addColorStop(0, rgba(c, 0.55)); f.addColorStop(0.45, rgba(c, 0.22)); f.addColorStop(1, rgba(c, 0));
+    f.addColorStop(0, rgba(c, 0.85)); f.addColorStop(0.4, rgba(c, 0.4)); f.addColorStop(1, rgba(c, 0));
     g.fillStyle = f; g.fillRect(0, 0, 1920, EDGE_H);
-    g.strokeStyle = "rgba(255,255,255,0.8)"; g.lineWidth = 1.4; g.lineCap = "round";
-    for (var i = 0; i < 230; i++) {
-      var x = R() * 1920, h = 10 + Math.pow(R(), 2) * 80, a = Math.PI / 2 + (R() - 0.5) * 0.9;
+    g.strokeStyle = "rgba(255,255,255,0.8)"; g.lineWidth = 2; g.lineCap = "round";
+    for (var i = 0; i < 420; i++) {
+      var x = R() * 1920, h = 6 + Math.pow(R(), 2.2) * 46, a = Math.PI / 2 + (R() - 0.5) * 1.6;
       g.beginPath(); g.moveTo(x, 0); g.lineTo(x + Math.cos(a) * h, Math.sin(a) * h); g.stroke();
       g.fillStyle = "rgba(255,255,255,0.9)"; g.beginPath(); g.arc(x + Math.cos(a) * h, Math.sin(a) * h, 1.3, 0, Math.PI * 2); g.fill();
     }
