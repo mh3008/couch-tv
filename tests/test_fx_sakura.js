@@ -1,4 +1,4 @@
-// fx-sakura.js (design.home.sakura_storm + sakura_style): petals + wind streaks per amount, one layer per petal, the layer area budget,
+// fx-sakura.js (design.home.sakura_storm + sakura_style): at most 30 separately animated layers (a swarm of petals = 1 picture = 1 layer; wind streaks two to a layer),
 // pictures drawn once, keyframes (transform / opacity only, off the screen at both ends so the wrap is invisible), gusts (the petals of
 // a gust start together), the 8 s wind cycle, the ?fxloop=1 clip repeating exactly, every style, nothing when off / calm / Lighter / Loop,
 // pause + resume, design.js keeping the keys and app.js wiring.
@@ -42,58 +42,60 @@ const sec = (v) => parseFloat(v);
 const sp = (el, n) => { const m = new RegExp("(?:^|;)" + n + ":([^;]*)").exec(el.style.cssText); return m ? m[1] : ""; };
 const W = 1920, H = 1080;
 
-for (const [amount, n, streaks, pct] of [["breeze", 50, 2, 18], ["gale", 90, 4, 32], ["storm", 150, 6, 55]]) {
+// layers: a swarm = one layer (a handful of petals drawn in ONE picture), a wind-streak layer = two streaks in one picture. Worst case (storm) = 29, never over 30.
+for (const [amount, n, swarms, streakLayers, layers] of [["breeze", 50, 12, 1, 13], ["gale", 90, 18, 2, 20], ["storm", 150, 26, 3, 29]]) {
   const { F, body, head } = load(false);
   F.set(amount, "pink", false);
-  const h = host(body);
-  check(kids(h, "i").length === n && kids(h, "u").length === streaks, amount + ": " + n + " petals + " + streaks + " wind streaks");
+  const h = host(body), st = F.stats();
+  check(st.petals === n && kids(h, "i").length === swarms && kids(h, "u").length === streakLayers, amount + ": " + n + " petals in " + swarms + " swarm layers + " + streakLayers + " wind-streak layers (" + st.petals + " petals, " + kids(h, "i").length + " + " + kids(h, "u").length + " layers)");
+  check(h.childNodes.length === layers && layers <= 30, amount + ": " + h.childNodes.length + " separately animated layers (cap 30)");
   check(body.childNodes.indexOf(h) === 1, amount + ": right after the weather layer (under the cards)");
-  check(h.childNodes.length === n + streaks && h.childNodes.every((c) => c.childNodes.length === 0), amount + ": one layer per petal (no nested elements)");
-  // worst-case layer area: a petal turns, so its box is up to 1.42 x its side; the streaks are 720 x 44
+  check(h.childNodes.every((c) => c.childNodes.length === 0), amount + ": nothing nested: every layer is one picture");
+  // layer area: a swarm is a box (300 x 180 far, 240 x 170 mid, 380 x 230 close), a streak layer 720 x 257; mostly empty picture
   let area = 0;
-  kids(h, "i").forEach((p) => { const s = sec(sp(p, "width")); check(s === sec(sp(p, "height")) && s >= 20 && s <= 135, amount + ": petal size 20-135 px (" + s + ")"); area += 2 * s * s; });
-  area += streaks * 720 * 44 * 1.1;
-  check(area / (W * H) <= 0.6 && area / (W * H) <= 1, amount + ": layer area " + (100 * area / (W * H)).toFixed(1) + " % of a screen (bar: 60 %, never over one screen)");
+  kids(h, "i").forEach((p) => { const w = sec(sp(p, "width")), hh = sec(sp(p, "height")); check(w >= 240 && w <= 380 && hh >= 170 && hh <= 230, amount + ": swarm box 240-380 x 170-230 (" + w + " x " + hh + ")"); area += w * hh; });
+  area += streakLayers * 720 * 257;
+  check(area / (W * H) <= 1.6, amount + ": layer boxes add up to " + (100 * area / (W * H)).toFixed(0) + " % of a screen (sparse pictures: a few petals each)");
   const css = cssOf(head);
   check(!/var\(/.test(css), amount + ": no CSS variables");
   check(!/blur|filter|box-shadow|text-shadow|mix-blend|backdrop/.test(css + h.childNodes.map((c) => c.style.cssText).join("")), amount + ": no blur, filter, shadow or blend mode");
-  check(kids(h, "i").every((p) => /background-image:url\(data:image\/png/.test(p.style.cssText)), amount + ": pictures are drawn once as data URLs");
+  check(h.childNodes.every((p) => /background-image:url\(data:image\/png/.test(p.style.cssText)), amount + ": pictures are drawn once as data URLs");
 }
-// canvases drawn: 3 small petals + 3 close soft petals + 1 streak, whatever the number of layers
-{ drawn = 0; const { F } = load(false); F.set("storm", "pink", false); check(drawn === 7, "7 canvases drawn in all (3 + 3 petals, 1 streak), got " + drawn); }
-{ // keyframes: transform + opacity only; every petal path starts and ends off the screen, so the wrap never shows
+// canvases drawn: one per swarm + one for the streaks, once each, whatever else happens
+{ drawn = 0; const { F } = load(false); F.set("storm", "pink", false); check(drawn === 26 + 1, "27 canvases drawn in all (26 swarms + 1 streak picture), got " + drawn); }
+{ drawn = 0; const { F } = load(false); F.set("breeze", "pink", false); check(drawn === 12 + 1, "13 canvases drawn in all for a breeze, got " + drawn); }
+{ // keyframes: transform + opacity only; every swarm path starts and ends off the screen, so the wrap never shows
   const { F, head } = load(false); F.set("storm", "pink", false);
   const css = cssOf(head);
   const sets = css.match(/@keyframes [\w-]+\{[^@]*\}\}?/g) || [];
-  check(sets.length === 9, "nine keyframe sets (8 petal paths + the wind streak), got " + sets.length);
+  check(sets.length === 9, "nine keyframe sets (8 swarm paths + the wind streak), got " + sets.length);
   sets.forEach((s) => check(!/(left|top|width|height|margin|background|color)\s*:/.test(s.replace(/transform:[^;}]*|opacity:[^;}]*/g, "")), "keyframes move transform and opacity only"));
   for (let v = 0; v < 8; v++) {
     const s = sets.find((x) => x.indexOf("@keyframes fx-sak" + v + "{") === 0);
-    const rows = [...s.matchAll(/([\d.]+)%\{transform:translate3d\((-?[\d.]+)px,(-?[\d.]+)px,0\) rotate\((-?[\d.]+)deg\) scaleX\((-?[\d.]+)\)\}/g)].map((m) => [+m[1], +m[2], +m[3], +m[4], +m[5]]);
+    const rows = [...s.matchAll(/([\d.]+)%\{transform:translate3d\((-?[\d.]+)px,(-?[\d.]+)px,0\) rotate\((-?[\d.]+)deg\)\}/g)].map((m) => [+m[1], +m[2], +m[3], +m[4]]);
     check(rows.length === 33 && rows[0][0] === 0 && rows[32][0] === 100, "path " + v + ": 33 sampled steps, 0 % to 100 %");
-    check(rows[0][1] <= -200 + 0.5 && rows[0][1] >= -420, "path " + v + ": starts off the left edge (x " + rows[0][1] + ")");
-    check(rows[32][1] >= W + 80, "path " + v + ": ends off the right edge (x " + rows[32][1] + ")");
+    check(rows[0][1] <= -480 + 0.5 && rows[0][1] >= -620, "path " + v + ": starts off the left edge, a whole swarm clear (x " + rows[0][1] + ")");
+    check(rows[32][1] >= W + 480 - 0.5, "path " + v + ": ends off the right edge (x " + rows[32][1] + ")");
     check(rows.some((r) => r[1] > 100 && r[1] < W - 200), "path " + v + ": crosses the screen");
-    check(rows.some((r) => r[4] < -0.5) && rows.some((r) => r[4] > 0.5) && rows.every((r) => Math.abs(r[4]) <= 1), "path " + v + ": flips over (scaleX goes both ways, never grows)");
-    check(Math.abs(rows[32][3] - rows[0][3]) >= 359.5, "path " + v + ": turns at least a full turn on the way");
-    check(rows.every((r) => Math.abs(r[2]) < 0.55 * H + 190), "path " + v + ": never wanders far (y " + Math.max(...rows.map((r) => Math.abs(r[2]))) + ")");
+    check(rows.every((r) => Math.abs(r[3]) <= 18.1) && rows.some((r) => r[3] > 3) && rows.some((r) => r[3] < -3), "path " + v + ": the swarm turns a little to and fro, never over 18 degrees");
+    check(rows.every((r) => Math.abs(r[2]) < 0.55 * H + 150), "path " + v + ": never wanders far (y " + Math.max(...rows.map((r) => Math.abs(r[2]))) + ")");
   }
   const w = sets.find((x) => x.indexOf("@keyframes fx-sakw{") === 0);
   check(/^@keyframes fx-sakw\{0%\{opacity:0;/.test(w) && /100%\{opacity:0;/.test(w) && /50%\{opacity:0\.9;/.test(w), "wind streak: dark at both ends, brightest half way");
   check(/fx-sakura\.fx-paused i,\.fx-sakura\.fx-paused u\{[^}]*paused/.test(css) && /\.lighter \.fx-sakura,\.old-engine \.fx-sakura/.test(css), "pausable, and off in the Lighter home / old engine");
 }
-{ // live: the wind cycle is 8 s (the close petals go round twice), negative delays so it is already blowing at once
+{ // live: the wind cycle is 8 s (the close swarms go round twice), negative delays so it is already blowing at once
   const { F, body } = load(false); F.set("storm", "pink", false);
   const h = host(body), durs = {};
   kids(h, "i").forEach((p) => { const d = sec(sp(p, "animation-duration")), at = sec(sp(p, "animation-delay")); durs[d] = (durs[d] || 0) + 1; check((d === 8 || d === 4) && at <= 0 && at > -d, "live: an 8 s or 4 s cycle, negative delay (" + d + ", " + at + ")"); });
-  check(durs[4] >= 18 && durs[4] <= 27 && durs[8] >= 120, "about 15 % of the petals are the close fast ones (" + JSON.stringify(durs) + ")");
+  check(durs[4] === 8 && durs[8] === 18, "8 close fast swarms, 18 far / mid ones (" + JSON.stringify(durs) + ")");
   // gusts: the delays bunch up (3 gusts: at 0, 1/3 and 2/3 of the cycle) instead of being spread evenly
   const ph = kids(h, "i").filter((p) => sec(sp(p, "animation-duration")) === 8).map((p) => ((8 + sec(sp(p, "animation-delay"))) % 8) / 8);
   const bins = [0, 0, 0]; ph.forEach((x) => { bins[Math.floor(((x + 1 / 6) % 1) * 3)]++; });
-  check(Math.min(...bins) >= ph.length * 0.2, "storm: three gusts, each with a good share of the petals (" + bins + ")");
+  check(Math.min(...bins) >= ph.length * 0.2, "storm: three gusts, each with a good share of the swarms (" + bins + ")");
   const near = (x, c) => Math.min(Math.abs(x - c), 1 - Math.abs(x - c));
   const inGust = ph.filter((x) => [0, 1 / 3, 2 / 3].some((c) => near(x, c) < 0.2)).length;
-  check(inGust / ph.length > 0.75, "storm: most petals start within a gust (" + inGust + " of " + ph.length + ")");
+  check(inGust / ph.length > 0.75, "storm: most swarms start within a gust (" + inGust + " of " + ph.length + ")");
 }
 { // one gust for a breeze: a puff, then a lull
   const { F, body } = load(false); F.set("breeze", "pink", false);
@@ -110,10 +112,10 @@ for (const [amount, n, streaks, pct] of [["breeze", 50, 2, 18], ["gale", 90, 4, 
   const c = load(false), d = load(false); c.F.set("storm", "pink", false); d.F.set("storm", "pink", false);
   check(all(c.body, c.head) !== all(d.body, d.head), "live: a different storm each time");
 }
-for (const style of ["pink", "white", "dusk"]) { const { F, body } = load(false); F.set("gale", style, false); check(kids(host(body), "i").length === 90, style + ": builds"); }
+for (const style of ["pink", "white", "dusk"]) { const { F, body } = load(false); F.set("gale", style, false); check(F.stats().petals === 90 && host(body).childNodes.length === 20, style + ": builds"); }
 { const a = load(false), b = load(false); a.F.set("gale", "pink", false); b.F.set("gale", "dusk", false);
   check(a.body.childNodes[1].childNodes[0].style.cssText !== b.body.childNodes[1].childNodes[0].style.cssText || true, "styles draw their own colours"); }
-{ const { F, body } = load(false); F.set("gale", "nonsense", false); check(kids(host(body), "i").length === 90, "an unknown style falls back to pink"); }
+{ const { F, body } = load(false); F.set("gale", "nonsense", false); check(F.stats().petals === 90, "an unknown style falls back to pink"); }
 { const { F, body } = load(false); F.set("off", "pink", false); check(!host(body), "off: nothing on the page"); }
 { const { F, body } = load(false); F.set("lots", "pink", false); check(!host(body), "an unknown amount: nothing"); }
 { const { F, body } = load(true); F.set("storm", "pink", false); check(!host(body), "the TV asks for less motion: nothing"); }
