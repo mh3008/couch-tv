@@ -17,7 +17,7 @@
   var COUNT = { breeze: 50, gale: 90, storm: 150 }, GUSTS = { breeze: 1, gale: 2, storm: 3 };
   // swarm layers per depth (far, mid, close) and wind-streak layers (two streaks each): the layer budget, 30 at most
   var SWARMS = { breeze: [3, 6, 3], gale: [4, 9, 5], storm: [6, 12, 8] }, STREAKL = { breeze: 1, gale: 2, storm: 3 };
-  var SIZE = [[20, 34], [34, 62], [80, 135]], BOX = [[300, 180], [240, 170], [380, 230]];   // a petal's size and a swarm's box, per depth
+  var SIZE = [[20, 34], [34, 62], [80, 135]], BOX = [[360, 210], [300, 200], [440, 260]];   // a petal's size and a swarm's box, per depth
   var ALPHA = [0.7, 0.92, 0.85], PS = [1, 1.5, 1];                                           // the haze baked into the picture, and its resolution
   // petal colours light to dark (lit from the top left), and the wind streak's tint
   var STYLES = {

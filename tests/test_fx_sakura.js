@@ -51,9 +51,9 @@ for (const [amount, n, swarms, streakLayers, layers] of [["breeze", 50, 12, 1, 1
   check(h.childNodes.length === layers && layers <= 30, amount + ": " + h.childNodes.length + " separately animated layers (cap 30)");
   check(body.childNodes.indexOf(h) === 1, amount + ": right after the weather layer (under the cards)");
   check(h.childNodes.every((c) => c.childNodes.length === 0), amount + ": nothing nested: every layer is one picture");
-  // layer area: a swarm is a box (300 x 180 far, 240 x 170 mid, 380 x 230 close), a streak layer 720 x 257; mostly empty picture
+  // layer area: a swarm is a box (360 x 210 far, 300 x 200 mid, 440 x 260 close), a streak layer 720 x 257; mostly empty picture
   let area = 0;
-  kids(h, "i").forEach((p) => { const w = sec(sp(p, "width")), hh = sec(sp(p, "height")); check(w >= 240 && w <= 380 && hh >= 170 && hh <= 230, amount + ": swarm box 240-380 x 170-230 (" + w + " x " + hh + ")"); area += w * hh; });
+  kids(h, "i").forEach((p) => { const w = sec(sp(p, "width")), hh = sec(sp(p, "height")); check(w >= 300 && w <= 440 && hh >= 200 && hh <= 260, amount + ": swarm box 300-440 x 200-260 (" + w + " x " + hh + ")"); area += w * hh; });
   area += streakLayers * 720 * 257;
   check(area / (W * H) <= 1.6, amount + ": layer boxes add up to " + (100 * area / (W * H)).toFixed(0) + " % of a screen (sparse pictures: a few petals each)");
   const css = cssOf(head);
