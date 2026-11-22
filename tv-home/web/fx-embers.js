@@ -6,12 +6,12 @@
 //
 // Made for a Fire TV stick (the rain v3 lesson: the stick's limit is the total composited layer AREA). An ember is ONE tiny element
 // (0.35-0.9 vw) with a glow picture drawn once; its rise, zigzag, flicker and fade are ONE CSS animation of transform + opacity on one of
-// five paths. Nothing drawn per frame, no filter, no blend mode. 24 / 45 / 75 embers: well under 1 % of a screen. Under the cards.
+// five paths. Nothing drawn per frame, no filter, no blend mode. 12 / 20 / 28 embers (was 24 / 45 / 75, capped at ~30 animated layers 22 Nov): well under 1 % of a screen. Under the cards.
 // Nothing moves while the home is covered, when the TV asks for less motion, in the Lighter home, the old engine or the Loop look.
 (function (root) {
   "use strict";
   var doc = root.document, host = null, style = null, want = "off", from = "all", off = false, paused = false;
-  var COUNT = { few: 24, some: 45, many: 75 };
+  var COUNT = { few: 12, some: 20, many: 28 };   // at most 28 animated layers (Design Lessons 15b: the stick's cost is the number of animated layers)
   var SPOT = { all: [2, 98], left: [10, 30], centre: [40, 60], right: [70, 90] };   // where along the bottom they start, % of the width
   // five paths: [rise vh, zigzag vw] (the zigzag swings left and right twice on the way up)
   var PATHS = [[55, 1.6], [72, -2.2], [64, 2.6], [84, -1.4], [48, 2.0]];

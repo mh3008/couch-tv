@@ -29,7 +29,7 @@ const kids = (h) => h.childNodes.filter((n) => String(n.tagName).toLowerCase() =
 const allCss = (head) => head.childNodes.map((s) => s.textContent).join("");
 const okc = (c) => { const m = /^rgba\((\d{1,3}),(\d{1,3}),(\d{1,3}),([\d.]+)\)$/.exec(c); return !!m && [1, 2, 3].every((i) => +m[i] <= 255) && +m[4] >= 0 && +m[4] <= 1; };
 
-for (const [amount, n] of [["few", 24], ["some", 45], ["many", 75]]) {
+for (const [amount, n] of [["few", 12], ["some", 20], ["many", 28]]) {
   const { E, body, head, colours } = load(false);
   E.set(amount, "all", false);
   const h = host(body), g = kids(h), css = allCss(head);
