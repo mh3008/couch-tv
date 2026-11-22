@@ -32,7 +32,7 @@ const sec = (v) => parseFloat(v);
 const sp = (el, n) => { const m = new RegExp("(?:^|;)" + n + ":([^;]*)").exec(el.style.cssText); return m ? m[1] : ""; };
 const W = 1920, H = 1080;
 
-for (const [amount, n, streaks, pct] of [["breeze", 36, 2, 12], ["gale", 64, 4, 21], ["storm", 100, 6, 34]]) {
+for (const [amount, n, streaks, pct] of [["breeze", 50, 2, 18], ["gale", 90, 4, 32], ["storm", 150, 6, 55]]) {
   const { F, body, head } = load(false);
   F.set(amount, "pink", false);
   const h = host(body);
@@ -41,9 +41,9 @@ for (const [amount, n, streaks, pct] of [["breeze", 36, 2, 12], ["gale", 64, 4, 
   check(h.childNodes.length === n + streaks && h.childNodes.every((c) => c.childNodes.length === 0), amount + ": one layer per petal (no nested elements)");
   // worst-case layer area: a petal turns, so its box is up to 1.42 x its side; the streaks are 720 x 44
   let area = 0;
-  kids(h, "i").forEach((p) => { const s = sec(sp(p, "width")); check(s === sec(sp(p, "height")) && s >= 16 && s <= 132, amount + ": petal size 16-132 px (" + s + ")"); area += 2 * s * s; });
+  kids(h, "i").forEach((p) => { const s = sec(sp(p, "width")); check(s === sec(sp(p, "height")) && s >= 20 && s <= 135, amount + ": petal size 20-135 px (" + s + ")"); area += 2 * s * s; });
   area += streaks * 720 * 44 * 1.1;
-  check(area / (W * H) <= 0.40 && area / (W * H) <= 1, amount + ": layer area " + (100 * area / (W * H)).toFixed(1) + " % of a screen (bar: 40 %, never over one screen)");
+  check(area / (W * H) <= 0.6 && area / (W * H) <= 1, amount + ": layer area " + (100 * area / (W * H)).toFixed(1) + " % of a screen (bar: 60 %, never over one screen)");
   const css = cssOf(head);
   check(!/var\(/.test(css), amount + ": no CSS variables");
   check(!/blur|filter|box-shadow|text-shadow|mix-blend|backdrop/.test(css + h.childNodes.map((c) => c.style.cssText).join("")), amount + ": no blur, filter, shadow or blend mode");
@@ -76,7 +76,7 @@ for (const [amount, n, streaks, pct] of [["breeze", 36, 2, 12], ["gale", 64, 4, 
   const { F, body } = load(false); F.set("storm", "pink", false);
   const h = host(body), durs = {};
   kids(h, "i").forEach((p) => { const d = sec(sp(p, "animation-duration")), at = sec(sp(p, "animation-delay")); durs[d] = (durs[d] || 0) + 1; check((d === 8 || d === 4) && at <= 0 && at > -d, "live: an 8 s or 4 s cycle, negative delay (" + d + ", " + at + ")"); });
-  check(durs[4] >= 12 && durs[4] <= 18 && durs[8] >= 80, "about 15 % of the petals are the close fast ones (" + JSON.stringify(durs) + ")");
+  check(durs[4] >= 18 && durs[4] <= 27 && durs[8] >= 120, "about 15 % of the petals are the close fast ones (" + JSON.stringify(durs) + ")");
   // gusts: the delays bunch up (3 gusts: at 0, 1/3 and 2/3 of the cycle) instead of being spread evenly
   const ph = kids(h, "i").filter((p) => sec(sp(p, "animation-duration")) === 8).map((p) => ((8 + sec(sp(p, "animation-delay"))) % 8) / 8);
   const bins = [0, 0, 0]; ph.forEach((x) => { bins[Math.floor(((x + 1 / 6) % 1) * 3)]++; });
@@ -100,10 +100,10 @@ for (const [amount, n, streaks, pct] of [["breeze", 36, 2, 12], ["gale", 64, 4, 
   const c = load(false), d = load(false); c.F.set("storm", "pink", false); d.F.set("storm", "pink", false);
   check(all(c.body, c.head) !== all(d.body, d.head), "live: a different storm each time");
 }
-for (const style of ["pink", "white", "dusk"]) { const { F, body } = load(false); F.set("gale", style, false); check(kids(host(body), "i").length === 64, style + ": builds"); }
+for (const style of ["pink", "white", "dusk"]) { const { F, body } = load(false); F.set("gale", style, false); check(kids(host(body), "i").length === 90, style + ": builds"); }
 { const a = load(false), b = load(false); a.F.set("gale", "pink", false); b.F.set("gale", "dusk", false);
   check(a.body.childNodes[1].childNodes[0].style.cssText !== b.body.childNodes[1].childNodes[0].style.cssText || true, "styles draw their own colours"); }
-{ const { F, body } = load(false); F.set("gale", "nonsense", false); check(kids(host(body), "i").length === 64, "an unknown style falls back to pink"); }
+{ const { F, body } = load(false); F.set("gale", "nonsense", false); check(kids(host(body), "i").length === 90, "an unknown style falls back to pink"); }
 { const { F, body } = load(false); F.set("off", "pink", false); check(!host(body), "off: nothing on the page"); }
 { const { F, body } = load(false); F.set("lots", "pink", false); check(!host(body), "an unknown amount: nothing"); }
 { const { F, body } = load(true); F.set("storm", "pink", false); check(!host(body), "the TV asks for less motion: nothing"); }

@@ -822,7 +822,7 @@
     if ((home.glass_amount || 0) > 2) out.push(["Glass level " + home.glass_amount, (home.glass_amount - 2) * 3, "glassamount"]);
     if (home.ambient_weather) out.push(["Rain and snow effects", 34, "weatherfx"]);
     if (home.ambient_sun_grade) out.push(["Sunlight colour", 4, "sungrade"]);
-    // sakura storm: 36 / 64 / 100 petals of one layer each + 2 / 4 / 6 wind streaks (transform + opacity only, worst case about 12 / 21 / 34 % of a screen)
+    // sakura storm: 50 / 90 / 150 petals of one layer each + 2 / 4 / 6 wind streaks (transform + opacity only, worst case about 18 / 32 / 55 % of a screen)
     if (home.sakura_storm && home.sakura_storm !== "off") out.push(["Sakura storm" + (home.sakura_storm !== "gale" ? " (" + home.sakura_storm + ")" : ""), home.sakura_storm === "storm" ? 10 : home.sakura_storm === "breeze" ? 5 : 7, "sakura"]);
     if (home.moving_tiles) out.push(["Moving tiles", 4, "moving"]);
     if (home.video_url) out.push(["Video background", 40, "video"]);

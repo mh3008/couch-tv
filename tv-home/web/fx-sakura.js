@@ -8,12 +8,12 @@
 // image); the wind streaks are one picture each that slides and fades (transform + opacity). The page draws nothing per
 // frame: no filter, no blur (the close petals are drawn soft, once), no blend mode. Petals fly in gusts: the petals of a
 // gust start together, so a wave of them blows through, then a lull, then the next one (an 8 s wind cycle). Total layer
-// area, worst case with every petal turned to its widest: 12 / 21 / 34 % of a screen (breeze / gale / storm). Nothing moves while the home is covered, when the TV asks
+// area, worst case with every petal turned to its widest: 18 / 32 / 55 % of a screen (breeze / gale / storm). Nothing moves while the home is covered, when the TV asks
 // for less motion, in the Lighter home, the old engine or the Loop look (app.js ambientSync / pause / resume).
 (function (root) {
   "use strict";
   var doc = root.document, host = null, style = null, want = "off", kind = "pink", off = false, paused = false;
-  var COUNT = { breeze: 36, gale: 64, storm: 100 }, GUSTS = { breeze: 1, gale: 2, storm: 3 }, STREAKS = { breeze: 2, gale: 4, storm: 6 };
+  var COUNT = { breeze: 50, gale: 90, storm: 150 }, GUSTS = { breeze: 1, gale: 2, storm: 3 }, STREAKS = { breeze: 2, gale: 4, storm: 6 };
   // petal colours light to dark (lit from the top left), and the wind streak's tint
   var STYLES = {
     pink: { cols: [["#FFF1F5", "#FFC2D4", "#F48FB1"], ["#FFE4EC", "#FFADC6", "#EC7FA3"], ["#FFFFFF", "#FFD6E2", "#F7A8C2"]], wind: "255,235,242" },
@@ -106,7 +106,7 @@
     for (var i = 0; i < n; i++) {
       // depth: far (small, slow, 45 %), mid (40 %), close (15 %, big, soft, twice as fast)
       var z = i % 20 < 9 ? 0 : i % 20 < 17 ? 1 : 2;
-      var size = z === 0 ? rnd(16, 28) : z === 1 ? rnd(28, 54) : rnd(72, 132), dur = z === 2 ? PERIOD / 2 : PERIOD;
+      var size = z === 0 ? rnd(20, 34) : z === 1 ? rnd(34, 62) : rnd(80, 135), dur = z === 2 ? PERIOD / 2 : PERIOD;
       var top = rnd(-4, 92) * h / 100;
       // the petals of a gust start together (a diagonal wavefront: the lower ones a little later); the rest are spread through the cycle
       var phase = i < gusted ? (i % G) / G + rnd(-0.07, 0.07) + (top / h) * 0.09 : rnd(0, 1);
