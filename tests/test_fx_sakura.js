@@ -12,11 +12,21 @@ const { FakeEl } = require("./fake-dom.js");
 let ok = 0;
 function check(c, msg) { assert.ok(c, msg); ok++; }
 let drawn = 0;
+const HEX = /^#([0-9a-fA-F]{3}|[0-9a-fA-F]{4}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$/;
+const RGBA = /^rgba?\(\s*(\d{1,3})\s*,\s*(\d{1,3})\s*,\s*(\d{1,3})\s*(?:,\s*(\d*\.?\d+)\s*)?\)$/;
+function validColour(c) {
+  assert.ok(typeof c === "string", "a colour is a string: " + c);
+  if (HEX.test(c)) { ok++; return; }
+  const m = RGBA.exec(c);
+  assert.ok(m && +m[1] <= 255 && +m[2] <= 255 && +m[3] <= 255 && (m[4] === undefined || (+m[4] >= 0 && +m[4] <= 1)), "not a valid hex / rgba colour: " + c); ok++;
+}
 function load(reduce, search) {
   const head = new FakeEl("head"), body = new FakeEl("body"), wc = new FakeEl("canvas");
   wc.attrs.id = "weather-canvas"; body.appendChild(wc);
-  const grad = () => ({ addColorStop() {} });
-  const ctx = new Proxy({}, { get: (t, k) => (k === "createRadialGradient" || k === "createLinearGradient" ? grad : (k in t ? t[k] : () => {})), set: (t, k, v) => { t[k] = v; return true; } });
+  // a colour the canvas would throw on (an alpha string in an rgba colour, a bad hex) must fail here: the real-browser bug the VM tests missed (waves, 22 Nov)
+  const grad = () => ({ addColorStop(off, col) { check(typeof off === "number" && off >= 0 && off <= 1, "colour stop offset 0..1"); validColour(col); } });
+  const ctx = new Proxy({}, { get: (t, k) => (k === "createRadialGradient" || k === "createLinearGradient" ? grad : (k in t ? t[k] : () => {})),
+    set: (t, k, v) => { if (k === "fillStyle" || k === "strokeStyle") { if (typeof v !== "object") validColour(v); } if (k === "globalAlpha") check(typeof v === "number" && v >= 0 && v <= 1, "globalAlpha is a number 0..1 (" + v + ")"); t[k] = v; return true; } });
   let n = 0;
   const doc = { head, body,
     createElement: (t) => { const e = new FakeEl(t); if (t === "canvas") { e.getContext = () => ctx; e.toDataURL = () => { drawn++; return "data:image/png;base64,AA" + (n++); }; } return e; },
@@ -125,5 +135,14 @@ for (const style of ["pink", "white", "dusk"]) { const { F, body } = load(false)
   check((app.match(/AmbientSakura\.pause\(\)/g) || []).length >= 2 && (app.match(/AmbientSakura\.resume\(\)/g) || []).length >= 3, "app.js: paused while covered, resumed after");
   check(/<script src="fx-sakura\.js"><\/script>/.test(fs.readFileSync(path.join(__dirname, "..", "tv-home/web/index.html"), "utf8")), "index.html loads fx-sakura.js");
   check(/sakura_storm/.test(fs.readFileSync(path.join(__dirname, "..", "docs/CONFIG.md"), "utf8")), "docs/CONFIG.md documents it");
+}
+{ // every colour literal in fx-sakura.js is a valid hex or rgba(...): checked in the source and in every canvas call, for every style
+  const src = fs.readFileSync(path.join(__dirname, "..", "tv-home/web/fx-sakura.js"), "utf8");
+  (src.match(/"#[0-9A-Fa-f]+"/g) || []).forEach((h) => validColour(h.slice(1, -1)));
+  (src.match(/"rgba?\([0-9, .]+\)"/g) || []).forEach((c) => validColour(c.slice(1, -1)));
+  check((src.match(/"#[0-9A-Fa-f]+"/g) || []).length >= 27, "found the palette colours in the source");
+  for (const style of ["pink", "white", "dusk"]) { const { F } = load(false); F.set("storm", style, false); }   // every canvas call is validated by the proxy
+  validColour("rgba(255,235,242,0)"); validColour("#FFF");
+  for (const bad of ["rgba(255,0,0,0.5x)", "rgba(255,0,0,\"0.5\")", "#GGG", "rgba(300,0,0,1)", "rgba(1,2,3,1.5)"]) assert.throws(() => validColour(bad), bad + " is rejected");
 }
 console.log("All " + ok + " sakura tests passed.");
