@@ -402,3 +402,13 @@ html.lighter .cwd-artbg { -webkit-filter: none; filter: none; opacity: 0.18; }
 .cw-ah.cw-strip > .cw-row > svg { width: 34px !important; height: 34px !important; }
 .cw-ah.cw-strip > .cw-row > .cw-col { margin-left: 0 !important; margin-top: 6px; -webkit-align-items: center; align-items: center; max-width: 100%; }
 .cw-ah.cw-strip .cw-e1 { text-align: center; font-size: 24px; line-height: 1.2; }
+
+/* Bin night (widgets.js R.bins / CR.bins): on the night itself the lids bob open, one after the other; transform only.
+   Still on the Lighter home and with reduced motion. */
+.cw-bin-go { transform-box: fill-box; -webkit-transform-origin: 0% 100%; transform-origin: 0% 100%; will-change: transform;
+  -webkit-animation: cw-bin-lid 2s ease-in-out infinite; animation: cw-bin-lid 2s ease-in-out infinite; }
+.cw-bin-go1 { -webkit-animation-delay: -1s; animation-delay: -1s; }
+@-webkit-keyframes cw-bin-lid { 0%, 55%, 100% { -webkit-transform: rotate(0deg); } 18% { -webkit-transform: rotate(-32deg); } 30% { -webkit-transform: rotate(-22deg); } 42% { -webkit-transform: rotate(-4deg); } 48% { -webkit-transform: rotate(-9deg); } }
+@keyframes cw-bin-lid { 0%, 55%, 100% { transform: rotate(0deg); } 18% { transform: rotate(-32deg); } 30% { transform: rotate(-22deg); } 42% { transform: rotate(-4deg); } 48% { transform: rotate(-9deg); } }
+html.lighter .cw-bin-go { -webkit-animation: none; animation: none; }
+@media (prefers-reduced-motion: reduce) { .cw-bin-go { -webkit-animation: none; animation: none; } }
