@@ -547,6 +547,63 @@
   var CORNER = { square: 12, soft: 28, round: 36, pill: 999 };
   function nightNow() { var h = now().getHours(); return h >= 18 || h < 6; }
 
+  // CARD GRADIENT / iridescent glass (feat/card-gradient). A panel: colour card with style.colour2 (and colour3) or the
+  // design's look.card_colour2 gets two or three colour stops, an angle (or a radial), the card's opacity BAKED INTO the
+  // stops (so the rim and sheen stay bright), a thin light rim (inset box-shadows, light at the top left, the last stop's
+  // tint at the bottom right) and a soft sheen at the top left. ONE static CSS background + one box-shadow on the panel
+  // layer that is already there: no backdrop-filter, no filter, no animation, no extra element. The words keep >= 4.5:1:
+  // the ink is the one (white or dark) that reads best on every stop, and a stop that still falls short is pulled toward
+  // black or white until it passes (the sheen counted on the first stop). Returns null for a card with none of it, so
+  // every older design draws exactly as before.
+  function mixRgb(a, b, t) { return [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t]; }
+  var SHEEN_A = 0.22;
+  function cardGlass(st, look, kind) {
+    if (st.gradient === "off") return null;
+    var c2 = st.colour2 || look.card_colour2, c2rgb = c2 && rgbOf(c2);
+    var rim = st.rim !== undefined ? st.rim === true : look.card_rim === true, sheen = st.sheen !== undefined ? st.sheen === true : look.card_sheen === true;
+    if (!c2rgb && !rim && !sheen) return null;
+    var stops = [rgbOf(st.colour || look.card_colour || TILE[kind] || "#0a84ff") || [10, 132, 255]];
+    if (c2rgb) {
+      stops.push(c2rgb);
+      var c3 = st.colour2 ? st.colour3 : look.card_colour3, c3rgb = c3 && rgbOf(c3);
+      if (c3rgb) stops.push(c3rgb);
+    } else if (st.gradient === "soft") stops.push(mixRgb(stops[0], [0, 0, 0], 0.16));
+    var ang = st.angle !== undefined ? st.angle : look.card_angle !== undefined ? look.card_angle : 160;
+    var radial = st.radial !== undefined ? st.radial === true : look.card_radial === true;
+    var alpha = st.opacity !== undefined ? st.opacity : look.card_opacity !== undefined ? look.card_opacity : 1;
+    alpha = Math.round(clamp(Number(alpha) || 1, 0.2, 1) * 1000) / 1000;
+    // the ink: the one that reads best on every stop; then pull a stop that still falls short
+    var inkc = st.ink === "white" ? WHITE : st.ink === "ink" ? INK_DARK : st.ink === "accent" ? rgbOf(st.accent || look.accent) || WHITE : null;
+    // the colour at 25 points along the gradient (the sheen lifts the first half): a blend of two stops can be darker or
+    // lighter than both (a lilac into a pink dips), so the words are checked on every point, not just on the stops
+    var samples = function () {
+      var out = [], k = stops.length - 1, N = 24;
+      for (var j = 0; j <= N; j++) {
+        var p = j / N * k, a = Math.min(Math.floor(p), k - 1), c = mixRgb(stops[a], stops[a + 1], p - a);
+        out.push({ c: c, s: sheen ? mixRgb(c, WHITE, SHEEN_A * Math.max(0, 1 - j / N * 2)) : c, at: j / N * k });
+      }
+      return out;
+    };
+    // the sheen only counts where it hurts: it lifts the corner toward white, which costs a light ink and never helps a dark one
+    var ratioAt = function (s, ink) { return Math.min(contrast(s.c, ink), contrast(s.s, ink)); };
+    var worst = function (ink) { return Math.min.apply(null, samples().map(function (s) { return ratioAt(s, ink); })); };
+    if (!inkc) inkc = worst(WHITE) >= 4.5 || worst(WHITE) >= worst(INK_DARK) ? WHITE : INK_DARK;
+    var toward = contrast(inkc, [0, 0, 0]) >= contrast(inkc, WHITE) ? [0, 0, 0] : WHITE;
+    for (var it = 0; it < 90; it++) {
+      var bad = null, sm = samples();
+      sm.forEach(function (s) { var r = ratioAt(s, inkc); if (r < 4.55 && (!bad || r < bad.r)) bad = { r: r, at: s.at }; });
+      if (!bad) break;
+      // pull the stops either side of the worst point toward black or white, a little at a time
+      stops = stops.map(function (s, i) { return Math.abs(i - bad.at) < 1 ? mixRgb(s, toward, 0.05 * (1 - Math.abs(i - bad.at) * 0.5)) : s; });
+    }
+    var list = stops.map(function (s) { return rgba(s, alpha); }).join(",");
+    var fill = radial ? "radial-gradient(120% 100% at 25% 15%," + list + ")" : "linear-gradient(" + Math.round(clamp(Number(ang) || 0, 0, 360)) + "deg," + list + ")";
+    if (sheen) fill = "radial-gradient(90% 70% at 6% 0%,rgba(255, 255, 255, " + SHEEN_A + "),rgba(255, 255, 255, 0) 62%)," + fill;
+    var first = stops[0], last = stops[stops.length - 1];
+    return { bg: fill, ink: inkc, tile: stops[Math.floor(stops.length / 2)], baked: alpha < 1,
+      rim: rim ? "inset 0 0 0 1px rgba(255, 255, 255, 0.4), inset 1.5px 1.5px 0 0 " + rgba(mixRgb(first, WHITE, 0.75), 0.75) + ", inset -1.5px -1.5px 0 0 " + rgba(mixRgb(last, WHITE, 0.6), 0.6) : "" };
+  }
+
   function shell(o, b, env, kindOverride) {
     var kind = kindOverride || o.kind, st = o.style || {};
     var panel = st.panel || (window.CouchDesign && window.CouchDesign.wpanel ? window.CouchDesign.wpanel({ kind: kind, style: st }) : "glass");
@@ -555,8 +612,13 @@
     var root = E("div", "cw cw-k-" + kind + " " + pcls, "width:" + px(b.w) + ";height:" + px(b.h));
     root.setAttribute("data-kind", kind);
     var look = env.look || {}, ink = null, tile = null;
-    if (panel !== "none") root.appendChild(E("div", "cw-bg", st.opacity ? "opacity:" + st.opacity : ""));
-    if (panel === "colour") {
+    var cg = panel === "colour" ? cardGlass(st, look, kind) : null;
+    if (panel !== "none") root.appendChild(E("div", "cw-bg", st.opacity && !(cg && cg.baked) ? "opacity:" + st.opacity : ""));
+    if (cg) {
+      root.style.setProperty("--tile", cg.bg);
+      if (cg.rim) root.style.setProperty("--cwrim", cg.rim);
+      tile = cg.tile; ink = cg.ink;
+    } else if (panel === "colour") {
       var col = st.colour || TILE[kind] || "#0a84ff", rgb = rgbOf(col) || [10, 132, 255];
       var bgv = st.gradient === "soft" ? "linear-gradient(160deg," + col + "," + shade(rgb, 0.84) + ")" : st.colour || st.gradient === "off" ? col : GRAD[kind] || col;
       root.style.setProperty("--tile", bgv);

@@ -191,6 +191,16 @@
     c = String(c || "").trim();
     return /^#[0-9a-f]{3,8}$/i.test(c) || /^rgba?\(\s*[\d.\s,%]+\)$/i.test(c) ? c : "";
   }
+  // a stricter colour for the card gradient's stops (colour() lets "rgba(1,2,3,)" through, which a browser drops whole):
+  // #rgb, #rgba, #rrggbb, #rrggbbaa, or rgb()/rgba() with plain numbers up to 255 and an alpha 0..1, nothing else
+  function colourStrict(c) {
+    if (typeof c !== "string") return "";
+    c = colour(c);
+    if (!c) return "";
+    if (c.charAt(0) === "#") return /^#([0-9a-f]{3,4}|[0-9a-f]{6}|[0-9a-f]{8})$/i.test(c) ? c : "";
+    var m = /^rgba?\(\s*(\d{1,3}(?:\.\d+)?)\s*,\s*(\d{1,3}(?:\.\d+)?)\s*,\s*(\d{1,3}(?:\.\d+)?)\s*(?:,\s*(\d*\.?\d+)\s*)?\)$/i.exec(c);
+    return m && +m[1] <= 255 && +m[2] <= 255 && +m[3] <= 255 && (m[4] === undefined || +m[4] <= 1) ? c : "";
+  }
   var KEEP = ["gear", "more", "smart", "com.android.tv.settings"];
   // a package name is used as an object key (apps.tiles): never one that reaches an object's prototype
   var POISON = ["__proto__", "constructor", "prototype"];
@@ -289,6 +299,7 @@
       return wordLines(v).filter(function (l) { return l.ok; }).map(function (l) { return l.text; }).join("\n").replace(/\n{3,}/g, "\n\n").replace(/^[ \n]+|[ \n]+$/g, "").slice(0, max);
     },
     c: function (v) { return colour(v) || undefined; },
+    cs: function (v) { return colourStrict(v) || undefined; },
     list: function (v, max, each) { return Array.isArray(v) ? v.slice(0, max).map(each).filter(function (x) { return x !== undefined && x !== ""; }) : undefined; }
   };
   function put(out, k, v) { if (v !== undefined) out[k] = v; }
@@ -490,6 +501,11 @@
     Object.keys(WSTYLE).forEach(function (k) { put(out, k, SAN.pick(src[k], WSTYLE[k])); });
     if (out.font === undefined) put(out, "font", gfont(src.font));   // or any Google Fonts family by name
     put(out, "colour", SAN.c(src.colour)); put(out, "accent", SAN.c(src.accent)); put(out, "opacity", SAN.n(src.opacity, 0.2, 1));
+    // a card gradient (a panel: colour card): up to three colour stops, an angle or a radial, a thin light rim and a soft
+    // sheen. Plain colours and numbers only, like the background's colour/colour2/angle/radial (one static CSS background)
+    if (SAN.cs(src.colour2)) { put(out, "colour2", SAN.cs(src.colour2)); put(out, "colour3", SAN.cs(src.colour3)); }
+    put(out, "angle", SAN.n(src.angle, 0, 360, true)); put(out, "radial", SAN.b(src.radial));
+    put(out, "rim", SAN.b(src.rim)); put(out, "sheen", SAN.b(src.sheen));
     return Object.keys(out).length ? out : undefined;
   }
   function sanWOpts(kind, src) {
@@ -635,6 +651,10 @@
     var lk = obj(raw.look), look = {};
     ["ink", "sub", "panel", "rim", "solid", "paper", "accent", "focus"].forEach(function (k) { put(look, k, SAN.c(lk[k])); });
     put(look, "icons", SAN.pick(lk.icons, WSTYLE.icons)); put(look, "night_red", SAN.b(lk.night_red));
+    // the card gradient once for the whole design (each card's own style wins): stops, angle, radial, opacity, rim, sheen
+    ["card_colour", "card_colour2", "card_colour3"].forEach(function (k) { put(look, k, SAN.cs(lk[k])); });
+    put(look, "card_angle", SAN.n(lk.card_angle, 0, 360, true)); put(look, "card_radial", SAN.b(lk.card_radial));
+    put(look, "card_opacity", SAN.n(lk.card_opacity, 0.2, 1)); put(look, "card_rim", SAN.b(lk.card_rim)); put(look, "card_sheen", SAN.b(lk.card_sheen));
     if (Object.keys(look).length) out.look = look;
     // the dock can be made small or faint, never gone
     if (out.elements && out.elements.dock) {
