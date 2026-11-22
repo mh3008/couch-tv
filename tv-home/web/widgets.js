@@ -2075,6 +2075,55 @@
     add(root, [E("div", "cw-t29 cw-ell", "font-weight:700", [w.rainFrom ? (heavy ? "Heavy rain from " : "Rain from ") + w.rainFrom : "No rain coming"]),
       E("div", "cw-grow cw-row", "align-items:flex-end;margin-top:10px", w.rain.map(function (v) { return E("i", "", "display:block;flex:1;margin:0 3px;height:" + v + "%;border-radius:5px;background:#64d2ff"); }))]);
   };
+  // ---------------- Big day (feat/bigday): a countdown to any named day ----------------
+  // A trip, a birthday, a holiday: the days to go, big, and the hours, minutes and seconds ticking under them (the
+  // part that moves); on the day itself "Today!" with confetti falling inside the card. Without a year it comes back
+  // every year (a birthday); with a year it is one day, and after it says so plainly. The ticker changes one line of
+  // text a second; the confetti moves by transform + opacity only (widgets.css .cw-bd-*); still on the Lighter home /
+  // reduced motion. Separate from Days together (which counts up from a day).
+  function bigdayOf(o) {
+    var q = op(o), t = now(), today = new Date(t.getFullYear(), t.getMonth(), t.getDate());
+    var month = q.month || 12, day = q.day || 31, year = q.year;
+    var target = new Date(year || t.getFullYear(), month - 1, day);
+    if (!year && target < today) target = new Date(t.getFullYear() + 1, month - 1, day);
+    var days = Math.round((target - today) / 86400000);
+    return { label: q.label || "The big day", target: target, days: days, past: days < 0, today: days === 0, icon: q.icon || "calendar" };
+  }
+  function bdLeft(target) {   // hours:minutes:seconds to the start of the day (inside the last day: all of it)
+    var ms = Math.max(0, target.getTime() - now().getTime()), s = Math.floor(ms / 1000) % 86400;
+    var p = function (n) { return (n < 10 ? "0" : "") + n; };
+    return p(Math.floor(s / 3600)) + ":" + p(Math.floor(s / 60) % 60) + ":" + p(s % 60);
+  }
+  function bdConfetti() {
+    var cols = ["var(--on)", "#fff", "#ffd60a", "#ff6fae", "#5ac8fa"], kids = [];
+    for (var i = 0; i < 18; i++) kids.push(E("i", "cw-bd-c cw-bd-c" + (i % 3), "left:" + ((i * 37) % 96 + 2) + "%;background:" + cols[i % 5] + ";animation-delay:-" + ((i * 0.53) % 4).toFixed(2) + "s;-webkit-animation-delay:-" + ((i * 0.53) % 4).toFixed(2) + "s"));
+    return E("div", "cw-bd-fx", "", kids);
+  }
+  R.bigday = function (root, o, b) {
+    var D = bigdayOf(o), small = b.w < 300;
+    if (D.past) return empty(root, b, D.icon, "That was " + longDate(D.target), "Pick the next day in couch-tv Studio");
+    if (D.today) {
+      root.style.overflow = "hidden";
+      add(root, [bdConfetti(), lab(D.icon, D.label, "rgba(255,255,255,.92)"), E("div", "cw-grow"),
+        E("div", "cw-big cw-bd-today", "font-size:" + px(clamp(Math.min(b.h * 0.42, (b.w - 48) / 3.6), 44, 150)), ["Today!"]), E("div", "cw-grow")]);
+      return;
+    }
+    var fs = clamp(Math.min((b.h - (b.h >= 260 ? 150 : 96)) * 0.95, (b.w - 48) / (String(D.days).length * 0.62)), 44, 200);
+    var tick = E("div", "cw-t29 cw-bd-tick", "color:var(--on);font-variant-numeric:tabular-nums;letter-spacing:.02em", [bdLeft(D.target)]);
+    add(root, [small ? E("div", "cw-t23 cw-ell", "font-weight:700;color:var(--sub)", [D.label]) : lab(D.icon, D.label, "rgba(255,255,255,.9)"), E("div", "cw-grow"),
+      E("div", "cw-row", "align-items:baseline;justify-content:center", [E("div", "cw-big", "font-size:" + px(fs), [String(D.days)]),
+        E("div", "cw-t25", "margin-left:12px;color:var(--sub)", [D.days === 1 ? "day" : "days"])]),
+      b.h >= 200 ? tick : null, E("div", "cw-grow")]);
+    if (b.h >= 200) live(root, 1000, function () { tick.textContent = bdLeft(D.target); });
+  };
+  // a box under 200 px tall: the name, and the days (or "Today!")
+  CR.bigday = function (root, o, b) {
+    var D = bigdayOf(o);
+    if (D.past) return empty(root, b, D.icon, "That was " + longDate(D.target), "");
+    add(root, E("div", "cw-row cw-sp", "height:100%", [E("div", "cw-col", "min-width:0", [lab(D.icon, D.label, "rgba(255,255,255,.9)"),
+      E("div", "cw-t25 cw-ell", "color:var(--sub);margin-top:6px", [D.today ? "is here" : D.days === 1 ? "day to go" : "days to go"])]),
+      E("div", "cw-big", "font-size:" + px(b.w < 300 ? 52 : 72), [D.today ? "Today!" : String(D.days)])]));
+  };
   CR.uv = function (root, o, b, env) {
     var w = weather(env);
     if (!w || w.uv === undefined) return w ? empty(root, b, "sun", "UV is on its way", "") : noWx(root, b, env);

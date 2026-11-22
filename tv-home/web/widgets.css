@@ -402,3 +402,16 @@ html.lighter .cwd-artbg { -webkit-filter: none; filter: none; opacity: 0.18; }
 .cw-ah.cw-strip > .cw-row > svg { width: 34px !important; height: 34px !important; }
 .cw-ah.cw-strip > .cw-row > .cw-col { margin-left: 0 !important; margin-top: 6px; -webkit-align-items: center; align-items: center; max-width: 100%; }
 .cw-ah.cw-strip .cw-e1 { text-align: center; font-size: 24px; line-height: 1.2; }
+
+/* Big day (widgets.js R.bigday): confetti falls inside the card on the day; transform + opacity only.
+   The Lighter home and a TV set to reduce motion get the card standing still, without the confetti. */
+.cw-bd-fx { position: absolute; left: 0; top: 0; right: 0; bottom: 0; overflow: hidden; pointer-events: none; }
+.cw-bd-c { position: absolute; top: -20px; display: block; width: 10px; height: 16px; border-radius: 2px; opacity: 0; will-change: transform, opacity;
+  -webkit-animation: cw-bd-fall 4s linear infinite; animation: cw-bd-fall 4s linear infinite; }
+.cw-bd-c1 { width: 8px; height: 8px; border-radius: 50%; }
+.cw-bd-c2 { width: 14px; height: 6px; }
+.cw-bd-today { text-shadow: 0 0 28px var(--on); }
+@-webkit-keyframes cw-bd-fall { 0% { -webkit-transform: translate3d(0,0,0) rotate(0); opacity: 0; } 8% { opacity: 1; } 100% { -webkit-transform: translate3d(24px,420px,0) rotate(540deg); opacity: 0.2; } }
+@keyframes cw-bd-fall { 0% { transform: translate3d(0,0,0) rotate(0); opacity: 0; } 8% { opacity: 1; } 100% { transform: translate3d(24px,420px,0) rotate(540deg); opacity: 0.2; } }
+html.lighter .cw-bd-fx { display: none; }
+@media (prefers-reduced-motion: reduce) { .cw-bd-fx { display: none; } }
