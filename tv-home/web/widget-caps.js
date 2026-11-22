@@ -214,6 +214,9 @@
     surf: { name: "Surf", status: "works", what: "The swell (height, seconds apart, direction) and the wind at the coast nearest your town", needs: ["Your town, set on the TV: pick the beach town nearest you", "A town near the coast: inland there is no swell"],
       setup: setup("tv", BEACH), until: "\"Set your town\", or \"No surf reading here\" inland", build: "",
       ok: "Opens Surf: the swell by the hour today", platforms: plat("setup", "computer", "setup"), sizes: sz(["wtile", "small", "medium"], [4, 2]) },
+    tides: { name: "Tides", status: "works", what: "The next high and low tide, a 24 hour tide curve with a glowing dot where the sea is at the moment, and the swell, at the coast nearest your town", needs: ["Your town, set on the TV: pick the beach town nearest you", "A town near the coast: inland there is no tide"],
+      setup: setup("tv", BEACH), until: "\"Set your town\", or \"No tide reading here\" inland", build: "",
+      ok: "Nothing: it is to look at", platforms: plat("setup", "computer", "setup"), sizes: sz(["wtile", "small", "medium"], [4, 2]) },
 
     // ---------- photos ----------
     photo: { name: "Photo", status: "setup", what: "One of your photos", needs: [PHOTOS_NEED],

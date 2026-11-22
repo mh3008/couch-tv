@@ -402,3 +402,20 @@ html.lighter .cwd-artbg { -webkit-filter: none; filter: none; opacity: 0.18; }
 .cw-ah.cw-strip > .cw-row > svg { width: 34px !important; height: 34px !important; }
 .cw-ah.cw-strip > .cw-row > .cw-col { margin-left: 0 !important; margin-top: 6px; -webkit-align-items: center; align-items: center; max-width: 100%; }
 .cw-ah.cw-strip .cw-e1 { text-align: center; font-size: 24px; line-height: 1.2; }
+
+/* Tides (widgets.js R.tides): the "now" dot pulses and a soft sheen glides over the water, transform + opacity only.
+   The Lighter home and a TV set to reduce motion get them standing still. */
+.cw-tide-curve > svg { position: absolute; left: 0; top: 0; width: 100%; height: 100%; }
+.cw-tide-dot { position: absolute; display: block; width: 18px; height: 18px; margin: -9px 0 0 -9px; border-radius: 50%; background: #fff;
+  box-shadow: 0 0 0 4px var(--on), 0 0 22px 6px var(--on); will-change: transform, opacity;
+  -webkit-animation: cw-tide-pulse 2.4s ease-in-out infinite; animation: cw-tide-pulse 2.4s ease-in-out infinite; }
+.cw-tide-sheen { position: absolute; top: 0; bottom: 0; left: 0; width: 40%; display: block; pointer-events: none; opacity: 0.35;
+  background: linear-gradient(90deg, rgba(255,255,255,0), rgba(255,255,255,.45), rgba(255,255,255,0)); will-change: transform;
+  -webkit-animation: cw-tide-sheen 8s linear infinite; animation: cw-tide-sheen 8s linear infinite; }
+@-webkit-keyframes cw-tide-pulse { 0%, 100% { -webkit-transform: scale(0.8); opacity: 0.75; } 50% { -webkit-transform: scale(1.15); opacity: 1; } }
+@keyframes cw-tide-pulse { 0%, 100% { transform: scale(0.8); opacity: 0.75; } 50% { transform: scale(1.15); opacity: 1; } }
+@-webkit-keyframes cw-tide-sheen { from { -webkit-transform: translateX(-100%); } to { -webkit-transform: translateX(250%); } }
+@keyframes cw-tide-sheen { from { transform: translateX(-100%); } to { transform: translateX(250%); } }
+html.lighter .cw-tide-dot, html.lighter .cw-tide-sheen { -webkit-animation: none !important; animation: none !important; will-change: auto !important; }
+html.lighter .cw-tide-sheen { display: none; }
+@media (prefers-reduced-motion: reduce) { .cw-tide-dot, .cw-tide-sheen { -webkit-animation: none !important; animation: none !important; } .cw-tide-sheen { display: none; } }

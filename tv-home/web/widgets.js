@@ -2075,6 +2075,98 @@
     add(root, [E("div", "cw-t29 cw-ell", "font-weight:700", [w.rainFrom ? (heavy ? "Heavy rain from " : "Rain from ") + w.rainFrom : "No rain coming"]),
       E("div", "cw-grow cw-row", "align-items:flex-end;margin-top:10px", w.rain.map(function (v) { return E("i", "", "display:block;flex:1;margin:0 3px;height:" + v + "%;border-radius:5px;background:#64d2ff"); }))]);
   };
+  // ---------------- tides (feat/tides) ----------------
+  // The next high and low tide and the swell, for the coast nearest the TV's town. The sea level comes from
+  // Open-Meteo's free marine service (hourly sea_level_height_msl: the tide + surge model, "not for
+  // navigation"), asked by app.js only while a tides widget is on the home. The turns of the tide are found
+  // on the hourly curve and placed between the hours with a parabola through the three hours round each turn.
+  // Drawn: the next high + low with their times, a 24 hour curve (6 h back, 18 h ahead) with the water filled in
+  // under it in the design's accent, a glowing dot for now, a slow sheen gliding over the water, and the swell.
+  // Moves by transform + opacity only (widgets.css .cw-tide-*); still on the Lighter home / reduced motion.
+  var TIDE_H = 3600000;
+  function tideTurns(t0, level) {
+    var out = [];
+    for (var i = 1; i < level.length - 1; i++) {
+      var a = level[i - 1], m = level[i], c = level[i + 1];
+      if (!(isFinite(a) && isFinite(m) && isFinite(c))) continue;
+      var high = m > a && m >= c, low = m < a && m <= c;
+      if (!high && !low) continue;
+      var den = a - 2 * m + c, off = den ? clamp((a - c) / (2 * den), -0.5, 0.5) : 0;
+      out.push({ t: t0 + (i + off) * TIDE_H, high: high, v: m - 0.25 * (a - c) * off });
+    }
+    return out;
+  }
+  function tidesOf(env) {
+    if (env.demo) {   // a sample sea: a 12 h 25 min tide of +-0.6 m round 0.1 m, high at 2:40 this afternoon
+      var d0 = now(), base = new Date(d0.getFullYear(), d0.getMonth(), d0.getDate(), d0.getHours() - 12).getTime(), hi = new Date(d0.getFullYear(), d0.getMonth(), d0.getDate(), 14, 40).getTime(), lv = [];
+      for (var k = 0; k < 48; k++) lv.push(Math.round((0.1 + 0.6 * Math.cos(2 * Math.PI * (base + k * TIDE_H - hi) / (12.42 * TIDE_H))) * 100) / 100);
+      return { t0: base, level: lv, swell: { h: 1.2, period: 11, dir: 135 } };
+    }
+    var w = dataOf(env).weather;
+    return w && w.tides && w.tides.level && w.tides.level.length > 3 ? w.tides : null;
+  }
+  function tideNext(T, nowMs) {
+    var turns = tideTurns(T.t0, T.level).filter(function (x) { return x.t > nowMs; });
+    return { high: turns.filter(function (x) { return x.high; })[0] || null, low: turns.filter(function (x) { return !x.high; })[0] || null };
+  }
+  function tideAt(T, ms) {
+    var f = (ms - T.t0) / TIDE_H, i = Math.floor(f), a = T.level[i], b = T.level[i + 1];
+    return isFinite(a) && isFinite(b) ? a + (b - a) * (f - i) : NaN;
+  }
+  function tideWhen(t) { return t ? fmt12(new Date(t.t)) : "--"; }
+  function swellWords(s) { return s && isFinite(s.h) ? (Math.round(s.h * 10) / 10) + " m " + compass(s.dir) + " swell" + (isFinite(s.period) ? ", " + Math.round(s.period) + " s" : "") : ""; }
+  // the curve: 6 h back to 18 h ahead, as an SVG path (viewBox 0 0 240 80), the water filled under it
+  function tideCurve(T, nowMs, w, h) {
+    var from = nowMs - 6 * TIDE_H, pts = [], lo = Infinity, hi = -Infinity, k, v;
+    for (k = 0; k <= 48; k++) { v = tideAt(T, from + k * TIDE_H / 2); if (isFinite(v)) { pts.push([k * 5, v]); lo = Math.min(lo, v); hi = Math.max(hi, v); } }
+    if (pts.length < 8) return null;
+    var span = Math.max(0.2, hi - lo), y = function (v) { return 12 + (1 - (v - lo) / span) * 56; };
+    var line = pts.map(function (p, i) { return (i ? "L" : "M") + p[0] + " " + y(p[1]).toFixed(1); }).join(" ");
+    var nowV = tideAt(T, nowMs), nx = 60, ny = isFinite(nowV) ? y(nowV) : 40;
+    var id = "tg" + Math.floor(Math.random() * 1e9);
+    var s = svg("0 0 240 80", "100%", "100%", [
+      S("defs", {}, [S("linearGradient", { id: id, x1: 0, y1: 0, x2: 0, y2: 1 }, [S("stop", { offset: 0, "stop-color": "var(--on)", "stop-opacity": 0.55 }), S("stop", { offset: 1, "stop-color": "var(--on)", "stop-opacity": 0.04 })])]),
+      S("path", { d: line + " L240 80 L0 80 Z", fill: "url(#" + id + ")" }),
+      S("path", { d: line, fill: "none", stroke: "var(--on)", "stroke-width": 2.2, "stroke-linecap": "round", "stroke-linejoin": "round" }),
+      S("line", { x1: nx, y1: 4, x2: nx, y2: 80, stroke: "rgba(255,255,255,.35)", "stroke-width": 1, "stroke-dasharray": "2 3" })], "display:block;overflow:visible");
+    s.setAttribute("preserveAspectRatio", "none");
+    // the dot is its own element over the svg (a circle in a stretched svg would turn into an oval), it pulses (transform + opacity)
+    var dot = E("i", "cw-tide-dot", "left:" + (nx / 240 * 100) + "%;top:" + (ny / 80 * 100) + "%");
+    var sheen = E("i", "cw-tide-sheen", "");
+    return E("div", "cw-tide-curve", "position:relative;width:" + w + ";height:" + px(h) + ";overflow:hidden;flex:none", [s, sheen, dot]);
+  }
+  R.tides = function (root, o, b, env) {
+    var T = tidesOf(env);
+    if (!T) return weather(env) ? empty(root, b, "wind", "Waiting for the tides", "From Open-Meteo's marine service") : noWx(root, b, env);
+    var nowMs = now().getTime(), N = tideNext(T, nowMs);
+    if (!N.high && !N.low) return empty(root, b, "wind", "No tide reading here", "The sea is too far from your town");
+    var place = op(o).label || (env.demo ? "The point" : (dataOf(env).place || {}).name || "Tides");
+    var rising = N.high && (!N.low || N.high.t < N.low.t);
+    var pair = rising ? [[N.high, "High"], [N.low, "Low"]] : [[N.low, "Low"], [N.high, "High"]];
+    // side by side in a wide box, sized to fit half of it; in a narrow one, a row each (the word left, the time right)
+    var wide = b.w >= 520, fs = wide ? Math.min(b.h < 300 ? 48 : 60, (b.w - 80) / 2 / (7 * 0.56)) : Math.min(44, (b.w - 150) / (7 * 0.56));
+    var turn = function (p) {
+      return wide ? E("div", "cw-col", "min-width:0", [E("div", "cw-t23", "color:var(--sub)", [p[1]]), E("div", "cw-big", "font-size:" + px(fs), [tideWhen(p[0])])])
+        : E("div", "cw-row cw-sp", "align-items:baseline;margin-top:4px", [E("div", "cw-t25", "color:var(--sub)", [p[1]]), E("div", "cw-big", "font-size:" + px(fs), [tideWhen(p[0])])]);
+    };
+    add(root, [lab("wind", place + (rising ? " · rising" : " · falling"), "rgba(255,255,255,.88)"),
+      wide ? E("div", "cw-row cw-sp", "margin-top:8px;align-items:flex-end", pair.map(turn)) : E("div", "cw-col", "margin-top:6px", pair.map(turn)),
+      E("div", "cw-grow"),
+      tideCurve(T, nowMs, "100%", clamp(b.h - 210, 60, 150)),
+      b.h >= 300 && T.swell ? E("div", "cw-t23 cw-ell", "color:#fff;margin-top:8px", [swellWords(T.swell)]) : null]);
+    live(root, 60000, function () { /* the dot moves on with the next redraw; the turns change only on a new reading */ });
+  };
+  // a box under 200 px tall: the next turn, big, and the one after
+  CR.tides = function (root, o, b, env) {
+    var T = tidesOf(env);
+    if (!T) return weather(env) ? empty(root, b, "wind", "Waiting for the tides", "") : noWx(root, b, env);
+    var N = tideNext(T, now().getTime());
+    if (!N.high && !N.low) return empty(root, b, "wind", "No tide here", "");
+    var first = N.high && (!N.low || N.high.t < N.low.t) ? [N.high, "High"] : [N.low, "Low"], then = first[1] === "High" ? [N.low, "low"] : [N.high, "high"];
+    add(root, E("div", "cw-row cw-sp", "height:100%", [E("div", "cw-col", "min-width:0", [lab("wind", first[1] + " tide", "rgba(255,255,255,.88)"),
+      E("div", "cw-t25 cw-ell", "color:var(--sub);margin-top:6px", ["then " + then[1] + " " + tideWhen(then[0])])]),
+      E("div", "cw-big", "font-size:" + px(b.w < 300 ? 40 : 56), [tideWhen(first[0])])]));
+  };
   CR.uv = function (root, o, b, env) {
     var w = weather(env);
     if (!w || w.uv === undefined) return w ? empty(root, b, "sun", "UV is on its way", "") : noWx(root, b, env);
@@ -2462,7 +2554,7 @@
       appNode: appNode, appsFor: appsFor, appName: appName, appIcon: appIcon, demoImg: demoImg, bgImg: bgImg,
       sunToday: sunToday, sunTimes: sunTimes, moon: moon, tzTime: tzTime, CITY: CITY, DAYS: DAYS, MONTHS: MONTHS, longDate: longDate, clockParts: clockParts,
       roomsOf: roomsOf, roomOn: roomOn, roomMode: roomMode, MODE_WORD: MODE_WORD, MODE_COL: MODE_COL, tdeg: tdeg, scenesOf: scenesOf,
-      airOf: airOf, aqiBand: aqiBand, surfOf: surfOf, compass: compass, Timer: Timer, mmss: mmss, ring: ring, dial: dial, dayIndex: dayIndex, fmt12: fmt12,
+      airOf: airOf, aqiBand: aqiBand, surfOf: surfOf, tidesOf: tidesOf, tideTurns: tideTurns, tideNext: tideNext, compass: compass, Timer: Timer, mmss: mmss, ring: ring, dial: dial, dayIndex: dayIndex, fmt12: fmt12,
       // things typed at home (athome.js through app.js)
       athome: athome, listOf: listOf, wifiOf: wifiOf, guideOf: guideOf, guideIcon: guideIcon, qrNode: qrNode, demoEvents: demoEvents, evDay: evDay, hhmm: hhmm, EV_COL: EV_COL, yearsAgo: yearsAgo }
   };

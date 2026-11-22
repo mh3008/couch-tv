@@ -413,8 +413,9 @@ scene, Keep watching every show with Resume, an app folder every app. A widget w
 things (a row of scenes, a poster row) keeps them, and its layer is the first item of Hold OK. What
 each widget needs, where that is set up, which TVs can run it and the sizes it comes in are in
 `tv-home/web/widget-caps.js`; a TV with nothing real for a widget shows that record's setup card, and
-OK on the card opens the whole record. It never shows pretend data. The air quality and surf widgets
-ask Open-Meteo's free air quality and marine services, only while one is on the home.
+OK on the card opens the whole record. It never shows pretend data. The air quality, surf and tides widgets
+ask Open-Meteo's free air quality and marine services, only while one is on the home (tides: the hourly sea level, a tide
+and surge model that is not for navigation, from yesterday to the day after tomorrow).
 
 **Things typed at home (Home settings, couch-tv Studio, At home).** The Family note, List, Guest
 Wi-Fi, House guide, Agenda and Screen time widgets show what is typed on the TV itself, with the remote

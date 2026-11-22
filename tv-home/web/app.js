@@ -1959,7 +1959,7 @@
   // Only while an air or surf widget is on the home: Open-Meteo's free air quality and marine
   // services for the same rounded place (widget-caps.js "air", "surf"). A failure leaves the rest.
   function airAndSurf(out) {
-    var want = typeof CouchDesign !== "undefined" && CouchDesign.wantsKinds ? CouchDesign.wantsKinds(["air", "surf"]) : [];
+    var want = typeof CouchDesign !== "undefined" && CouchDesign.wantsKinds ? CouchDesign.wantsKinds(["air", "surf", "tides"]) : [];
     if (!want.length) return out;
     var at = "latitude=" + WXCFG.lat + "&longitude=" + WXCFG.lon + "&timezone=" + encodeURIComponent(WXCFG.timezone || "auto");
     var nowAt = function (times) { var h = new Date(), iso = h.getFullYear() + "-" + ("0" + (h.getMonth() + 1)).slice(-2) + "-" + ("0" + h.getDate()).slice(-2) + "T" + ("0" + h.getHours()).slice(-2) + ":00"; return Math.max(0, (times || []).indexOf(iso)); };
@@ -1977,6 +1977,16 @@
       out.marine = { wave: c.wave_height == null ? NaN : c.wave_height, period: c.wave_period, dir: c.wave_direction, wind: wc.wind_speed_10m, windDir: wc.wind_direction_10m,
         hourly: (H.wave_height || []).slice(i, i + 12).filter(function (v) { return v != null; }) };
     }, function () {}));
+    // tides (feat/tides): the hourly sea level (the tide + surge model, "not for navigation") from yesterday to the day after
+    // tomorrow, and the swell now; widgets.js finds the turns of the tide on it
+    if (want.indexOf("tides") >= 0) jobs.push(fetch("https://marine-api.open-meteo.com/v1/marine?" + at + "&hourly=sea_level_height_msl,swell_wave_height,swell_wave_period,swell_wave_direction&past_days=1&forecast_days=2")
+      .then(function (r) { return r.json(); }).then(function (j) {
+        var H = j.hourly || {}, t = H.time || [], lv = H.sea_level_height_msl || [], i = nowAt(t);
+        var m = /^(\d{4})-(\d\d)-(\d\d)T(\d\d):(\d\d)/.exec(t[0] || "");
+        if (!m || lv.filter(function (v) { return v != null; }).length < 4) return;
+        out.tides = { t0: new Date(+m[1], +m[2] - 1, +m[3], +m[4], +m[5]).getTime(), level: lv.map(function (v) { return v == null ? NaN : v; }),
+          swell: { h: (H.swell_wave_height || [])[i], period: (H.swell_wave_period || [])[i], dir: (H.swell_wave_direction || [])[i] } };
+      }, function () {}));
     return Promise.all(jobs).then(function () { return out; });
   }
 
