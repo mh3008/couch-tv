@@ -6,7 +6,7 @@
 // elements: the body (a picture drawn once, which also carries the bird's path across the screen: transform only) and its wings (a
 // second picture drawn once, a child that beats by scaleY alone: up, flat, down, flat, up). The birds of a flock share one path and
 // one delay, so the formation holds; two variants of the path differ only by a small slow bob, so the flock is not a rigid block.
-// The page draws nothing per frame: no filter, no blur, no blend mode, no opacity trick. Total layer area, worst case (many): about 12 %
+// The page draws nothing per frame: no filter, no blur, no blend mode, no opacity trick. Total layer area, worst case (many): about 16 %
 // of a screen (the test counts it). Nothing moves while the home is covered, when the TV asks for less motion, in the Lighter home,
 // the old engine or the Loop look (app.js ambientSync / pause / resume).
 (function (root) {
@@ -25,7 +25,7 @@
     light: { body: ["#FFFFFF", "#DCE4EE"], wing: ["#FFFFFF", "#B7C4D4"] },
     dusk: { body: ["#3B1F36", "#5C3050"], wing: ["#3B1F36", "#6E3A5E"] }
   };
-  var SPAN = [[34, 48], [60, 88], [130, 175]], HAZE = [0.8, 0.94, 1];
+  var SPAN = [[40, 56], [72, 104], [150, 205]], HAZE = [0.8, 0.94, 1];
   var FLAPN = [20, 16, 12];   // beats per 8 s (a whole number, so the 8 s showcase loop repeats exactly)
   var LOOP = /[?&]fxloop=1(?:&|$)/.test((root.location && root.location.search) || "");
   var STEPS = 48;

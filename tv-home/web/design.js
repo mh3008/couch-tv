@@ -822,7 +822,7 @@
     if ((home.glass_amount || 0) > 2) out.push(["Glass level " + home.glass_amount, (home.glass_amount - 2) * 3, "glassamount"]);
     if (home.ambient_weather) out.push(["Rain and snow effects", 34, "weatherfx"]);
     if (home.ambient_sun_grade) out.push(["Sunlight colour", 4, "sungrade"]);
-    // birds: 9 / 14 / 27 birds of two small layers each (transform only, worst case about 4 / 7 / 12 % of a screen)
+    // birds: 9 / 14 / 27 birds of two small layers each (transform only, worst case about 5 / 10 / 16 % of a screen)
     if (home.birds && home.birds !== "off") out.push(["Birds" + (home.birds !== "flock" ? " (" + home.birds + ")" : ""), home.birds === "many" ? 4 : home.birds === "few" ? 2 : 3, "birds"]);
     if (home.moving_tiles) out.push(["Moving tiles", 4, "moving"]);
     if (home.video_url) out.push(["Video background", 40, "video"]);

@@ -42,7 +42,7 @@ const sec = (v) => parseFloat(v);
 const sp = (el, n) => { const m = new RegExp("(?:^|;)" + n + ":([^;]*)").exec(el.style.cssText); return m ? m[1] : ""; };
 const W = 1920, H = 1080;
 
-for (const [amount, birds, pct] of [["few", 9, 4], ["flock", 16, 8], ["many", 27, 12]]) {
+for (const [amount, birds, pct] of [["few", 9, 5], ["flock", 16, 10], ["many", 27, 16]]) {
   const { F, body, head } = load(false);
   F.set(amount, "dark", false);
   const h = host(body);
@@ -51,7 +51,7 @@ for (const [amount, birds, pct] of [["few", 9, 4], ["flock", 16, 8], ["many", 27
   check(h.childNodes.every((b) => b.childNodes.length === 1 && String(b.childNodes[0].tagName).toLowerCase() === "u" && b.childNodes[0].childNodes.length === 0), amount + ": a bird is a body with one wings child, two layers");
   // worst-case layer area: body + wings boxes, widened a little for the bob
   let area = 0;
-  h.childNodes.forEach((b) => { const s = sec(sp(b, "width")); check(s >= 30 && s <= 193, amount + ": wing span 30-193 px (" + s + ")"); check(Math.abs(sec(sp(b, "height")) - s / 2) <= 0.5, amount + ": a bird is 2:1"); area += 2 * s * (s / 2) * 1.15; });
+  h.childNodes.forEach((b) => { const s = sec(sp(b, "width")); check(s >= 35 && s <= 226, amount + ": wing span 35-226 px (" + s + ")"); check(Math.abs(sec(sp(b, "height")) - s / 2) <= 0.5, amount + ": a bird is 2:1"); area += 2 * s * (s / 2) * 1.15; });
   check(area / (W * H) <= pct / 100, amount + ": layer area " + (100 * area / (W * H)).toFixed(1) + " % of a screen (bar " + pct + " %)");
   const css = cssOf(head);
   check(!/var\(/.test(css), amount + ": no CSS variables");
