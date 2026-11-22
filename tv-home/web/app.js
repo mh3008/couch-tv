@@ -1827,10 +1827,10 @@
     v.removeAttribute("src");
     try { v.load(); } catch (e) {}
   }
-  function pauseVideo() { stopSoundscape(); if (window.AmbientWeather) window.AmbientWeather.pause(); releaseBgVideo(); sceneVideos(false); if (LOOP) loopPause(); }
+  function pauseVideo() { stopSoundscape(); if (window.AmbientWeather) window.AmbientWeather.pause(); if (window.AmbientBokeh) window.AmbientBokeh.pause(); releaseBgVideo(); sceneVideos(false); if (LOOP) loopPause(); }
   document.addEventListener("visibilitychange", function () {
     if (document.hidden) { saveFocusNow(); pauseVideo(); }
-    else { setIdleAmbient(false); resetSmartIdle(); startVideo(); clipWake(); sceneVideos(true); mood(true); if (window.AmbientWeather) window.AmbientWeather.resume(); resetIdlePhoto(); }
+    else { setIdleAmbient(false); resetSmartIdle(); startVideo(); clipWake(); sceneVideos(true); mood(true); if (window.AmbientWeather) window.AmbientWeather.resume(); if (window.AmbientBokeh) window.AmbientBokeh.resume(); resetIdlePhoto(); }
   });
 
   // A scene's own clip (home.my_scenes[].video): only the scene on screen plays, and only while the
@@ -2298,6 +2298,13 @@
     // above them layers of their own: 5.8 ms of main thread commit per arrow press at 6x CPU throttle, 0.8 without
     document.documentElement.classList.toggle("amb-fx", ((WX_AMBIENT && WX_SHOW) || WX_SUN_GRADE) && !LIGHTER && !OLD_ENGINE && !LOOP);
     updateAmbientWeather();
+    bokehSync();
+  }
+  // the design's bokeh lights (fx-bokeh.js), in its bokeh_colour or else its accent: never in the Lighter home, the old engine or the Loop look
+  function bokehSync() {
+    if (!window.AmbientBokeh) return;
+    var look = (CFG.design && CFG.design.look) || {};
+    window.AmbientBokeh.set(HOME.bokeh || "off", HOME.bokeh_colour || look.accent || "", LIGHTER || OLD_ENGINE || LOOP);
   }
 
   // In the Loop look the weather paints the accent and picks the clip's time of day instead (once a
@@ -5348,7 +5355,7 @@
   function openSettings() {
     closeGear();
     zone = "settings";
-    if (window.AmbientWeather) window.AmbientWeather.pause();
+    if (window.AmbientWeather) window.AmbientWeather.pause(); if (window.AmbientBokeh) window.AmbientBokeh.pause();
     SET.col = "secs"; SET.sec = 0; SET.ri = 0; SET.keyFocus = null; SET.sub = null; SET.lift = null; SET.confirm = null; SET.msg = ""; SET_ALL = false;
     clearFocus();
     $("settings").classList.add("on");
@@ -5365,7 +5372,7 @@
     document.documentElement.classList.remove("setting");
     clearTimeout(PHONE_QR.timer);
     zone = "grid";
-    if (window.AmbientWeather) window.AmbientWeather.resume();
+    if (window.AmbientWeather) window.AmbientWeather.resume(); if (window.AmbientBokeh) window.AmbientBokeh.resume();
     if (SET.dirty) { SET.dirty = false; restart(); return; }
     paintFocus();
     resetIdlePhoto();
@@ -8378,7 +8385,7 @@
     settingsKey: function () { blip(0, 0); settingsKey(); },
     // the phone code changed (HomeActivity, Auth.onPin): the QR and computer line draw the new one
     phoneLink: function () { PHONE_QR.url = ""; phoneQr(); if (typeof CouchDesign !== "undefined" && CouchDesign.nav && CouchDesign.nav.phoneAgain) CouchDesign.nav.phoneAgain(); },
-    resume: function () { PAGE_PAUSED = false; clock(); designVideo("away", false); toggleScreenOff(false); setIdleAmbient(false); resetSmartIdle(); okReset(); refresh(); if (!OFFLINE) refreshQuick(); refreshWeather(); startVideo(); clipWake(); sceneVideos(true); refreshMusic(); refreshCards(true); if (window.AmbientWeather) window.AmbientWeather.resume(); resetIdlePhoto(); kwArtAgain(); },
+    resume: function () { PAGE_PAUSED = false; clock(); designVideo("away", false); toggleScreenOff(false); setIdleAmbient(false); resetSmartIdle(); okReset(); refresh(); if (!OFFLINE) refreshQuick(); refreshWeather(); startVideo(); clipWake(); sceneVideos(true); refreshMusic(); refreshCards(true); if (window.AmbientWeather) window.AmbientWeather.resume(); if (window.AmbientBokeh) window.AmbientBokeh.resume(); resetIdlePhoto(); kwArtAgain(); },
     // an app is in front: the video background stops until the home is back
     // (and a design's video background lets go of the TV's decoder, which the app may need)
     pause: function () { saveFocusNow(); PAGE_PAUSED = true; pauseVideo(); designVideo("away", true); },
