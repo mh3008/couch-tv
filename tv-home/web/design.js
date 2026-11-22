@@ -32,7 +32,7 @@
 
   // the look settings a design may carry (design.home); Home settings on the TV still win
   var HOME_KEYS = ["scenes", "scene_seconds", "glass", "glass_icons", "glass_amount", "clock_style", "ambient_weather",
-    "ambient_sun_grade", "video_url", "dock", "moving_tiles", "lighter", "keep_watching", "now_playing", "dock_size", "clock"];
+    "ambient_sun_grade", "video_url", "dock", "moving_tiles", "lighter", "keep_watching", "now_playing", "dock_size", "clock", "fireflies", "fireflies_colour"];
   var FONTS = {
     inter: '"Inter", sans-serif',
     antonio: '"Antonio", "Arial Narrow", sans-serif',
@@ -533,7 +533,8 @@
     }
     return out;
   }
-  var HOME_PICK = { glass: ["on", "lite", "off"], clock_style: ["frosted", "liquid"], dock: ["classic", "mac"], clock: ["12h", "24h"] };
+  var HOME_PICK = { glass: ["on", "lite", "off"], clock_style: ["frosted", "liquid"], dock: ["classic", "mac"], clock: ["12h", "24h"],
+    fireflies: ["off", "few", "some", "many"] };   // fx-fireflies.js: glowing motes drifting over the photo
   var HOME_BOOL = ["glass_icons", "ambient_weather", "ambient_sun_grade", "moving_tiles", "lighter", "keep_watching", "now_playing"];
   function sanitize(raw) {
     NOTES = [];
@@ -546,6 +547,8 @@
     put(h, "dock_size", SAN.n(hm.dock_size, 1, 10, true));
     Object.keys(HOME_PICK).forEach(function (k) { put(h, k, SAN.pick(hm[k], HOME_PICK[k])); });
     HOME_BOOL.forEach(function (k) { put(h, k, SAN.b(hm[k])); });
+    // the fireflies' colour: a plain #rrggbb only (else they take the design's accent)
+    if (/^#[0-9a-f]{6}$/i.test(String(hm.fireflies_colour || ""))) h.fireflies_colour = String(hm.fireflies_colour);
     if (Object.keys(h).length) out.home = h;
     var el = obj(raw.elements), e = {};
     ["clock", "date", "weather", "people", "quick", "keep_watching", "dock"].forEach(function (k) {
@@ -792,6 +795,8 @@
     if ((home.glass_amount || 0) > 2) out.push(["Glass level " + home.glass_amount, (home.glass_amount - 2) * 3, "glassamount"]);
     if (home.ambient_weather) out.push(["Rain and snow effects", 34, "weatherfx"]);
     if (home.ambient_sun_grade) out.push(["Sunlight colour", 4, "sungrade"]);
+    // small GPU layers (1-4 % of the screen in all): cheap, but not free on a slow TV
+    if (home.fireflies && home.fireflies !== "off") out.push(["Fireflies" + (home.fireflies !== "some" ? " (" + home.fireflies + ")" : ""), home.fireflies === "many" ? 6 : 4, "fireflies"]);
     if (home.moving_tiles) out.push(["Moving tiles", 4, "moving"]);
     if (home.video_url) out.push(["Video background", 40, "video"]);
     if (obj(E.dock).icon_style === "glass" || home.glass_icons) out.push(["Glass app icons", 6, "glassicons"]);
@@ -878,6 +883,7 @@
     var h = d.home || {};
     var steps = [
       [function () { return h.ambient_weather; }, function () { delete h.ambient_weather; }, "Rain and snow effects were switched off: too slow with everything else."],
+      [function () { return h.fireflies && h.fireflies !== "off"; }, function () { delete h.fireflies; }, "The fireflies were switched off: too slow with everything else."],
       [function () { return d.background && d.background.video; }, function () { delete d.background.video; }, "The video background was switched off: too slow with everything else. Its still picture stays."],
       [function () { return h.clock_style === "liquid"; }, function () { delete h.clock_style; }, "The liquid clock went back to frosted glass: too slow with everything else."],
       [function () { return (h.glass_amount || 0) > 2; }, function () { h.glass_amount = 2; }, "The glass level was brought down to 2."],
