@@ -550,7 +550,7 @@
     var l0 = lvMix(dark, BLACK, 0.3), l1 = lvMix(dark, c1, 0.1), l2 = lvMix(dark, c1, 0.28);
     var metal = lvMix(lvMix(c1, [128, 128, 136], 0.8), BLACK, 0.5);
     var pad = root.classList.contains("cw-bare") ? 0 : 48, aw = b.w - pad, ah = b.h - pad;
-    var W = Math.max(40, Math.min(aw / 1.3, ah / 2.56, 230));          // one lamp, 2.56 wide-units tall; capped so the moving layers stay small
+    var W = Math.max(40, Math.min(aw / 1.3, ah / 2.56, 200));          // one lamp, 2.56 wide-units tall; capped at 200 px so the moving layers stay under ~3.6 % of a 1080p screen
     var tot = W * 2.56, halo = Math.max(0, Math.min(W * 0.28, (aw - W) / 2 - 2));
     // ---- the back: cap, glass (opaque), base, in one still picture ----
     var Y0 = 16, i, k, u, edge = [];

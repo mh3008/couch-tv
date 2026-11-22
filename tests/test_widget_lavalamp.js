@@ -35,7 +35,7 @@ K.sizes(T.C, "lavalamp").forEach(([id, w, h]) => {
     has(l, "cw-lv-stage").length === 1 && has(l, "cw-lv-bulb").length === 1 && has(l, "cw-lv-halo").length === 1,
     id + ": a lamp = back picture (cap, glass, base), 4 blobs, 5 necks, a wax pool, a bulb glow and a halo");
   const lw = num(l.style.cssText, "width"), lh = num(l.style.cssText, "height");
-  ok(lw > 0 && Math.abs(lh - lw * 2.56) < 1 && lh <= h + 0.5 && lw <= 230, id + ": the lamp is " + Math.round(lw) + "x" + Math.round(lh) + " px (2.56 tall), inside the " + h + " px box, at most 230 wide");
+  ok(lw > 0 && Math.abs(lh - lw * 2.56) < 1 && lh <= h + 0.5 && lw <= 200, id + ": the lamp is " + Math.round(lw) + "x" + Math.round(lh) + " px (2.56 tall), inside the " + h + " px box, at most 200 wide");
   ok(lw * 1.3 <= w + 1, id + ": it fits across the " + w + " px box with its halo room");
   const hl = has(l, "cw-lv-halo")[0].style.cssText, hm = num(hl, "left");
   ok(-hm <= (w - lw) / 2 && -hm <= lw * 0.28 + 1, id + ": the halo stays inside the box (" + Math.round(-hm) + " px each side)");
@@ -113,9 +113,9 @@ block.split(/\r?\n/).filter((l) => /^@keyframes cw-lv-/.test(l)).forEach((l) => 
     area += m;
   });
   area += 100 * 36 + 70 * 38;   // the pool and the bulb glow (the glare is part of the still back picture)
-  const top = 230 / 100, small = 200 / 100;   // widest lamp (230 px) and a 4x6 box's lamp (200 px)
+  const top = 200 / 100, small = 200 / 100;   // the widest lamp is 200 px, which is also what a 4x6 box gets
   const pctTop = 100 * area * top * top / (1920 * 1080), pctTall = 100 * area * small * small / (1920 * 1080);
-  ok(pctTop <= 5, "the moving layers add up to " + pctTall.toFixed(2) + " % of a 1080p screen in a 4x6 box and " + pctTop.toFixed(2) + " % at the 230 px cap (budget 5 %)");
+  ok(pctTop <= 4, "the moving layers add up to at most " + pctTop.toFixed(2) + " % of a 1080p screen (worst-case boxes, 200 px lamp; budget 5 %)");
   const js = fs.readFileSync(path.join(web, "widgets.js"), "utf8");
   const blk = js.slice(js.indexOf("R.lavalamp = function"), js.indexOf("function arc(f)"));
   ok(!/setInterval|setTimeout|requestAnimationFrame|live\(|createElement\("canvas"\)|getContext|filter|feGaussianBlur|feColorMatrix/.test(blk.replace(/\/\/[^\n]*/g, "")), "the lamp has no timer, no canvas and no filter: the stylesheet does all the moving");
