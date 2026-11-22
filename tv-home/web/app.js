@@ -1647,10 +1647,10 @@
     v.removeAttribute("src");
     try { v.load(); } catch (e) {}
   }
-  function pauseVideo() { stopSoundscape(); if (window.AmbientWeather) window.AmbientWeather.pause(); var v = $("bgvid"); if (v.getAttribute("src")) v.pause(); sceneVideos(false); if (LOOP) loopPause(); }
+  function pauseVideo() { stopSoundscape(); if (window.AmbientWeather) window.AmbientWeather.pause(); if (window.AmbientPetals) window.AmbientPetals.pause(); var v = $("bgvid"); if (v.getAttribute("src")) v.pause(); sceneVideos(false); if (LOOP) loopPause(); }
   document.addEventListener("visibilitychange", function () {
     if (document.hidden) { saveFocusNow(); pauseVideo(); }
-    else { setIdleAmbient(false); resetSmartIdle(); startVideo(); clipWake(); sceneVideos(true); mood(true); if (window.AmbientWeather) window.AmbientWeather.resume(); resetIdlePhoto(); }
+    else { setIdleAmbient(false); resetSmartIdle(); startVideo(); clipWake(); sceneVideos(true); mood(true); if (window.AmbientWeather) window.AmbientWeather.resume(); if (window.AmbientPetals) window.AmbientPetals.resume(); resetIdlePhoto(); }
   });
 
   // A scene's own clip (home.my_scenes[].video): only the scene on screen plays, and only while the
@@ -2088,6 +2088,12 @@
     a.setEnabled(WX_AMBIENT && WX_SHOW && !LOOP);
     a.setSunGradeEnabled(WX_SUN_GRADE && !LIGHTER && !OLD_ENGINE && !LOOP);
     updateAmbientWeather();
+    petalsSync();
+  }
+  // the design's falling petals or leaves (fx-petals.js): never in the Lighter home, the old engine or the Loop look
+  function petalsSync() {
+    if (!window.AmbientPetals) return;
+    window.AmbientPetals.set(HOME.petals || "off", HOME.petals_style || "sakura", LIGHTER || OLD_ENGINE || LOOP);
   }
 
   // In the Loop look the weather paints the accent and picks the clip's time of day instead (once a
@@ -5001,7 +5007,7 @@
   function openSettings() {
     closeGear();
     zone = "settings";
-    if (window.AmbientWeather) window.AmbientWeather.pause();
+    if (window.AmbientWeather) window.AmbientWeather.pause(); if (window.AmbientPetals) window.AmbientPetals.pause();
     SET.col = "secs"; SET.sec = 0; SET.ri = 0; SET.keyFocus = null; SET.sub = null; SET.lift = null; SET.confirm = null; SET.msg = "";
     clearFocus();
     $("settings").classList.add("on");
@@ -5015,7 +5021,7 @@
     $("settings").classList.remove("on");
     document.documentElement.classList.remove("setting");
     zone = "grid";
-    if (window.AmbientWeather) window.AmbientWeather.resume();
+    if (window.AmbientWeather) window.AmbientWeather.resume(); if (window.AmbientPetals) window.AmbientPetals.resume();
     if (SET.dirty) { SET.dirty = false; restart(); return; }
     paintFocus();
     resetIdlePhoto();
@@ -7446,7 +7452,7 @@
     noDream: function () { note(t("no_dream")); },
     // the remote's Settings/gear key, caught by the launcher natively (MainActivity.dispatchKeyEvent)
     settingsKey: function () { blip(0, 0); settingsKey(); },
-    resume: function () { PAGE_PAUSED = false; clock(); designVideo("away", false); toggleScreenOff(false); setIdleAmbient(false); resetSmartIdle(); okReset(); refresh(); if (!OFFLINE) refreshQuick(); refreshWeather(); startVideo(); clipWake(); sceneVideos(true); refreshMusic(); refreshCards(true); if (window.AmbientWeather) window.AmbientWeather.resume(); resetIdlePhoto(); },
+    resume: function () { PAGE_PAUSED = false; clock(); designVideo("away", false); toggleScreenOff(false); setIdleAmbient(false); resetSmartIdle(); okReset(); refresh(); if (!OFFLINE) refreshQuick(); refreshWeather(); startVideo(); clipWake(); sceneVideos(true); refreshMusic(); refreshCards(true); if (window.AmbientWeather) window.AmbientWeather.resume(); if (window.AmbientPetals) window.AmbientPetals.resume(); resetIdlePhoto(); },
     // an app is in front: the video background stops until the home is back
     // (and a design's video background lets go of the TV's decoder, which the app may need)
     pause: function () { saveFocusNow(); PAGE_PAUSED = true; pauseVideo(); designVideo("away", true); },
