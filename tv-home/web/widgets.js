@@ -789,7 +789,7 @@
   // Lighter home / reduced motion: no glint, no pop, the colour just changes. The idea and the colour code are the
   // Kickstarter "Fibonacci Clock" (basbrun), as re-implemented in MIT projects found in the scan; no code was copied.
   var FB_BOX = [[0, 0, 5], [5, 0, 3], [6, 3, 2], [5, 3, 1], [5, 4, 1]];   // x, y, side of each square on the 8 x 5 board
-  var FB_ARC = ["M 0 5 A 5 5 0 0 0 5 0", "M 5 0 A 3 3 0 0 0 8 3", "M 8 3 A 2 2 0 0 0 6 5", "M 6 5 A 1 1 0 0 0 5 4", "M 5 4 A 1 1 0 0 0 6 3"];   // the spiral, one quarter circle a square
+  var FB_LOC = ["M 0 1 A 1 1 0 0 1 1 0", "M 0 0 A 1 1 0 0 1 1 1", "M 1 0 A 1 1 0 0 1 0 1", "M 0 1 A 1 1 0 0 1 1 0", "M 1 1 A 1 1 0 0 1 0 0"];   // the spiral: a quarter circle in each square (5, 3, 2, 1, 1), in a 1 x 1 box, all turning the same way and meeting at the centre
   var FB_COL = [[244, 244, 238], [229, 57, 53], [46, 189, 103], [54, 123, 245]];   // neither, hours, minutes, both
   function fbCalm() {
     try {
@@ -816,25 +816,28 @@
   R.fibclock = function (root, o, b, env) {
     var pad = root.classList.contains("cw-bare") ? 0 : 48, cap = b.h - pad >= 300, capH = cap ? 64 : 0;
     var u = Math.max(8, Math.floor(Math.min((b.w - pad) / 8, (b.h - pad - capH) / 5))), gap = Math.max(2, Math.round(u * 0.05)), rad = Math.round(u * 0.14);
+    // LAYER COUNT is the stick's cost, so everything that does not move is drawn into the square's own background (its colour and its
+    // quarter of the spiral as one picture). What moves: ONE glint layer for the whole board, and for 0.9 s a square that changes colour
+    // has one overlay in its old colour fading out over the new one (at most 5). At most 6 animated layers at any time.
+    var arcImg = function (q) {
+      var d = FB_LOC[q.i];
+      var s = "<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1 1' preserveAspectRatio='none'><path d='" + d + "' fill='none' stroke='black' stroke-opacity='0.34' stroke-width='" + (0.07 / FB_BOX[q.i][2]).toFixed(4) + "' stroke-linecap='round'/></svg>";
+      return "url(\"data:image/svg+xml," + encodeURIComponent(s) + "\") center / 100% 100% no-repeat";
+    };
+    var paint = function (q, st) { return arcImg(q) + ", " + rgba(FB_COL[st], 1); };
     var sq = [];
-    var layer = function (c, i) { return E("div", "cw-fb-c", "background:" + rgba(c, 1) + ";border-radius:" + px(rad)); };
     FB_BOX.forEach(function (bx, i) {
-      var q = { st: -1, at: 0 };
-      q.l = FB_COL.map(layer);
-      q.g = E("div", "cw-fb-g", "border-radius:" + px(rad) + ";-webkit-animation-delay:-" + (8 - i * 0.9).toFixed(1) + "s;animation-delay:-" + (8 - i * 0.9).toFixed(1) + "s");
-      q.el = E("div", "cw-fb-s", "left:" + px(bx[0] * u + gap) + ";top:" + px(bx[1] * u + gap) + ";width:" + px(bx[2] * u - gap * 2) + ";height:" + px(bx[2] * u - gap * 2), q.l.concat([q.g]));
+      var q = { i: i, st: -1, at: 0 };
+      q.ov = E("div", "cw-fb-o", "border-radius:" + px(rad));
+      q.el = E("div", "cw-fb-s", "left:" + px(bx[0] * u + gap) + ";top:" + px(bx[1] * u + gap) + ";width:" + px(bx[2] * u - gap * 2) + ";height:" + px(bx[2] * u - gap * 2) + ";border-radius:" + px(rad), [q.ov]);
       sq.push(q);
     });
-    var spiral = svg("0 0 8 5", 8 * u, 5 * u, FB_ARC.map(function (d) { return S("path", { d: d, fill: "none", stroke: "rgba(0, 0, 0, 0.34)", "stroke-width": 0.07, "stroke-linecap": "round" }); }));
-    spiral.setAttribute("class", "cw-fb-sp"); spiral.style.cssText = "position:absolute;left:0;top:0";
-    var board = E("div", "cw-fb", "width:" + px(8 * u) + ";height:" + px(5 * u), sq.map(function (q) { return q.el; }).concat([spiral]));
+    var glint = E("div", "cw-fb-g");
+    var board = E("div", "cw-fb", "width:" + px(8 * u) + ";height:" + px(5 * u), sq.map(function (q) { return q.el; }).concat([glint]));
     var txt = cap ? E("div", "cw-t29 cw-dim", "margin-top:14px;text-align:center", [""]) : null;
     add(root, E("div", "cw-col cw-center", "height:100%;justify-content:center", [board, txt]));
     var first = true;
-    var settle = function (q) {
-      q.l.forEach(function (l, k) { l.className = "cw-fb-c" + (k === q.st ? " cw-fb-on" : ""); });
-      q.el.classList.remove("cw-fb-go"); q.at = 0;
-    };
+    var settle = function (q) { q.el.classList.remove("cw-fb-go"); q.at = 0; };
     var set = function () {
       var d = now(), s = fbState(d), still = fbCalm();
       for (var i = 0; i < 5; i++) {
@@ -843,10 +846,11 @@
         if (q.st === s[i]) continue;
         var old = q.st;
         q.st = s[i];
+        q.el.style.background = paint(q, q.st);
+        q.el.setAttribute("data-c", String(q.st));
         if (first || still || old < 0) { settle(q); continue; }
-        settle(q); void q.el.offsetWidth;   // start from the resting colours, so every fade below is a new animation
-        q.l[old].className = "cw-fb-c cw-fb-fo"; q.l[q.st].className = "cw-fb-c cw-fb-on cw-fb-fi";
-        q.el.classList.add("cw-fb-go");
+        q.ov.style.background = paint(q, old);   // the old colour, drawn over the new one, fades out
+        q.el.classList.remove("cw-fb-go"); void q.el.offsetWidth; q.el.classList.add("cw-fb-go");
         q.at = Date.now();
       }
       if (txt) txt.textContent = clockParts(d, o, env).t;

@@ -362,27 +362,20 @@ html.lighter .cwd-artbg { -webkit-filter: none; filter: none; opacity: 0.18; }
 .cwd-dial .cw-t23 { font-size: 29px; color: rgba(255, 255, 255, 0.75); margin-top: 4px; }
 .cwd-room { -webkit-flex: none; flex: none; }
 
-/* the Fibonacci clock (widgets.js R.fibclock): five coloured squares. A square that changes colour cross-fades (opacity, 0.9 s) with a
-   small pop (transform), and a soft glint runs from square to square (opacity, one 8 s loop, a different start each). Only transform and
-   opacity change. Lighter home / reduced motion: nothing runs and the colour just changes. */
-.cw-fb { position: relative; -webkit-flex: none; flex: none; }
+/* the Fibonacci clock (widgets.js R.fibclock): five coloured squares, each ONE picture (its colour + its quarter of the spiral). Moving:
+   one glint layer for the whole board (a soft light band that crosses it once in 8 s, transform), and for 0.9 s a square that changes colour has
+   one overlay in its old colour fading out over the new one (opacity): at most 6 animated layers. Lighter home / reduced motion: nothing runs. */
+.cw-fb { position: relative; -webkit-flex: none; flex: none; overflow: hidden; }
 .cw-fb-s { position: absolute; }
-.cw-fb-c { position: absolute; left: 0; top: 0; width: 100%; height: 100%; opacity: 0; }
-.cw-fb-on { opacity: 1; }
-.cw-fb-g { position: absolute; left: 0; top: 0; width: 100%; height: 100%; opacity: 0; background: linear-gradient(135deg, rgba(255, 255, 255, 0.6), rgba(255, 255, 255, 0) 62%); -webkit-animation: cw-fb-glint 8s linear infinite; animation: cw-fb-glint 8s linear infinite; }
-.cw-fb-fi { -webkit-animation: cw-fb-in 0.9s ease-in-out both; animation: cw-fb-in 0.9s ease-in-out both; }
-.cw-fb-fo { -webkit-animation: cw-fb-out 0.9s ease-in-out both; animation: cw-fb-out 0.9s ease-in-out both; }
-.cw-fb-go { -webkit-animation: cw-fb-pop 0.9s ease-out; animation: cw-fb-pop 0.9s ease-out; }
-@-webkit-keyframes cw-fb-glint { 0% { opacity: 0; } 6% { opacity: 1; } 22% { opacity: 0; } 100% { opacity: 0; } }
-@keyframes cw-fb-glint { 0% { opacity: 0; } 6% { opacity: 1; } 22% { opacity: 0; } 100% { opacity: 0; } }
-@-webkit-keyframes cw-fb-in { from { opacity: 0; } to { opacity: 1; } }
-@keyframes cw-fb-in { from { opacity: 0; } to { opacity: 1; } }
+.cw-fb-o { position: absolute; left: 0; top: 0; width: 100%; height: 100%; opacity: 0; }
+.cw-fb-g { position: absolute; left: 0; top: 0; width: 34%; height: 100%; background: linear-gradient(100deg, rgba(255, 255, 255, 0), rgba(255, 255, 255, 0.34) 50%, rgba(255, 255, 255, 0)); -webkit-animation: cw-fb-glint 8s linear infinite; animation: cw-fb-glint 8s linear infinite; }
+.cw-fb-go .cw-fb-o { -webkit-animation: cw-fb-out 0.9s ease-in-out both; animation: cw-fb-out 0.9s ease-in-out both; }
+@-webkit-keyframes cw-fb-glint { 0% { -webkit-transform: translateX(-100%); } 32% { -webkit-transform: translateX(300%); } 100% { -webkit-transform: translateX(300%); } }
+@keyframes cw-fb-glint { 0% { transform: translateX(-100%); } 32% { transform: translateX(300%); } 100% { transform: translateX(300%); } }
 @-webkit-keyframes cw-fb-out { from { opacity: 1; } to { opacity: 0; } }
 @keyframes cw-fb-out { from { opacity: 1; } to { opacity: 0; } }
-@-webkit-keyframes cw-fb-pop { 0% { -webkit-transform: scale(1); } 35% { -webkit-transform: scale(1.08); } 100% { -webkit-transform: scale(1); } }
-@keyframes cw-fb-pop { 0% { transform: scale(1); } 35% { transform: scale(1.08); } 100% { transform: scale(1); } }
-html.lighter .cw-fb-g, html.lighter .cw-fb-fi, html.lighter .cw-fb-fo, html.lighter .cw-fb-go { -webkit-animation: none !important; animation: none !important; }
-@media (prefers-reduced-motion: reduce) { .cw-fb-g, .cw-fb-fi, .cw-fb-fo, .cw-fb-go { -webkit-animation: none !important; animation: none !important; } }
+html.lighter .cw-fb-g, html.lighter .cw-fb-go .cw-fb-o { -webkit-animation: none !important; animation: none !important; }
+@media (prefers-reduced-motion: reduce) { .cw-fb-g, .cw-fb-go .cw-fb-o { -webkit-animation: none !important; animation: none !important; } }
 
 /* things typed at home (athome.js): the note, a list to tick, the Wi-Fi code, the guide, screen time, the agenda's day */
 .cwd-note { max-width: 1500px; font-weight: 700; line-height: 1.16; letter-spacing: -0.015em; white-space: pre-line; overflow-wrap: break-word; text-align: center; max-height: 700px; overflow: hidden; }
