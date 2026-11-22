@@ -402,3 +402,6 @@ html.lighter .cwd-artbg { -webkit-filter: none; filter: none; opacity: 0.18; }
 .cw-ah.cw-strip > .cw-row > svg { width: 34px !important; height: 34px !important; }
 .cw-ah.cw-strip > .cw-row > .cw-col { margin-left: 0 !important; margin-top: 6px; -webkit-align-items: center; align-items: center; max-width: 100%; }
 .cw-ah.cw-strip .cw-e1 { text-align: center; font-size: 24px; line-height: 1.2; }
+
+/* While the home is covered (app.js widgetsStill: settings, another app, asleep) every card animation stands still. */
+html.cw-still [class*="cw-"], html.cw-still [class*="cw-"] * { -webkit-animation-play-state: paused !important; animation-play-state: paused !important; }
