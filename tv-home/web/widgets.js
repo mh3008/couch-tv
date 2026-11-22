@@ -1054,19 +1054,33 @@
   };
 
   // music
+  // audio bars (opts.bars on Now playing and Soundscape, off by default): five bars in the accent that dance while sound plays.
+  // Not the real audio (the TV's apps don't share it): a lively loop, scaleY only (widgets.css .cw-eq), every bar's loop divides 8 s.
+  // Now playing: only while the song plays. Soundscape: only while a sound is on (soundscape.js html[data-sound]).
+  // Standing bars of different heights on the Lighter home, the Loop look and with reduced motion; paused while the home is covered.
+  var EQ = [[0.55, 0.8, -0.1], [0.9, 1, -0.55], [0.7, 0.5, -0.3], [1, 1.6, -0.9], [0.6, 0.8, -0.45]];
+  function eqBars(h, cls, w) {
+    w = w || Math.max(5, Math.round(h / 6));
+    return E("div", "cw-eq " + (cls || ""), "height:" + px(h), EQ.map(function (q, i) {
+      return E("i", "cw-eq-b", "width:" + px(w) + ";border-radius:" + px(w / 2) + ";height:" + Math.round(q[0] * 100) + "%;" + (i ? "margin-left:" + px(Math.max(3, w * 0.6)) + ";" : "") +
+        "-webkit-animation-duration:" + q[1] + "s;animation-duration:" + q[1] + "s;-webkit-animation-delay:" + q[2] + "s;animation-delay:" + q[2] + "s");
+    }));
+  }
   R.nowplaying = function (root, o, b, env) {
     var m = music(env);
+    var bars = !!m && m.state === "playing" && op(o).bars === true;
     if (!m) return dataOf(env).bridge === false ? soon(root, b, "music", "nowplaying") : empty(root, b, "music", "Nothing playing", "Songs playing on this TV show up here");
     if (b.w < 300 && b.h < 300) {
       // a tile: the cover, with play or pause on it; OK opens the player
       root.classList.add("cw-photo");
       add(root, [E("div", "cw-fill", "background:#333 center/cover;" + (m.art ? "background-image:" + cssImg(m.art) : "")), E("div", "cw-fill", "background:linear-gradient(180deg,transparent 40%,rgba(0,0,0,.7))"),
-        E("div", "cw-row", "position:absolute;left:16px;right:16px;bottom:14px;color:#fff", [ic(m.state === "playing" ? "pause" : "play", 30, "#fff", "solid"), E("span", "cw-t23 cw-ell", "color:#fff;font-weight:700;margin-left:8px", [m.title])])]);
+        E("div", "cw-row", "position:absolute;left:16px;right:16px;bottom:14px;color:#fff", [bars ? eqBars(28, "cw-eq-np") : ic(m.state === "playing" ? "pause" : "play", 30, "#fff", "solid"), E("span", "cw-t23 cw-ell", "color:#fff;font-weight:700;margin-left:8px", [m.title])])]);
       stop(root, "detail", "player", m.title);
       return;
     }
     var wide = b.w > b.h * 1.4, s = wide ? b.h - 48 : Math.min(b.w - 48, b.h * 0.55), big = b.w > 900;
     var art = E("div", "", "width:" + px(s) + ";height:" + px(s) + ";border-radius:24px;background:#333 center/cover;flex:none;box-shadow:0 14px 40px rgba(0,0,0,.35);" + (m.art ? "background-image:" + cssImg(m.art) : ""));
+    if (bars) { art.style.position = "relative"; add(art, E("div", "", "position:absolute;left:14px;bottom:14px;padding:10px 12px;border-radius:14px;background:rgba(0,0,0,.5);display:flex", [eqBars(clamp(s * 0.3, 30, 84), "cw-eq-np")])); }
     var btn = function (name, sz) { return E("div", "", "padding:10px;border-radius:50%;display:flex", [ic(name, sz, "currentColor", "solid")]); };
     var pct = m.dur ? clamp(m.pos / m.dur, 0, 1) : 0.38;
     var info = E("div", "cw-col", "min-width:0;" + (wide ? "flex:0 1 auto;margin-left:30px;width:" + px(Math.min(b.w - 48 - s - 30, Math.max(260, (b.w - 48 - s - 30) * 0.6))) : "flex:1"), [
@@ -1085,7 +1099,10 @@
   };
   R.soundscape = function (root, o, b) {
     var snd = op(o).sound || "rain", names = { rain: "Rain", fire: "Fire", waves: "Waves", brown: "Brown noise" }, icons = { rain: "rain", fire: "bolt", waves: "wind", brown: "speaker" };
-    add(root, [ic(icons[snd], b.h < 200 ? 44 : 56, "currentColor"), E("div", "cw-grow"), E("div", b.w < 300 ? "cw-t25" : "cw-t29", "font-weight:680;color:var(--ink)", [names[snd]]), b.w >= 300 ? E("div", "cw-t23", "", ["Soundscape"]) : null]);
+    // the bars sit between the sound's icon and its name, shown only while a sound is on (widgets.css .cw-eq-sound)
+    var eq = op(o).bars === true ? eqBars(b.h < 200 ? 26 : b.h < 300 ? 34 : 56, "cw-eq-sound") : null;
+    if (eq) { eq.style.margin = "6px 0"; eq.style.alignSelf = "center"; }
+    add(root, [ic(icons[snd], b.h < 200 ? 44 : 56, "currentColor"), E("div", "cw-grow"), eq, E("div", b.w < 300 ? "cw-t25" : "cw-t29", "font-weight:680;color:var(--ink)", [names[snd]]), b.w >= 300 ? E("div", "cw-t23", "", ["Soundscape"]) : null]);
     stop(root, "quick", "soundscape", "Soundscape");
   };
   // ---------------- fitting words (group C widgets) ----------------

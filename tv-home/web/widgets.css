@@ -405,3 +405,16 @@ html.lighter .cwd-artbg { -webkit-filter: none; filter: none; opacity: 0.18; }
 
 /* While the home is covered (app.js widgetsStill: settings, another app, asleep) every card animation stands still. */
 html.cw-still [class*="cw-"], html.cw-still [class*="cw-"] * { -webkit-animation-play-state: paused !important; animation-play-state: paused !important; }
+
+/* Audio bars (widgets.js eqBars, opts.bars on Now playing and Soundscape): five bars dancing in the accent; scaleY only, each bar
+   its own loop (0.8 / 1 / 1.6 s: they divide 8 s). A Soundscape card's bars show only while a sound is on (soundscape.js data-sound).
+   Standing still at their own heights on the Lighter home, the Loop look and with reduced motion. */
+.cw-eq { display: -webkit-box; display: -webkit-flex; display: flex; -webkit-align-items: flex-end; align-items: flex-end; pointer-events: none; }
+.cw-eq-b { display: block; background: var(--on, #fff); -webkit-transform-origin: 50% 100%; transform-origin: 50% 100%;
+  -webkit-animation: cw-eq 1s ease-in-out infinite; animation: cw-eq 1s ease-in-out infinite; }
+.cw-eq-sound { display: none; }
+html[data-sound="rain"] .cw-eq-sound, html[data-sound="fire"] .cw-eq-sound, html[data-sound="waves"] .cw-eq-sound, html[data-sound="brown"] .cw-eq-sound { display: -webkit-box; display: -webkit-flex; display: flex; }
+@-webkit-keyframes cw-eq { 0%, 100% { -webkit-transform: scaleY(.3); } 20% { -webkit-transform: scaleY(1); } 45% { -webkit-transform: scaleY(.5); } 65% { -webkit-transform: scaleY(.85); } 85% { -webkit-transform: scaleY(.4); } }
+@keyframes cw-eq { 0%, 100% { transform: scaleY(.3); } 20% { transform: scaleY(1); } 45% { transform: scaleY(.5); } 65% { transform: scaleY(.85); } 85% { transform: scaleY(.4); } }
+html.lighter .cw-eq-b, html.theme-loop .cw-eq-b { -webkit-animation: none !important; animation: none !important; }
+@media (prefers-reduced-motion: reduce) { .cw-eq-b { -webkit-animation: none !important; animation: none !important; } }

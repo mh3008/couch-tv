@@ -94,6 +94,7 @@
 
     cleanNodes();
     currentType = type;
+    mark();
 
     var buf = getNoiseBuffer(ac);
     var src = ac.createBufferSource();
@@ -219,7 +220,10 @@
   function stop() {
     currentType = "off";
     cleanNodes();
+    mark();
   }
+  // the page knows which sound is on (html[data-sound]: rain, fire, waves, brown or off): a Soundscape card's bars dance only then
+  function mark() { try { if (root.document && root.document.documentElement) root.document.documentElement.setAttribute("data-sound", currentType); } catch (e) {} }
 
   function setVolume(vol) {
     currentVol = Math.max(0, Math.min(1, vol));
