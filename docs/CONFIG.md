@@ -424,7 +424,10 @@ things (a row of scenes, a poster row) keeps them, and its layer is the first it
 each widget needs, where that is set up, which TVs can run it and the sizes it comes in are in
 `tv-home/web/widget-caps.js`; a TV with nothing real for a widget shows that record's setup card, and
 OK on the card opens the whole record. It never shows pretend data. The air quality and surf widgets
-ask Open-Meteo's free air quality and marine services, only while one is on the home.
+ask Open-Meteo's free air quality and marine services, only while one is on the home. The Next race widget (`nextrace`,
+`series`: `f1`, the only one so far) asks the free Jolpica-F1 service (CC BY-NC-SA 4.0, non-commercial) for the next Formula 1
+race, only while it is on the home and at most every 6 hours, and shows "Data: Jolpica-F1". AFL is not in it: its free service
+(Squiggle) asks for a fetch from a server with a contact email, not from a TV's page.
 
 **Things typed at home (Home settings, Designs, At home).** The Family note, List, Guest
 Wi-Fi, House guide, Agenda and Screen time widgets show what is typed on the TV itself, with the remote

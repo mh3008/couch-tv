@@ -1022,6 +1022,71 @@
   };
 
   // weather
+  // ---------------- next race (feat/nextmatch) ----------------
+  // The next Formula 1 race: its name, where, a countdown, the start in the TV's own time and when qualifying is. app.js asks the
+  // free Jolpica-F1 API (the Ergast successor: CC BY-NC-SA 4.0, non-commercial, 500 requests an hour per address) only while this
+  // widget is on the home, at most every 6 hours, and keeps the race as Jolpica gives it (data.nextrace). The card shows
+  // "Data: Jolpica-F1". opts.sport is "f1" (the only sport for now: AFL's free API, Squiggle, asks for a server-side fetch and a
+  // contact email, so it would need a native fetch in the app). Nothing moves but the countdown, once a minute.
+  function utcMs(d, t) {   // Jolpica's "2026-11-29" + "16:00:00Z" (no time: midday UTC, so the day is right everywhere)
+    var m = /^(\d{4})-(\d\d)-(\d\d)$/.exec(d || ""), n = /^(\d\d):(\d\d)(?::(\d\d))?/.exec(t || "12:00:00Z");
+    return m && n ? Date.UTC(+m[1], +m[2] - 1, +m[3], +n[1], +n[2], +(n[3] || 0)) : NaN;
+  }
+  // Jolpica's race -> { name, place, round, season, t (race start ms), quali (ms or NaN), sprint (ms or NaN) }, or null
+  function raceOf(raw) {
+    if (!raw || !raw.raceName || !raw.date) return null;
+    var c = raw.Circuit || {}, L = c.Location || {}, t = utcMs(raw.date, raw.time);
+    if (!isFinite(t)) return null;
+    return { name: String(raw.raceName), place: [L.locality, L.country].filter(Boolean).join(", ") || String(c.circuitName || ""),
+      round: +raw.round || 0, season: +raw.season || 0, t: t,
+      quali: raw.Qualifying ? utcMs(raw.Qualifying.date, raw.Qualifying.time) : NaN,
+      sprint: raw.Sprint ? utcMs(raw.Sprint.date, raw.Sprint.time) : NaN };
+  }
+  // the countdown words: "6d 23h", "5h 12m", "12 min", then "Racing now" for the 2 hours of the race, then "Finished"
+  function raceCountdown(t, nowMs) {
+    var d = t - nowMs, min = Math.floor(d / 60000);
+    if (d <= 0) return -d < 2 * 3600000 ? "Racing now" : "Finished";
+    if (min < 60) return min + " min";
+    var h = Math.floor(min / 60), dd = Math.floor(h / 24);
+    return dd ? dd + "d " + (h % 24) + "h" : h + "h " + (min % 60) + "m";
+  }
+  function raceDay(ms) { var d = new Date(ms); return DAYS[d.getDay()].slice(0, 3) + " " + d.getDate() + " " + MONTHS[d.getMonth()].slice(0, 3) + ", " + fmt12(d); }
+  function nextRaceOf(env) {
+    if (env.demo) {   // a sample: the next Sunday, 3 pm here, qualifying the day before at 2 pm
+      var d0 = now(), sun = new Date(d0.getFullYear(), d0.getMonth(), d0.getDate() + ((7 - d0.getDay()) % 7 || 7), 15, 0);
+      return { name: "Grand Prix", place: "Riverside", round: 22, season: d0.getFullYear(), t: sun.getTime(), quali: sun.getTime() - 25 * 3600000, sprint: NaN };
+    }
+    return raceOf(dataOf(env).nextrace);
+  }
+  R.nextrace = function (root, o, b, env) {
+    var r = nextRaceOf(env);
+    if (!r) return empty(root, b, "timer", "Waiting for the next race", "Formula 1, from Jolpica-F1");
+    // drawn once; the minute tick changes only the countdown and the line under it (no rebuild)
+    var nowMs = now().getTime(), cd0 = raceCountdown(r.t, nowMs), wide = b.w >= 520, inW = b.w - 48;
+    var big = Math.min(b.h < 300 ? 56 : 72, inW / (Math.max(7, cd0.length) * 0.56));
+    var cd = E("div", "cw-big", "font-size:" + px(big) + ";color:var(--on)", [cd0]);
+    var when = E("div", "cw-t23 cw-ell", "color:#fff;margin-top:4px", [""]);
+    var set = function () {
+      var c = raceCountdown(r.t, now().getTime());
+      cd.textContent = c; when.textContent = c === "Racing now" || c === "Finished" ? r.place : raceDay(r.t);
+    };
+    add(root, [lab("timer", "F1" + (r.round ? " · Round " + r.round : ""), "rgba(255,255,255,.88)"),
+      fitWords(root, r.name, inW, wide ? 34 : 29, 2, 750, "margin-top:6px") || E("div", "cw-t25 cw-ell", "margin-top:6px;font-weight:750", [r.name]),
+      E("div", "cw-t23 cw-ell", "color:var(--sub)", [r.place]),
+      E("div", "cw-grow"), cd, when,
+      b.h >= 330 && isFinite(r.quali) && r.quali > nowMs ? E("div", "cw-t23 cw-ell", "color:var(--sub);margin-top:2px", ["Qualifying " + raceDay(r.quali)]) : null,
+      b.h >= 300 ? E("div", "cw-ell", "font-size:16px;color:rgba(255,255,255,.55);margin-top:6px", ["Data: Jolpica-F1"]) : null]);
+    set(); live(root, 60000, set);
+  };
+  // a box under 200 px tall: the race name and the countdown in a row
+  function crNextrace(root, o, b, env) {   // registered as CR.nextrace once CR exists (below)
+    var r = nextRaceOf(env);
+    if (!r) return empty(root, b, "timer", "Next race", "");
+    var cd = E("div", "cw-big", "font-size:" + px(b.w < 300 ? 36 : 48) + ";color:var(--on)", [raceCountdown(r.t, now().getTime())]);
+    add(root, E("div", "cw-row cw-sp", "height:100%", [E("div", "cw-col", "min-width:0", [lab("timer", "F1 next race", "rgba(255,255,255,.88)"),
+      E("div", "cw-t25 cw-ell", "color:var(--sub);margin-top:6px", [r.name])]), cd]));
+    live(root, 60000, function () { cd.textContent = raceCountdown(r.t, now().getTime()); });
+  }
   function noWx(root, b, env, o) {
     var d = dataOf(env), p = pickedPlace(o, env);
     if (d.wxOff) return empty(root, b, "partly-cloudy", "Weather is off on this TV", "Turn it on in Home settings, Weather");
@@ -2689,6 +2754,7 @@
   // `mini` is the shared shape: on a tile an icon over one big value and its name; on a wide tile
   // the name and a line beside the value. Never under 23 px words.
   var CR = {};
+  CR.nextrace = crNextrace;   // feat/nextmatch: the short-box next race
   function fitPx(text, w, max) { return clamp(Math.min(max, w / (Math.max(2, String(text).length) * 0.6)), 30, max); }
   function mini(root, b, iconName, value, label, sub, vcol) {
     if (b.w < 300) {
@@ -3327,7 +3393,7 @@
       appNode: appNode, appsFor: appsFor, appName: appName, appIcon: appIcon, demoImg: demoImg, bgImg: bgImg,
       sunToday: sunToday, sunTimes: sunTimes, moon: moon, tzTime: tzTime, CITY: CITY, DAYS: DAYS, MONTHS: MONTHS, longDate: longDate, clockParts: clockParts,
       roomsOf: roomsOf, roomOn: roomOn, roomMode: roomMode, MODE_WORD: MODE_WORD, MODE_COL: MODE_COL, tdeg: tdeg, scenesOf: scenesOf,
-      airOf: airOf, aqiBand: aqiBand, airIn: airIn, surfOf: surfOf, surfUnits: surfUnits, waveIn: waveIn, windIn: windIn, moonSouth: moonSouth, wxHead: wxHead, uvLine: uvLine, surfPlace: surfPlace, pickedPlace: pickedPlace, compass: compass,
+      airOf: airOf, aqiBand: aqiBand, airIn: airIn, surfOf: surfOf, raceOf: raceOf, raceCountdown: raceCountdown, surfUnits: surfUnits, waveIn: waveIn, windIn: windIn, moonSouth: moonSouth, wxHead: wxHead, uvLine: uvLine, surfPlace: surfPlace, pickedPlace: pickedPlace, compass: compass,
       // this widget's own settings and honest headings (WIDGET-SETTINGS-CONTRACT.md)
       setting: setting, tvSet: tvSet, devName: devName, webName: webName, feedFor: feedFor, unitF: unitF, roomUnit: roomUnit, tconv: tconv, sensorConv: sensorConv, Timer: Timer, mmss: mmss, ring: ring, dial: dial, dayIndex: dayIndex, fmt12: fmt12,
       // things typed at home (athome.js through app.js)

@@ -2313,6 +2313,27 @@
   // or when Home settings chose another place. Hidden when Home settings switched the weather off.
   function wxPlaceSet() { return !!(WXCFG && WXCFG.lat != null && WXCFG.lon != null && isFinite(WXCFG.lat) && isFinite(WXCFG.lon)); }
   function wantsForecast() { return typeof CouchDesign !== "undefined" && CouchDesign.wantsForecast && CouchDesign.wantsForecast(); }
+  // next race (feat/nextmatch): the next Formula 1 race from the free Jolpica-F1 API (CC BY-NC-SA 4.0, non-commercial, 500 an hour
+  // per address). Asked only while a nextrace widget is on the home, never in a preview (?mock=1: the widget shows its sample),
+  // at most every 6 hours (kept until 2 days after the race); after a season's last race, the next season's round 1. Its own loop,
+  // not the weather's: a race needs no town. Kept as Jolpica gives it in data.nextrace; widgets.js raceOf() reads it
+  var NEXT_RACE = { at: 0, race: null };
+  function nextRace() {
+    if (NEXT_RACE.race && Date.now() - NEXT_RACE.at < 6 * 3600000 && Date.parse(NEXT_RACE.race.date) > Date.now() - 2 * 86400000) return Promise.resolve(NEXT_RACE.race);
+    var J = "https://api.jolpi.ca/ergast/f1/", first = function (j) { var r = j && j.MRData && j.MRData.RaceTable && j.MRData.RaceTable.Races; return r && r[0] || null; };
+    return fetch(J + "current/next.json").then(function (r) { return r.json(); }).then(function (j) {
+      var race = first(j);
+      return race || fetch(J + (new Date().getFullYear() + 1) + "/1.json").then(function (r) { return r.json(); }).then(first);
+    }).then(function (race) { if (race) { NEXT_RACE.at = Date.now(); NEXT_RACE.race = race; } return race || NEXT_RACE.race; });
+  }
+  function refreshNextRace() {
+    var want = typeof CouchDesign !== "undefined" && CouchDesign.wantsKinds ? CouchDesign.wantsKinds(["nextrace"]) : [];
+    if (!want.length || (MOCK && !/[?&]wxlive=1/.test(Q))) return Promise.resolve();
+    return nextRace().then(function (r) {
+      data.nextrace = r || null;
+      if (CouchDesign.dataChanged) CouchDesign.dataChanged("nextrace", r ? [r.season, r.round, r.date, r.time] : null);
+    }, function () {});
+  }
   function refreshWeather() {
     var fc = wantsForecast();
     if ((!NIGHT && !fc) || !WX_SHOW) {
@@ -9118,7 +9139,7 @@
       free: function () { return !screenOffActive && !idleAmbientActive && !kidsOn() && !expanded && !lift && ["grid", "shelf", "np", "people", "quick"].indexOf(zone) >= 0; },
       // what the widgets show: only what this TV already has
       data: function () {
-        return { weather: WX_SHOW ? data.weather : null, wxOff: !WX_SHOW, place: { name: String((WXCFG && WXCFG.place) || "").split(",")[0], lat: WXCFG && WXCFG.lat, lon: WXCFG && WXCFG.lon },
+        return { weather: WX_SHOW ? data.weather : null, wxOff: !WX_SHOW, nextrace: data.nextrace || null, place: { name: String((WXCFG && WXCFG.place) || "").split(",")[0], lat: WXCFG && WXCFG.lat, lon: WXCFG && WXCFG.lon },
           shows: data.shows || [], music: music, apps: (function () { try { return arrangeItems().items.map(function (it) { return { package: it.package, name: it.name }; }); } catch (e) { return []; } })(),
           photos: (Array.isArray(ST.photos) ? ST.photos : []).filter(function (p) { return p && (p.file || p.url); }).map(photoSrc),
           people: NOBODY ? [] : PEOPLE.map(function (p) { return { id: p.id, name: p.name }; }), who: who, quick: quickVisible(), quickCan: QUICK_ALL.filter(quickCan), cards: CARDS.slice(0, 8), iconUrl: iconUrl,
@@ -9235,6 +9256,8 @@
       setTimeout(warmSound, 2000);
       refreshWeather();
       setInterval(refreshWeather, WX_EVERY * 60000);
+      refreshNextRace();
+      setInterval(refreshNextRace, 30 * 60000);   // nextRace() itself asks Jolpica at most every 6 hours
     }
     photo = photoForHour(new Date().getHours());
     showPhoto();
