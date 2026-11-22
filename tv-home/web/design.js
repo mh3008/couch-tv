@@ -793,8 +793,8 @@
     if ((home.glass_amount || 0) > 2) out.push(["Glass level " + home.glass_amount, (home.glass_amount - 2) * 3, "glassamount"]);
     if (home.ambient_weather) out.push(["Rain and snow effects", 34, "weatherfx"]);
     if (home.ambient_sun_grade) out.push(["Sunlight colour", 4, "sungrade"]);
-    // soft GPU layers (40-90 % of one screen in all, transform + opacity only): cheap, but not free on a slow TV
-    if (home.fog && home.fog !== "off") out.push(["Drifting fog" + (home.fog !== "medium" ? " (" + home.fog + ")" : ""), home.fog === "thick" ? 8 : home.fog === "light" ? 4 : 6, "fog"]);
+    // soft GPU layers (5 / 9 / 14 animated layers, one each, transform + opacity only; bounding boxes add up to about 0.8 / 1.8 / 2.9 screens at worst): cheap per layer, but not free on a slow TV
+    if (home.fog && home.fog !== "off") out.push(["Drifting fog" + (home.fog !== "medium" ? " (" + home.fog + ")" : ""), home.fog === "thick" ? 14 : home.fog === "light" ? 5 : 9, "fog"]);
     if (home.moving_tiles) out.push(["Moving tiles", 4, "moving"]);
     if (home.video_url) out.push(["Video background", 40, "video"]);
     if (obj(E.dock).icon_style === "glass" || home.glass_icons) out.push(["Glass app icons", 6, "glassicons"]);
