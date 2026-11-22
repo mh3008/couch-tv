@@ -6,13 +6,17 @@
 // (a soft beam picture drawn once, rotated once: it never animates). A mote is ONE tiny element (0.15-0.4 vw) with a glow picture drawn
 // once; its wander and twinkle are ONE CSS animation of transform + opacity on one of six slow paths. The motes are NOT clipped to the
 // shaft (a rotated clip would be a GPU mask): each is placed inside the shaft by the numbers and wanders only a little, so it stays in
-// the light. Nothing drawn per frame, no filter, no blend mode. The shaft is ~26 % of a screen (22 vw x 120 vh); 40 / 70 / 110 motes are well under 1 %.
+// the light. Nothing drawn per frame, no filter, no blend mode. The shaft is ~26 % of a screen (22 vw x 120 vh), painted once; of 40 / 70 / 110 motes, 14 / 20 / 28 move (the rest are
+// still specks in a second picture over the shaft): well under 1 % of a screen.
 // Under the cards. Nothing moves while the home is covered, when the TV asks for less motion, in the Lighter home, the old engine or the
 // Loop look.
 (function (root) {
   "use strict";
   var doc = root.document, host = null, style = null, want = "off", from = "left", off = false, paused = false;
-  var COUNT = { few: 40, some: 70, many: 110 };
+  var COUNT = { few: 40, some: 70, many: 110 };   // motes in all
+  // only these wander and twinkle (one layer each); the rest are painted as still specks into one picture over the shaft (Design Lessons
+  // 15b, 22 Nov: the stick's cost is the number of animated layers: shooting stars with 84 missed 24.8 % of frames)
+  var ANIM = { few: 14, some: 20, many: 28 };
   var SHAFT = { w: 22, len: 120, tilt: 28, x: 12, y: -8 };   // width vw, length vh, degrees from straight down, top end (vw from its side, vh)
   // six slow wander paths: [dx vw, dy vh] at 25 / 50 / 75 % of the cycle (back home at 100 %)
   var PATHS = [[[1.2, -1.5], [2.0, 0.6], [0.6, 1.8]], [[-1.4, 1.0], [-0.4, 2.2], [0.9, 1.1]], [[0.8, 1.6], [-1.0, 2.4], [-1.5, 0.8]],
@@ -40,6 +44,18 @@
     return c.toDataURL("image/png");
   }
   function rnd(a, b) { return a + Math.random() * (b - a); }
+  // the still motes: m soft specks painted once on a canvas the shape of the shaft (laid over it, turned with it, never animated)
+  function specks(m) {
+    var w = 176, h = 480, c = doc.createElement("canvas"); c.width = w; c.height = h;
+    var g = c.getContext("2d");
+    for (var k = 0; k < m; k++) {
+      var x = rnd(0.14, 0.86) * w, y = rnd(0.06, 0.9) * h, r = rnd(1.2, 2.6), a = rnd(0.3, 0.75);
+      var o = g.createRadialGradient(x, y, 0, x, y, r * 2);
+      o.addColorStop(0, "rgba(255,250,235," + a.toFixed(2) + ")"); o.addColorStop(1, "rgba(255,235,200,0)");
+      g.fillStyle = o; g.beginPath(); g.arc(x, y, r * 2, 0, Math.PI * 2); g.fill();
+    }
+    return c.toDataURL("image/png");
+  }
   function css() {
     if (!style) { style = doc.createElement("style"); doc.head.appendChild(style); }
     var kf = function (name, body) { return "@-webkit-keyframes " + name + "{" + body.replace(/transform:/g, "-webkit-transform:") + "}@keyframes " + name + "{" + body + "}"; };
@@ -73,8 +89,11 @@
     sh.style.cssText = "left:" + x0 + "vw;top:" + SHAFT.y + "vh;width:" + SHAFT.w + "vw;height:" + SHAFT.len + "vh;margin-left:-" + SHAFT.w / 2 + "vw;" +
       "background-image:url(" + beam() + ");-webkit-transform:rotate(" + (-dir * SHAFT.tilt) + "deg);transform:rotate(" + (-dir * SHAFT.tilt) + "deg)";
     host.appendChild(sh);
+    var still = doc.createElement("b"), a = ANIM[want];
+    still.style.cssText = sh.style.cssText.replace(/background-image:url\([^)]*\)/, "background-image:url(" + specks(n - a) + ")");
+    host.appendChild(still);
     var pic = mote();
-    for (var k = 0; k < n; k++) {
+    for (var k = 0; k < a; k++) {
       var p = inShaft(rnd(0.06, 0.9), rnd(-0.38, 0.38)), s = (Math.random() < 0.8 ? rnd(0.15, 0.26) : rnd(0.27, 0.4)), d = LOOP ? 8 : rnd(9, 20), at = LOOP ? -(k * 8 / n) : -rnd(0, d);
       var m = doc.createElement("i");
       m.style.cssText = "left:" + p[0] + "vw;top:" + p[1] + "vh;width:" + s.toFixed(2) + "vw;height:" + s.toFixed(2) + "vw;background-image:url(" + pic + ");" +
@@ -97,7 +116,7 @@
     resume: function () { paused = false; if (host) host.classList.remove("fx-paused"); },
     on: function () { return !!host; },
     inShaft: function (s, u, side) { var keep = from; from = side === "right" ? "right" : "left"; var p = inShaft(s, u); from = keep; return p; },
-    COUNT: COUNT, SHAFT: SHAFT, PATHS: PATHS
+    COUNT: COUNT, ANIM: ANIM, SHAFT: SHAFT, PATHS: PATHS
   };
   try { root.matchMedia("(prefers-reduced-motion: reduce)").addListener(function () { build(); }); } catch (e) {}
 })(this);

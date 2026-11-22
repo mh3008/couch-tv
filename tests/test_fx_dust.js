@@ -36,11 +36,13 @@ function shaftCoords(D, side, x, y) {
   return [(dx * along[0] + dy * along[1]) / L, (dx * across[0] + dy * across[1]) / S.w];
 }
 
-for (const [amount, n] of [["few", 40], ["some", 70], ["many", 110]]) {
+for (const [amount, n, a] of [["few", 40, 14], ["some", 70, 20], ["many", 110, 28]]) {
   const { D, body, head } = load(false);
   D.set(amount, "left", false);
   const h = host(body), motes = kids(h, "i"), shaft = kids(h, "b"), css = allCss(head);
-  check(motes.length === n && shaft.length === 1, amount + ": " + n + " motes and one shaft");
+  check(motes.length === a && shaft.length === 2, amount + ": " + a + " moving motes (of " + n + "), the shaft + one still picture of the other " + (n - a));
+  check(shaft[1].style.cssText.replace(/url\([^)]*\)/, "") === shaft[0].style.cssText.replace(/url\([^)]*\)/, "") && !/animation/.test(shaft[1].style.cssText), amount + ": the still motes lie exactly over the shaft, never animated");
+  check(a <= 30, amount + ": at most 30 animated layers (Design Lessons 15b)");
   check(body.childNodes.indexOf(h) === 1, amount + ": right after the weather layer (under the cards)");
   const area = motes.reduce((a, t) => { const s = num(t.style.cssText, "width"); check(s >= 0.15 && s <= 0.4, "a mote is 0.15-0.4 vw"); return a + Math.pow(s / 100 * 1920, 2); }, 0);
   check(area / (1920 * 1080) < 0.01, amount + ": all motes under 1 % of the screen (" + (100 * area / (1920 * 1080)).toFixed(3) + " %)");
@@ -71,7 +73,7 @@ for (const side of ["left", "right"]) {
   check(m.every((t) => num(t.style.cssText, "-webkit-animation-duration") === 8), "?fxloop=1: every mote on an 8 s cycle");
   const at = m.map((t) => num(t.style.cssText, "-webkit-animation-delay"));
   check(at.every((d) => d <= 0 && d > -8), "?fxloop=1: delays spread through the cycle"); }
-{ const { D, body } = load(false); D.set("some", "up", false); const mean = kids(host(body), "i").map((t) => num(t.style.cssText, "left")).reduce((a, b) => a + b, 0) / 70; check(mean < 50, "an unknown side: from the left"); }
+{ const { D, body } = load(false); D.set("some", "up", false); const mean = kids(host(body), "i").map((t) => num(t.style.cssText, "left")).reduce((a, b) => a + b, 0) / 20; check(mean < 50, "an unknown side: from the left"); }
 { const { D, body } = load(false); D.set("off", "left", false); check(!host(body), "off: nothing on the page"); }
 { const { D, body } = load(false); D.set("storm", "left", false); check(!host(body), "an unknown amount: nothing"); }
 { const { D, body } = load(true); D.set("many", "left", false); check(!host(body), "the TV asks for less motion: nothing"); }
