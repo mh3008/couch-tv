@@ -411,7 +411,7 @@
     lid_a: SAN.c, lid_b: SAN.c, bin_a: function (v) { return SAN.w(v, 20); }, bin_b: function (v) { return SAN.w(v, 20); },
     quick: function (v) { return SAN.list(v, 6, function (q) { return SAN.pick(q, QUICK_IDS); }); },
     scene: function (v) { return SAN.pick(v, SCENE_IDS); }, sound: function (v) { return SAN.pick(v, ["rain", "fire", "waves", "brown"]); },
-    night: SAN.b, place: SAN.b, hilo: SAN.b, sport: SAN.b,
+    night: SAN.b, place: SAN.b, hilo: SAN.b, live: SAN.b, sport: SAN.b,
     entity: function (v) { return typeof v === "string" && /^climate\.[a-z0-9_]{1,64}$/.test(v) && !secretish(v) ? v : undefined; },
     controls: function (v) { return SAN.list(v, 8, function (c) { c = obj(c); var o = {}; put(o, "icon", SAN.pick(c.icon, CTL_ICONS)); put(o, "name", SAN.w(c.name, 24)); return o.icon ? o : undefined; }); },
     shows: function (v) { return SAN.n(v, 1, 5, true); },
@@ -429,7 +429,7 @@
   var WOPT = {
     clock: "format ampm seconds date align", tallclock: "format align", glassclock: "format scene", analog: "seconds", flipclock: "format",
     wordclock: "", solar: "", worldclock: "label cities", countdown: "label month day unit icon", date: "show dfmt align place", month: "", timer: "label",
-    weather: "place hilo night", bigtemp: "place", hourly: "place", week: "place", rain: "label", uv: "label", sun: "label", moon: "", air: "label", surf: "label",
+    weather: "place hilo night live", bigtemp: "place live", hourly: "place live", week: "place live", rain: "label", uv: "label", sun: "label", moon: "", air: "label", surf: "label",
     photo: "image fit caption sub", slideshow: "seconds_each caption sub", mosaic: "count", artframe: "image mat caption sub", memory: "align",
     keep: "", keeprow: "label shows", upnext: "apps sport", picks: "label align",
     app: "apps", folder: "label apps cols", dock: "apps more", appgrid: "apps cols names", games: "label apps",

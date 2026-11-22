@@ -405,3 +405,36 @@ html.lighter .cwd-artbg { -webkit-filter: none; filter: none; opacity: 0.18; }
 
 /* While the home is covered (app.js widgetsStill: settings, another app, asleep) every card animation stands still. */
 html.cw-still [class*="cw-"], html.cw-still [class*="cw-"] * { -webkit-animation-play-state: paused !important; animation-play-state: paused !important; }
+
+/* Live weather icon (widgets.js liveWx, a weather card's opts.live): rays turn, clouds drift, drops and flakes fall, the bolt
+   flickers, stars twinkle. Transform + opacity only, each part its own small box; every loop divides 8 s.
+   Still (the parts stand where they are) on the Lighter home, the Loop look and with reduced motion. */
+.cw-wi .cw-wi-rays, .cw-wi .cw-wi-core, .cw-wi .cw-wi-drift, .cw-wi .cw-wi-drop, .cw-wi .cw-wi-flake, .cw-wi .cw-wi-bolt, .cw-wi .cw-wi-star, .cw-wi .cw-wi-fog {
+  transform-box: fill-box; -webkit-transform-origin: 50% 50%; transform-origin: 50% 50%; }
+.cw-wi-rays { -webkit-animation: cw-wi-turn 8s linear infinite; animation: cw-wi-turn 8s linear infinite; }
+.cw-wi-core { -webkit-animation: cw-wi-pulse 4s ease-in-out infinite; animation: cw-wi-pulse 4s ease-in-out infinite; }
+.cw-wi-drift { -webkit-animation: cw-wi-drift 4s ease-in-out infinite alternate; animation: cw-wi-drift 4s ease-in-out infinite alternate; }
+.cw-wi-back { -webkit-animation-direction: alternate-reverse; animation-direction: alternate-reverse; }
+.cw-wi-drop { -webkit-animation: cw-wi-fall 1s linear infinite; animation: cw-wi-fall 1s linear infinite; }
+.cw-wi-flake { -webkit-animation: cw-wi-snow 2s linear infinite; animation: cw-wi-snow 2s linear infinite; }
+.cw-wi-bolt { -webkit-animation: cw-wi-flash 4s linear infinite; animation: cw-wi-flash 4s linear infinite; }
+.cw-wi-star { -webkit-animation: cw-wi-twinkle 2s ease-in-out infinite; animation: cw-wi-twinkle 2s ease-in-out infinite; }
+.cw-wi-fog { -webkit-animation: cw-wi-fog 4s ease-in-out infinite alternate; animation: cw-wi-fog 4s ease-in-out infinite alternate; }
+@-webkit-keyframes cw-wi-turn { to { -webkit-transform: rotate(45deg); } }
+@keyframes cw-wi-turn { to { transform: rotate(45deg); } }
+@-webkit-keyframes cw-wi-pulse { 0%, 100% { -webkit-transform: scale(1); } 50% { -webkit-transform: scale(1.08); } }
+@keyframes cw-wi-pulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.08); } }
+@-webkit-keyframes cw-wi-drift { from { -webkit-transform: translateX(-2.5px); } to { -webkit-transform: translateX(2.5px); } }
+@keyframes cw-wi-drift { from { transform: translateX(-2.5px); } to { transform: translateX(2.5px); } }
+@-webkit-keyframes cw-wi-fall { 0% { -webkit-transform: translate(1px, -4px); opacity: 0; } 20%, 75% { opacity: 1; } 100% { -webkit-transform: translate(-2.5px, 11px); opacity: 0; } }
+@keyframes cw-wi-fall { 0% { transform: translate(1px, -4px); opacity: 0; } 20%, 75% { opacity: 1; } 100% { transform: translate(-2.5px, 11px); opacity: 0; } }
+@-webkit-keyframes cw-wi-snow { 0% { -webkit-transform: translate(0, -4px); opacity: 0; } 20%, 75% { opacity: 1; } 50% { -webkit-transform: translate(2.5px, 3px); } 100% { -webkit-transform: translate(-1px, 10px); opacity: 0; } }
+@keyframes cw-wi-snow { 0% { transform: translate(0, -4px); opacity: 0; } 20%, 75% { opacity: 1; } 50% { transform: translate(2.5px, 3px); } 100% { transform: translate(-1px, 10px); opacity: 0; } }
+@-webkit-keyframes cw-wi-flash { 0%, 56%, 100% { opacity: .35; } 58% { opacity: 1; } 62% { opacity: .45; } 65% { opacity: 1; } 74% { opacity: .35; } }
+@keyframes cw-wi-flash { 0%, 56%, 100% { opacity: .35; } 58% { opacity: 1; } 62% { opacity: .45; } 65% { opacity: 1; } 74% { opacity: .35; } }
+@-webkit-keyframes cw-wi-twinkle { 0%, 100% { opacity: .3; -webkit-transform: scale(.7); } 50% { opacity: 1; -webkit-transform: scale(1.1); } }
+@keyframes cw-wi-twinkle { 0%, 100% { opacity: .3; transform: scale(.7); } 50% { opacity: 1; transform: scale(1.1); } }
+@-webkit-keyframes cw-wi-fog { from { -webkit-transform: translateX(-4px); } to { -webkit-transform: translateX(4px); } }
+@keyframes cw-wi-fog { from { transform: translateX(-4px); } to { transform: translateX(4px); } }
+html.lighter .cw-wi *, html.theme-loop .cw-wi * { -webkit-animation: none !important; animation: none !important; }
+@media (prefers-reduced-motion: reduce) { .cw-wi * { -webkit-animation: none !important; animation: none !important; } }

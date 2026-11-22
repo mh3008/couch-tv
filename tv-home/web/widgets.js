@@ -201,6 +201,52 @@
     return "rain";
   }
   function wxWords(code) { return WMO[+code] || ""; }
+  // live weather icon (a weather card's opts.live, off by default): the sky now, drawn in parts that move. Rays turn,
+  // clouds drift, drops and flakes fall, the bolt flickers, stars twinkle; transform + opacity only (widgets.css .cw-wi).
+  // Every loop divides 8 s. Still on the Lighter home, the Loop look, with reduced motion and while the home is covered.
+  var WI_SUN = "#FFCC33", WI_MOON = "#FFE9A8", WI_RAIN = "#64D2FF", WI_BOLT = "#FFD60A";
+  function wiDelay(sec) { return "-webkit-animation-delay:" + sec + "s;animation-delay:" + sec + "s"; }
+  function wiCloud(x, y, k, fill, cls, delay) {
+    return S("g", { "class": cls, style: delay ? wiDelay(delay) : "" }, [S("g", { transform: "translate(" + x + " " + y + ") scale(" + k + ")" }, [
+      S("circle", { cx: -10, cy: 2, r: 9, fill: fill }), S("circle", { cx: 3, cy: -4, r: 12, fill: fill }), S("circle", { cx: 14, cy: 3, r: 8, fill: fill }),
+      S("rect", { x: -19, y: 2, width: 41, height: 9.5, rx: 4.75, fill: fill })])]);
+  }
+  function wiSun(cx, cy, r) {
+    var rays = [];
+    for (var i = 0; i < 8; i++) {
+      var a = i * Math.PI / 4, c = Math.cos(a), sn = Math.sin(a);
+      rays.push(S("line", { x1: (cx + c * (r + 4.5)).toFixed(2), y1: (cy + sn * (r + 4.5)).toFixed(2), x2: (cx + c * (r + 10)).toFixed(2), y2: (cy + sn * (r + 10)).toFixed(2),
+        stroke: WI_SUN, "stroke-width": 3.4, "stroke-linecap": "round" }));
+    }
+    return S("g", {}, [S("g", { "class": "cw-wi-rays" }, rays), S("circle", { "class": "cw-wi-core", cx: cx, cy: cy, r: r, fill: WI_SUN })]);
+  }
+  function wiMoon(cx, cy, r) {
+    return S("path", { "class": "cw-wi-core", fill: WI_MOON, d: "M" + cx + " " + (cy - r) + "A" + r + " " + r + " 0 1 0 " + cx + " " + (cy + r) + "A" + (r * 0.3).toFixed(2) + " " + r + " 0 1 1 " + cx + " " + (cy - r) + "Z",
+      transform: "rotate(-20 " + cx + " " + cy + ")" });
+  }
+  function wiStar(x, y, d) { return S("circle", { "class": "cw-wi-star", cx: x, cy: y, r: 1.8, fill: WI_MOON, style: wiDelay(d) }); }
+  function wiFall(cls, pts, dur, mk) { return pts.map(function (p, i) { var e = mk(p[0], p[1]); e.setAttribute("class", cls); e.setAttribute("style", wiDelay(-(i * dur / pts.length).toFixed(2))); return e; }); }
+  function wiDrop(x, y) { return S("line", { x1: x, y1: y, x2: x - 2, y2: y + 6.5, stroke: WI_RAIN, "stroke-width": 3.2, "stroke-linecap": "round" }); }
+  function liveWx(name, size, ink) {
+    var k = [], back = ink, soft = "opacity:.55";
+    if (name === "sun") k = [wiSun(32, 32, 12)];
+    else if (name === "clear-night") k = [wiMoon(30, 33, 15), wiStar(48, 14, 0), wiStar(53, 30, -0.7), wiStar(43, 24, -1.3)];
+    else if (name === "partly-cloudy") k = [wiSun(41, 23, 9), wiCloud(28, 40, 0.95, ink, "cw-wi-drift")];
+    else if (name === "partly-cloudy-night") k = [wiMoon(41, 22, 11), wiStar(54, 9, -0.5), wiCloud(28, 40, 0.95, ink, "cw-wi-drift")];
+    else if (name === "cloud") k = [S("g", { style: soft }, [wiCloud(38, 24, 0.75, back, "cw-wi-drift cw-wi-back")]), wiCloud(28, 38, 1, ink, "cw-wi-drift")];
+    else if (name === "fog") k = [wiCloud(32, 20, 0.85, ink, "cw-wi-drift")].concat([[8, 40, 48, 1], [14, 49, 40, 0.75], [6, 58, 34, 0.5]].map(function (f, i) {
+      return S("rect", { "class": "cw-wi-fog", x: f[0], y: f[1], width: f[2], height: 4.5, rx: 2.25, fill: ink, style: "opacity:" + f[3] + ";" + wiDelay(-i * 1.3) });
+    }));
+    else if (name === "snow") k = [wiCloud(32, 22, 1, ink, "cw-wi-drift")].concat(wiFall("cw-wi-flake", [[20, 42], [32, 46], [44, 42], [26, 52], [38, 52]], 2, function (x, y) { return S("circle", { cx: x, cy: y, r: 2.8, fill: ink }); }));
+    else if (name === "storm") k = [S("path", { "class": "cw-wi-bolt", d: "M34 34 L25 50 L32 50 L28 62 L42 44 L35 44 L39 34 Z", fill: WI_BOLT }), wiCloud(32, 22, 1, ink, "cw-wi-drift")]
+      .concat(wiFall("cw-wi-drop", [[18, 42], [48, 42]], 1, wiDrop));
+    else k = [wiCloud(32, 22, 1, ink, "cw-wi-drift")].concat(wiFall("cw-wi-drop", [[20, 41], [32, 45], [44, 41]], 1, wiDrop));
+    var s = svg("0 0 64 64", size, size, k, "flex:none;overflow:visible");
+    s.setAttribute("class", "cw-svg cw-wi cw-wi--" + name);
+    return s;
+  }
+  // the current sky's icon in a weather card: live (opts.live) or the design's own icon set
+  function skyIc(o, code, day, size, ink) { return op(o).live === true ? liveWx(wxIcon(code, day), size, ink) : ic(wxIcon(code, day), size, ink, "solid"); }
   function hourLabel(d, i) { if (i === 0) return "Now"; var h = d.getHours(); return (h % 12 || 12) + (h < 12 ? "am" : "pm"); }
   function hm(s) { var d = new Date(s); if (isNaN(d.getTime())) return ""; var h = d.getHours(), m = d.getMinutes(); return (h % 12 || 12) + ":" + (m < 10 ? "0" : "") + m; }
   // the weather this TV has, in one shape (app.js weatherDirect: current, hourly, daily, minutely_15)
@@ -656,12 +702,12 @@
     var q = op(o), large = b.w > 300, tiny = b.h < 300;
     if (b.h < 200) {
       // a Tile: the temperature and the sky, nothing else
-      add(root, [ic(wxIcon(w.code, w.is_day), 44, rgba(sh.ink, 1), "solid"), E("div", "cw-grow"), E("div", "cw-big", "white-space:nowrap;font-size:" + px(fitPx(w.temp + "°", b.w - 48, 64)), [w.temp + "°"])]);
+      add(root, [skyIc(o, w.code, w.is_day, 44, rgba(sh.ink, 1)), E("div", "cw-grow"), E("div", "cw-big", "white-space:nowrap;font-size:" + px(fitPx(w.temp + "°", b.w - 48, 64)), [w.temp + "°"])]);
       return;
     }
     add(root, [q.place === false ? null : E("div", "cw-t29 cw-ell", "font-weight:640", [w.place || "Here"]),
       E("div", "cw-big", "font-size:" + px(tiny ? 72 : large ? Math.min(124, b.h * 0.3) : 92) + ";margin-top:6px", [w.temp + "°"]), E("div", "cw-grow"),
-      tiny ? null : ic(wxIcon(w.code, w.is_day), 40, rgba(sh.ink, 1), "solid"),
+      tiny ? null : skyIc(o, w.code, w.is_day, 40, rgba(sh.ink, 1)),
       E("div", "cw-t25 cw-ell", "color:var(--ink);font-weight:600;margin-top:6px", [wxWords(w.code)]),
       q.hilo === false || w.hi === undefined ? null : E("div", "cw-t23", "", [w.ahead ? w.ahead.label + " H:" + w.ahead.hi + "° L:" + w.ahead.lo + "°" : "H:" + w.hi + "° L:" + w.lo + "°"])]);
   };
@@ -679,7 +725,7 @@
     }
     if (b.h < 200) {
       // a tile: the sky and the number
-      add(root, [ic(wxIcon(w.code, w.is_day), 40, rgba(sh.ink, 1), "solid"), E("div", "cw-grow"), E("div", "cw-big", "white-space:nowrap;font-size:" + px(Math.min(clamp(b.w * 0.4, 56, 80), fitPx(w.temp + "°", b.w - 48, 80))) + ";letter-spacing:-.05em", [w.temp + "°"])]);
+      add(root, [skyIc(o, w.code, w.is_day, 40, rgba(sh.ink, 1)), E("div", "cw-grow"), E("div", "cw-big", "white-space:nowrap;font-size:" + px(Math.min(clamp(b.w * 0.4, 56, 80), fitPx(w.temp + "°", b.w - 48, 80))) + ";letter-spacing:-.05em", [w.temp + "°"])]);
       return;
     }
     var fs = Math.min(b.h * 0.52, b.w * 0.44), ah = w.ahead;
@@ -689,7 +735,7 @@
       b.h >= 300 ? E("div", "cw-t23 cw-ell cw-ahead", "", [wxWords(ah.code)]) : null])
       : E("div", "cw-t29 cw-ell", "font-weight:680;margin-top:6px", [wxWords(w.code) + (w.hi !== undefined && b.w >= 400 ? ", top of " + w.hi + "°" : "")]);
     if (ah) fs = Math.min(fs, b.h * 0.42);
-    add(root, [E("div", "cw-row cw-sp", "", [o.opts && o.opts.place === false ? E("span") : E("div", "cw-t29 cw-ell", "font-weight:700", [w.place || "Here"]), ic(wxIcon(w.code, w.is_day), clamp(b.w / 6, 44, 80), rgba(sh.ink, 1), "solid")]),
+    add(root, [E("div", "cw-row cw-sp", "", [o.opts && o.opts.place === false ? E("span") : E("div", "cw-t29 cw-ell", "font-weight:700", [w.place || "Here"]), skyIc(o, w.code, w.is_day, op(o).live === true && b.h >= 300 ? clamp(b.w / 4.5, 56, 112) : clamp(b.w / 6, 44, 80), rgba(sh.ink, 1))]),
       E("div", "cw-grow"), E("div", "cw-big", "font-size:" + px(fs) + ";letter-spacing:-.06em", [w.temp + "°"]), words]);
   };
   R.hourly = function (root, o, b, env, sh) {
@@ -699,7 +745,7 @@
     var n = clamp(Math.floor((b.w - 48) / 110), 3, w.hourly.length), ink = rgba(sh.ink, 1);
     var next = w.hourly.slice(1).filter(function (h) { return h[1] >= 51; })[0];
     add(root, [E("div", "cw-row cw-sp", "", [E("div", "", "min-width:0;flex:0 1 auto", [E("div", "cw-t29 cw-ell", "font-weight:640", [w.place || "Here"]), E("div", "cw-big", "font-size:72px;margin-top:4px", [w.temp + "°"])]),
-      E("div", "cw-col", "text-align:right;align-items:flex-end;min-width:0;max-width:55%;margin-left:16px;flex:0 1 auto", [ic(wxIcon(w.code, w.is_day), 44, ink, "solid"), E("div", "cw-t25 cw-ell", "color:var(--ink);font-weight:600", [next ? wxWords(next[1]) + " from " + next[0] : wxWords(w.code)]), w.hi !== undefined ? E("div", "cw-t23 cw-ell", "", ["H:" + w.hi + "° L:" + w.lo + "°"]) : null])]),
+      E("div", "cw-col", "text-align:right;align-items:flex-end;min-width:0;max-width:55%;margin-left:16px;flex:0 1 auto", [skyIc(o, w.code, w.is_day, 44, ink), E("div", "cw-t25 cw-ell", "color:var(--ink);font-weight:600", [next ? wxWords(next[1]) + " from " + next[0] : wxWords(w.code)]), w.hi !== undefined ? E("div", "cw-t23 cw-ell", "", ["H:" + w.hi + "° L:" + w.lo + "°"]) : null])]),
       E("div", "cw-grow"),
       E("div", "cw-row cw-sp", "border-top:1.5px solid rgba(255,255,255,.25);padding-top:16px", w.hourly.slice(0, n).map(function (h) {
         return E("div", "cw-col", "align-items:center", [E("div", "cw-t23", "color:var(--ink)", [h[0]]), E("div", "", "margin:8px 0", [ic(wxIcon(h[1], !h[3]), 36, ink, "solid")]), E("div", "", "font-size:27px;font-weight:650", [h[2] + "°"])]);
@@ -712,7 +758,7 @@
     var rows = clamp(Math.floor((b.h - 170) / 62), 3, w.daily.length), ink = rgba(sh.ink, 1), lo = 99, hi = -99;
     w.daily.forEach(function (d) { lo = Math.min(lo, d[2]); hi = Math.max(hi, d[3]); });
     var span = Math.max(6, hi - lo);
-    add(root, [E("div", "cw-row cw-sp", "", [E("div", "", "min-width:0;flex:0 1 auto", [E("div", "cw-t29 cw-ell", "font-weight:640", [w.place || "Here"]), E("div", "cw-big", "font-size:76px;margin-top:4px", [w.temp + "°"])]), ic(wxIcon(w.code, w.is_day), 56, ink, "solid")]),
+    add(root, [E("div", "cw-row cw-sp", "", [E("div", "", "min-width:0;flex:0 1 auto", [E("div", "cw-t29 cw-ell", "font-weight:640", [w.place || "Here"]), E("div", "cw-big", "font-size:76px;margin-top:4px", [w.temp + "°"])]), skyIc(o, w.code, w.is_day, 56, ink)]),
       E("div", "cw-col cw-grow", "margin-top:18px;justify-content:space-around", w.daily.slice(0, rows).map(function (d) {
         var a = (d[2] - lo) / span * 100, z = (d[3] - lo) / span * 100;
         return E("div", "cw-row", "font-size:27px;font-weight:620", [E("span", "", "width:96px;flex:none", [d[0]]), E("span", "", "margin:0 14px;flex:none;display:flex", [ic(wxIcon(d[1], true), 34, ink, "solid")]),
@@ -2046,7 +2092,7 @@
     if (b.w < 300) return R.weather(root, o, b, env, sh);
     var w = weather(env);
     if (!w) return noWx(root, b, env);
-    add(root, E("div", "cw-row", "height:100%", [ic(wxIcon(w.code, w.is_day), 48, rgba(sh.ink, 1), "solid"), E("div", "cw-col", "flex:1;min-width:0;margin-left:14px", [E("div", "cw-t29 cw-ell", "font-weight:680", [w.place || "Here"]),
+    add(root, E("div", "cw-row", "height:100%", [skyIc(o, w.code, w.is_day, 48, rgba(sh.ink, 1)), E("div", "cw-col", "flex:1;min-width:0;margin-left:14px", [E("div", "cw-t29 cw-ell", "font-weight:680", [w.place || "Here"]),
       E("div", "cw-t23 cw-ell", "color:var(--ink)", [w.ahead ? w.ahead.label + ", " + w.ahead.hi + "°" : wxWords(w.code) + (w.hi !== undefined ? ", " + w.hi + "°" : "")])]), E("div", "cw-big", "font-size:72px;margin-left:10px", [w.temp + "°"])]));
   };
   CR.hourly = function (root, o, b, env, sh) {
