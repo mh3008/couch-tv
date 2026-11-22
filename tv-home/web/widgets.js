@@ -1600,7 +1600,7 @@
     // bin night itself: the lids bob open (widgets.css .cw-bin-go, transform only) and the card says what to do
     var tonight = ahead === 0, bs = b.h < 300 ? 48 : 62;
     if (tonight && b.w >= 300) when = "Put them out tonight";
-    var nextWk = q.alt && b.h >= 300 ? E("div", "cw-t23 cw-ell", "margin-top:10px;color:var(--sub)", ["Next week: Rubbish and " + (week % 2 === 0 ? c : a)[1]]) : null;
+    var nextWk = q.alt && b.h >= 300 && b.w >= 400 ? E("div", "cw-t23 cw-ell", "margin-top:10px;color:var(--sub)", ["Next week: Rubbish and " + (week % 2 === 0 ? c : a)[1]]) : null;
     add(root, [lab("calendar", op(o).label || "Bin night"), E("div", b.h < 300 ? "cw-t29" : "cw-t38", "margin-top:12px;font-weight:700" + (tonight ? ";color:var(--on)" : ""), [when]), E("div", "cw-grow"),
       E("div", "cw-row", "", bins.map(function (x, i) {
         return E("div", "cw-col", "align-items:center;" + (i ? "margin-left:16px" : ""), [svg("0 0 62 72", bs, bs * 72 / 62, [S("rect", { x: 6, y: 14, width: 50, height: 56, rx: 8, fill: "#3a3a40" }), S("rect", { x: 2, y: 6, width: 58, height: 12, rx: 5, fill: x[0], "class": tonight ? "cw-bin-go cw-bin-go" + i : "" })]), b.w >= 300 ? E("span", "cw-t23", "margin-top:8px", [x[1]]) : null]);

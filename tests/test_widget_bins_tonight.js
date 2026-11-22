@@ -25,6 +25,7 @@ const rotaNow = /RubbishRecycling|RubbishGarden/.exec(rota.textContent.replace(/
 ok(rotaNow && rota.textContent.indexOf("Next week: Rubbish and " + (rotaNow[0].indexOf("Recycling") > 0 ? "Garden" : "Recycling")) >= 0, "next week is the other bin");
 ok(!/Next week/.test(draw({ weekday: 0, alt: true }, 400, 240).textContent), "a short card: no next-week line");
 ok(!/Next week/.test(draw({ weekday: 0 }).textContent), "a weekly rota: no next-week line");
+ok(!/Next week/.test(draw({ weekday: 0, alt: true }, 360, 360).textContent), "a narrow tall card: no next-week line (it would be cut off)");
 const small = W.render({ kind: "bins", w: 260, h: 300, opts: { weekday: 0 } }, {});
 ok(/Tonight/.test(small.textContent) && going(small) === 2, "a narrow card on the night: Tonight, lids bob");
 const compact = W.render({ kind: "bins", w: 400, h: 150, opts: { weekday: 0 } }, {});
