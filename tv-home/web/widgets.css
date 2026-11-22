@@ -361,6 +361,33 @@ html.lighter .cwd-artbg { -webkit-filter: none; filter: none; opacity: 0.18; }
 .cwd-dial .cw-t23 { font-size: 29px; color: rgba(255, 255, 255, 0.75); margin-top: 4px; }
 .cwd-room { -webkit-flex: none; flex: none; }
 
+/* the flip clock (widgets.js R.flipclock): a split-flap card = a still top half (the new digit), a still bottom half
+   (the old digit) and two flaps that move for 0.6 s once a minute. Only transform and opacity change; at rest nothing runs.
+   Lighter home / reduced motion: widgets.js skips the class, so the digit just changes. */
+.cw-fl { position: relative; -webkit-flex: none; flex: none; font-weight: 700; letter-spacing: -0.04em; }
+.cw-fl-h { position: absolute; left: 0; top: 0; width: 100%; height: 100%; -webkit-backface-visibility: hidden; backface-visibility: hidden; -webkit-transform-origin: 50% 50%; transform-origin: 50% 50%; }
+.cw-fl-t { border-radius: var(--fl-r) var(--fl-r) 0 0; background: var(--fl-t); -webkit-clip-path: inset(0 0 50% 0); clip-path: inset(0 0 50% 0); }
+.cw-fl-b { border-radius: 0 0 var(--fl-r) var(--fl-r); background: var(--fl-b); -webkit-clip-path: inset(50% 0 0 0); clip-path: inset(50% 0 0 0); }
+.cw-fl-g { position: absolute; left: 0; right: 0; top: 0; bottom: 0; display: -webkit-flex; display: flex; -webkit-align-items: center; align-items: center; -webkit-justify-content: center; justify-content: center; }
+.cw-fl-hinge { position: absolute; left: 0; right: 0; top: 50%; height: 3px; margin-top: -1.5px; background: rgba(0, 0, 0, 0.55); z-index: 3; }
+.cw-fl-ft, .cw-fl-fb { display: none; z-index: 2; }
+.cw-fl-go .cw-fl-ft, .cw-fl-go .cw-fl-fb { display: block; }
+.cw-fl-ft::after, .cw-fl-fb::after { content: ""; position: absolute; left: 0; right: 0; top: 0; bottom: 0; background: #000; opacity: 0; }
+.cw-fl-go .cw-fl-ft { -webkit-animation: cw-fl-down 0.3s ease-in both; animation: cw-fl-down 0.3s ease-in both; }
+.cw-fl-go .cw-fl-fb { -webkit-animation: cw-fl-up 0.3s ease-out 0.3s both; animation: cw-fl-up 0.3s ease-out 0.3s both; }
+.cw-fl-go .cw-fl-ft::after { -webkit-animation: cw-fl-dim-in 0.3s ease-in both; animation: cw-fl-dim-in 0.3s ease-in both; }
+.cw-fl-go .cw-fl-fb::after { -webkit-animation: cw-fl-dim-out 0.3s ease-out 0.3s both; animation: cw-fl-dim-out 0.3s ease-out 0.3s both; }
+@-webkit-keyframes cw-fl-down { from { -webkit-transform: rotateX(0deg); } to { -webkit-transform: rotateX(-90deg); } }
+@keyframes cw-fl-down { from { transform: rotateX(0deg); } to { transform: rotateX(-90deg); } }
+@-webkit-keyframes cw-fl-up { from { -webkit-transform: rotateX(90deg); } to { -webkit-transform: rotateX(0deg); } }
+@keyframes cw-fl-up { from { transform: rotateX(90deg); } to { transform: rotateX(0deg); } }
+@-webkit-keyframes cw-fl-dim-in { from { opacity: 0; } to { opacity: 0.5; } }
+@keyframes cw-fl-dim-in { from { opacity: 0; } to { opacity: 0.5; } }
+@-webkit-keyframes cw-fl-dim-out { from { opacity: 0.5; } to { opacity: 0; } }
+@keyframes cw-fl-dim-out { from { opacity: 0.5; } to { opacity: 0; } }
+html.lighter .cw-fl-ft, html.lighter .cw-fl-fb { display: none !important; }
+@media (prefers-reduced-motion: reduce) { .cw-fl-go .cw-fl-ft, .cw-fl-go .cw-fl-fb { display: none !important; } }
+
 /* things typed at home (athome.js): the note, a list to tick, the Wi-Fi code, the guide, screen time, the agenda's day */
 .cwd-note { max-width: 1500px; font-weight: 700; line-height: 1.16; letter-spacing: -0.015em; white-space: pre-line; overflow-wrap: break-word; text-align: center; max-height: 700px; overflow: hidden; }
 .cwd-item { width: 516px; height: 96px; border-radius: 30px; background: rgba(255, 255, 255, 0.1); display: -webkit-flex; display: flex; -webkit-align-items: center; align-items: center;

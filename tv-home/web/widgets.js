@@ -496,11 +496,55 @@
     live(root, 1000, set);
     void d;
   };
+  // The flip clock: four split-flap cards in the design's own glass colour (look.panel lifted to a solid face,
+  // look.ink for the digits, the accent on the two dots). A digit that changes falls like a real flap: the old
+  // top half folds down, the new bottom half unfolds under it. That is a CSS animation of transform and opacity
+  // only (widgets.css .cw-fl-*), 0.6 s once a minute; the rest of the time nothing moves and nothing runs.
+  // Lighter home / reduced motion: the digit just changes. The four-layer idea (a still top and bottom half and
+  // two moving flaps) is the usual split-flap one, as in spite/SolariDisplay and Oceanswave/solari-split-flap
+  // (both MIT); no code was copied.
+  function calmMotion() {
+    try {
+      if (document.documentElement && document.documentElement.classList && document.documentElement.classList.contains("lighter")) return true;
+      return !!(window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches);
+    } catch (e) { return false; }
+  }
+  function mixTo(rgb, to, f) { return [rgb[0] + (to - rgb[0]) * f, rgb[1] + (to - rgb[1]) * f, rgb[2] + (to - rgb[2]) * f]; }
   R.flipclock = function (root, o, b, env) {
-    var pad = root.classList.contains("cw-bare") ? 0 : 48, cw = Math.min((b.w - pad - 20 - 56) / 4, (b.h - pad) * 0.72), hgt = Math.min(b.h - pad, cw / 0.72), cards = [];
-    var card = function () { var t = E("span", "", "", ["0"]); var c = E("div", "", "position:relative;width:" + px(cw) + ";height:" + px(hgt) + ";border-radius:22px;background:#1f1f23;display:flex;align-items:center;justify-content:center;font-size:" + px(Math.min(hgt * 0.78, cw * 1.25)) + ";font-weight:700;letter-spacing:-.04em;color:#f2f2f2;box-shadow:inset 0 -3px 0 rgba(0,0,0,.4);margin:0 7px", [t, E("i", "", "position:absolute;left:0;right:0;top:50%;height:3px;background:#0b0b0d")]); cards.push(t); return c; };
-    add(root, E("div", "cw-row cw-center", "height:100%", [card(), card(), E("div", "", "width:20px"), card(), card()]));
-    var set = function () { var t = clockParts(now(), o, env).t.replace(":", ""); if (t.length === 3) t = "0" + t; for (var i = 0; i < 4; i++) cards[i].textContent = t.charAt(i); };
+    var look = env.look || {}, st = o.style || {};
+    var pad = root.classList.contains("cw-bare") ? 0 : 48, cw = Math.min((b.w - pad - 20 - 56) / 4, (b.h - pad) * 0.72), hgt = Math.min(b.h - pad, cw / 0.72);
+    var face = rgbOf(look.panel) || [31, 31, 35], ink = rgbOf(look.ink) || [242, 242, 242];
+    if (contrast(face, ink) < 4.5) ink = autoInk(face);
+    var dot = st.accent || look.accent || look.sub || rgba(ink, 1);
+    var cards = [], fs = Math.min(hgt * 0.78, cw * 1.25), rad = Math.round(Math.min(22, cw * 0.14));
+    var half = function (cls, ch) { var g = E("span", "cw-fl-g", "", [ch]); return { el: E("div", "cw-fl-h " + cls, "", [g]), g: g }; };
+    var card = function () {
+      var c = { val: "0", at: 0 };
+      c.top = half("cw-fl-t", "0"); c.bot = half("cw-fl-b", "0"); c.ft = half("cw-fl-t cw-fl-ft", "0"); c.fb = half("cw-fl-b cw-fl-fb", "0");
+      c.el = E("div", "cw-fl", "width:" + px(cw) + ";height:" + px(hgt) + ";margin:0 7px;font-size:" + px(fs) + ";color:" + rgba(ink, 1) + ";border-radius:" + px(rad) +
+        ";-webkit-perspective:" + px(hgt * 6) + ";perspective:" + px(hgt * 6) + ";--fl-t:" + shade(mixTo(face, 255, 0.07), 1) + ";--fl-b:" + shade(face, 1) + ";--fl-r:" + px(rad),
+        [c.top.el, c.bot.el, c.ft.el, c.fb.el, E("i", "cw-fl-hinge")]);
+      cards.push(c); return c.el;
+    };
+    var dots = function () { var d = "display:block;width:" + px(Math.max(8, cw * 0.075)) + ";height:" + px(Math.max(8, cw * 0.075)) + ";border-radius:50%;background:" + dot; return E("div", "cw-col cw-center", "width:20px;height:" + px(hgt * 0.34) + ";justify-content:space-between", [E("i", "", d), E("i", "", d)]); };
+    add(root, E("div", "cw-row cw-center", "height:100%", [card(), card(), dots(), card(), card()]));
+    var first = true;
+    var settle = function (c) { c.bot.g.textContent = c.val; c.el.classList.remove("cw-fl-go"); c.at = 0; };
+    var set = function () {
+      var t = clockParts(now(), o, env).t.replace(":", ""), still = calmMotion();
+      if (t.length === 3) t = "0" + t;
+      for (var i = 0; i < 4; i++) {
+        var c = cards[i], ch = t.charAt(i);
+        if (c.at && Date.now() - c.at > 800) settle(c);   // the flap has landed: the still bottom takes the new digit
+        if (c.val === ch) continue;
+        if (first || still) { c.val = ch; c.top.g.textContent = ch; c.bot.g.textContent = ch; c.ft.g.textContent = ch; c.fb.g.textContent = ch; c.el.classList.remove("cw-fl-go"); c.at = 0; continue; }
+        c.bot.g.textContent = c.val; c.ft.g.textContent = c.val;   // the old digit stays on the still bottom and the falling flap
+        c.top.g.textContent = ch; c.fb.g.textContent = ch;          // the new one waits under the flap
+        c.el.classList.remove("cw-fl-go"); void c.el.offsetWidth; c.el.classList.add("cw-fl-go");
+        c.val = ch; c.at = Date.now();
+      }
+      first = false;
+    };
     set(); live(root, 1000, set);
   };
   R.wordclock = function (root, o, b) {

@@ -156,7 +156,7 @@
     analog: { name: "Analogue clock", status: "works", what: "A clock face with hands", needs: ["Nothing: it uses the TV's own clock"],
       setup: setup("nothing", NOTHING), until: "Always shows the time", build: "",
       ok: "Opens Timers", platforms: EVERY(), sizes: sz(["tile", "small", "large"], [2, 2]) },
-    flipclock: { name: "Flip clock", status: "works", what: "Digits on flip cards", needs: ["Nothing: it uses the TV's own clock"],
+    flipclock: { name: "Flip clock", status: "works", what: "Digits on split-flap cards that flip each minute", needs: ["Nothing: it uses the TV's own clock"],
       setup: setup("nothing", NOTHING), until: "Always shows the time", build: "",
       ok: "Opens Timers", platforms: EVERY(), sizes: sz(["wtile", "medium", "wide"], [4, 2]) },
     wordclock: { name: "Time in words", status: "works", what: "\"Twenty to eight, Wednesday morning\"", needs: ["Nothing: it uses the TV's own clock"],
