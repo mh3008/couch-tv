@@ -601,7 +601,7 @@
     if (sheen) fill = "radial-gradient(90% 70% at 6% 0%,rgba(255, 255, 255, " + SHEEN_A + "),rgba(255, 255, 255, 0) 62%)," + fill;
     var first = stops[0], last = stops[stops.length - 1];
     return { bg: fill, ink: inkc, tile: stops[Math.floor(stops.length / 2)], baked: alpha < 1,
-      rim: rim ? "inset 0 0 0 1px rgba(255, 255, 255, 0.4), inset 1.5px 1.5px 0 0 " + rgba(mixRgb(first, WHITE, 0.75), 0.75) + ", inset -1.5px -1.5px 0 0 " + rgba(mixRgb(last, WHITE, 0.6), 0.6) : "" };
+      rim: rim ? "inset 0 0 0 1px rgba(255, 255, 255, 0.55), inset 1.5px 1.5px 0 0 " + rgba(mixRgb(first, WHITE, 0.8), 0.9) + ", inset -1.5px -1.5px 0 0 " + rgba(mixRgb(last, WHITE, 0.65), 0.8) : "" };
   }
 
   function shell(o, b, env, kindOverride) {
