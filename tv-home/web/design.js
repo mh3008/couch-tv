@@ -32,7 +32,7 @@
 
   // the look settings a design may carry (design.home); Home settings on the TV still win
   var HOME_KEYS = ["scenes", "scene_seconds", "glass", "glass_icons", "glass_amount", "clock_style", "ambient_weather",
-    "ambient_sun_grade", "video_url", "dock", "moving_tiles", "lighter", "keep_watching", "now_playing", "dock_size", "clock"];
+    "ambient_sun_grade", "video_url", "dock", "moving_tiles", "lighter", "keep_watching", "now_playing", "dock_size", "clock", "lanterns", "lanterns_style"];
   var FONTS = {
     inter: '"Inter", sans-serif',
     antonio: '"Antonio", "Arial Narrow", sans-serif',
@@ -562,7 +562,8 @@
     }
     return out;
   }
-  var HOME_PICK = { glass: ["on", "lite", "off"], clock_style: ["frosted", "liquid"], dock: ["classic", "mac"], clock: ["12h", "24h"] };
+  var HOME_PICK = { glass: ["on", "lite", "off"], clock_style: ["frosted", "liquid"], dock: ["classic", "mac"], clock: ["12h", "24h"],
+    lanterns: ["off", "few", "some", "many"], lanterns_style: ["warm", "red", "gold"] };   // fx-lanterns.js: sky lanterns rising
   var HOME_BOOL = ["glass_icons", "ambient_weather", "ambient_sun_grade", "moving_tiles", "lighter", "keep_watching", "now_playing"];
   function sanitize(raw) {
     NOTES = [];
@@ -821,6 +822,8 @@
     if ((home.glass_amount || 0) > 2) out.push(["Glass level " + home.glass_amount, (home.glass_amount - 2) * 3, "glassamount"]);
     if (home.ambient_weather) out.push(["Rain and snow effects", 34, "weatherfx"]);
     if (home.ambient_sun_grade) out.push(["Sunlight colour", 4, "sungrade"]);
+    // soft GPU layers (small lanterns, about 2 / 3 / 5 % of one screen, transform + opacity only): cheap, but not free on a slow TV
+    if (home.lanterns && home.lanterns !== "off") out.push(["Sky lanterns" + (home.lanterns !== "some" ? " (" + home.lanterns + ")" : ""), home.lanterns === "many" ? 4 : 3, "lanterns"]);
     if (home.moving_tiles) out.push(["Moving tiles", 4, "moving"]);
     if (home.video_url) out.push(["Video background", 40, "video"]);
     if (obj(E.dock).icon_style === "glass" || home.glass_icons) out.push(["Glass app icons", 6, "glassicons"]);
@@ -907,6 +910,7 @@
     var h = d.home || {};
     var steps = [
       [function () { return h.ambient_weather; }, function () { delete h.ambient_weather; }, "Rain and snow effects were switched off: too slow with everything else."],
+      [function () { return h.lanterns && h.lanterns !== "off"; }, function () { delete h.lanterns; }, "The sky lanterns were switched off: too slow with everything else."],
       [function () { return d.background && d.background.video; }, function () { delete d.background.video; }, "The video background was switched off: too slow with everything else. Its still picture stays."],
       [function () { return h.clock_style === "liquid"; }, function () { delete h.clock_style; }, "The liquid clock went back to frosted glass: too slow with everything else."],
       [function () { return (h.glass_amount || 0) > 2; }, function () { h.glass_amount = 2; }, "The glass level was brought down to 2."],
