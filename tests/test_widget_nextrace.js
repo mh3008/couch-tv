@@ -40,7 +40,7 @@ K.sizes(T.C, "nextrace").forEach(([id, w, h]) => {
 });
 const big = W.render({ kind: "nextrace", w: 460, h: 360 }, env());
 ok(/Round 22/.test(big.textContent) && /Lusail, Qatar/.test(big.textContent), "a 4x4: the round and where");
-ok(/Sun 29 Nov/.test(big.textContent) && /Qualifying Sat 28 Nov/.test(big.textContent), "a 4x4: the start and qualifying, as days in the TV's own time");
+ok(/Sun 29 Nov/.test(big.textContent) && /Qualifying Sat \d{1,2}:\d\d[ap]m/.test(big.textContent), "a 4x4: the start (day + date) and qualifying (the day name: same weekend), in the TV's own time");
 ok(/Data: Jolpica-F1/.test(big.textContent), "the credit: Data: Jolpica-F1 (CC BY-NC-SA)");
 const wait = W.render({ kind: "nextrace", w: 460, h: 360 }, env(null));
 ok(/Waiting for the next race/.test(wait.textContent), "no reading yet: an honest wait, never a pretend race");

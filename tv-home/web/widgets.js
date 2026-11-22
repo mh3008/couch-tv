@@ -1074,7 +1074,7 @@
       fitWords(root, r.name, inW, wide ? 34 : 29, 2, 750, "margin-top:6px") || E("div", "cw-t25 cw-ell", "margin-top:6px;font-weight:750", [r.name]),
       E("div", "cw-t23 cw-ell", "color:var(--sub)", [r.place]),
       E("div", "cw-grow"), cd, when,
-      b.h >= 330 && isFinite(r.quali) && r.quali > nowMs ? E("div", "cw-t23 cw-ell", "color:var(--sub);margin-top:2px", ["Qualifying " + raceDay(r.quali)]) : null,
+      b.h >= 330 && isFinite(r.quali) && r.quali > nowMs ? E("div", "cw-t23 cw-ell", "color:var(--sub);margin-top:2px", ["Qualifying " + DAYS[new Date(r.quali).getDay()].slice(0, 3) + " " + fmt12(new Date(r.quali))]) : null,
       b.h >= 300 ? E("div", "cw-ell", "font-size:16px;color:rgba(255,255,255,.55);margin-top:6px", ["Data: Jolpica-F1"]) : null]);
     set(); live(root, 60000, set);
   };
