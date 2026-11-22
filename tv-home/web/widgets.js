@@ -780,6 +780,68 @@
     var set = function () { var t = clockParts(now(), o, env).t.replace(":", ""); if (t.length === 3) t = "0" + t; for (var i = 0; i < 4; i++) cards[i].textContent = t.charAt(i); };
     set(); live(root, 1000, set);
   };
+  // The Nixie-tube clock: four glass tubes, each a fine copper mesh with one glowing digit in it, and two neon
+  // dots between the pairs, in the colour of the design's accent when that is a warm one (else the classic nixie
+  // orange). Only transform and opacity ever change (widgets.css .cw-nx-*): the glow of each tube breathes and
+  // now and then flickers (one 8 s opacity loop per tube, started at a different point), the two dots blink,
+  // and a digit that changes fades out while the new one fades in with a small flare. Lighter home / reduced
+  // motion: nothing moves and a digit just changes. Idea only (the real tubes stack ten numerals and light one):
+  // the look follows Nixie-clock projects such as the MIT-licensed ones seen in the scan; no code was copied.
+  function nxCalm() {
+    try {
+      if (document.documentElement && document.documentElement.classList && document.documentElement.classList.contains("lighter")) return true;
+      return !!(window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches);
+    } catch (e) { return false; }
+  }
+  function nxMix(rgb, to, f) { return [rgb[0] + (to - rgb[0]) * f, rgb[1] + (to - rgb[1]) * f, rgb[2] + (to - rgb[2]) * f]; }
+  R.nixie = function (root, o, b, env) {
+    var look = env.look || {}, st = o.style || {};
+    var pad = root.classList.contains("cw-bare") ? 0 : 48, dotw = 40, gap = 12;
+    var cw = Math.min((b.h - pad) * 0.56, (b.w - pad - dotw - gap * 8) / 4), hgt = Math.min(b.h - pad, cw / 0.5);
+    cw = Math.max(20, cw); hgt = Math.max(40, hgt);
+    var acc = rgbOf(st.accent) || [255, 122, 26];   // the classic nixie orange unless the design picks a glow colour (style.accent)
+    if (lum(acc) < 0.18) acc = nxMix(acc, 255, 0.35);
+    var core = nxMix(acc, 255, 0.1), face = [12, 8, 6];
+    if (contrast(core, face) < 4.5) core = [255, 236, 200];
+    var fs = Math.round(Math.min(hgt * 0.6, cw * 1.1)), rt = Math.round(cw / 2), rb = Math.round(Math.min(18, cw * 0.14));
+    var glow = "0 0 " + px(fs * 0.04) + " " + rgba(core, 1) + ", 0 0 " + px(fs * 0.1) + " " + rgba(acc, 1) + ", 0 0 " + px(fs * 0.24) + " " + rgba(acc, 1) + ", 0 0 " + px(fs * 0.5) + " " + rgba(acc, 0.75);
+    var tubes = [];
+    var glyph = function (cls) { return E("div", "cw-nx-d " + cls, "font-size:" + px(fs) + ";color:" + rgba(core, 1) + ";text-shadow:" + glow, [""]); };
+    var tube = function (i) {
+      var c = { val: "", at: 0 };
+      c.cur = glyph("cw-nx-cur"); c.prev = glyph("cw-nx-prev");
+      var delay = "-" + ([0, 2.6, 5.1, 1.3][i]) + "s";
+      c.lit = E("div", "cw-nx-l", "background:radial-gradient(ellipse at 50% 52%, " + rgba(acc, 0.8) + " 0, " + rgba(acc, 0.34) + " 44%, " + rgba(acc, 0) + " 74%);-webkit-animation-delay:" + delay + ";animation-delay:" + delay, [c.prev, c.cur]);
+      var mesh = "repeating-linear-gradient(45deg, " + rgba(acc, 0.16) + " 0, " + rgba(acc, 0.16) + " 1px, rgba(0, 0, 0, 0) 1px, rgba(0, 0, 0, 0) 7px), repeating-linear-gradient(-45deg, " + rgba(acc, 0.16) + " 0, " + rgba(acc, 0.16) + " 1px, rgba(0, 0, 0, 0) 1px, rgba(0, 0, 0, 0) 7px)";
+      c.el = E("div", "cw-nx", "width:" + px(cw) + ";height:" + px(hgt) + ";margin:0 " + px(gap / 2) + ";border-radius:" + px(rt) + " " + px(rt) + " " + px(rb) + " " + px(rb) +
+        ";background:linear-gradient(90deg, rgba(0, 0, 0, 0.55), rgba(255, 255, 255, 0.07) 16%, rgba(0, 0, 0, 0.2) 50%, rgba(0, 0, 0, 0.6)), " + shade(face, 1) +
+        ";box-shadow:inset 0 0 0 2px rgba(255, 255, 255, 0.11), 0 0 0 1px rgba(0, 0, 0, 0.45)",
+        [E("div", "cw-nx-m", "background:" + mesh), c.lit,
+         E("i", "cw-nx-hl", "border-radius:" + px(cw * 0.06)),
+         E("i", "cw-nx-cap", "border-radius:0 0 " + px(rb) + " " + px(rb))]);
+      tubes.push(c); return c.el;
+    };
+    var dot = function () { var s = Math.max(8, Math.round(cw * 0.1)); return E("i", "", "display:block;width:" + px(s) + ";height:" + px(s) + ";border-radius:50%;background:" + rgba(core, 1) + ";box-shadow:0 0 " + px(s * 1.6) + " " + rgba(acc, 0.9) + ", 0 0 " + px(s * 3.4) + " " + rgba(acc, 0.5)); };
+    var colon = function () { return E("div", "cw-nx-c", "width:" + px(dotw) + ";height:" + px(hgt * 0.36) + ";margin:0 " + px(gap / 2), [dot(), dot()]); };
+    add(root, E("div", "cw-row cw-center", "height:100%", [tube(0), tube(1), colon(), tube(2), tube(3)]));
+    var first = true;
+    var settle = function (c) { c.prev.textContent = ""; c.el.classList.remove("cw-nx-go"); c.at = 0; };
+    var set = function () {
+      var t = clockParts(now(), o, env).t.replace(":", ""), still = nxCalm();
+      if (t.length === 3) t = " " + t;   // a 12 hour clock leaves the first tube unlit before 10
+      for (var i = 0; i < 4; i++) {
+        var c = tubes[i], ch = t.charAt(i) === " " ? "" : t.charAt(i);
+        if (c.at && Date.now() - c.at > 900) settle(c);   // the fade has finished: the old digit is gone
+        if (c.val === ch && !first) continue;
+        if (first || still) { c.val = ch; c.cur.textContent = ch; c.prev.textContent = ""; c.el.classList.remove("cw-nx-go"); c.at = 0; continue; }
+        c.prev.textContent = c.val; c.cur.textContent = ch;
+        c.el.classList.remove("cw-nx-go"); void c.el.offsetWidth; c.el.classList.add("cw-nx-go");
+        c.val = ch; c.at = Date.now();
+      }
+      first = false;
+    };
+    set(); live(root, 1000, set);
+  };
   // the widget's own settings: To the minute (precise) and Show the day (dayline)
   R.wordclock = function (root, o, b, env) {
     var precise = setting(o, env, "precise") === true, dayline = setting(o, env, "dayline") !== false;

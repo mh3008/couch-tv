@@ -190,6 +190,9 @@
     flipclock: { name: "Flip clock", status: "works", what: "Digits on flip cards", needs: ["Nothing: it uses the TV's own clock"],
       setup: setup("nothing", CLOCK_STEPS), until: "Always shows the time", build: "",
       ok: "Opens Timers", platforms: EVERY(), sizes: sz(["wtile", "medium", "wide"], [4, 2]) },
+    nixie: { name: "Nixie clock", status: "works", what: "Glowing orange digits in glass tubes; a new digit fades in each minute", needs: ["Nothing: it uses the TV's own clock"],
+      setup: setup("nothing", CLOCK_STEPS), until: "Always shows the time", build: "",
+      ok: "Opens Timers", platforms: EVERY(), sizes: sz(["wtile", "medium", "wide"], [4, 2]) },
     wordclock: { name: "Time in words", status: "works", what: "\"Twenty to eight, Wednesday morning\"", needs: ["Nothing: it uses the TV's own clock"],
       setup: setup("nothing", CLOCK_STEPS), until: "Always shows the time", build: "",
       ok: "Opens Timers", platforms: EVERY(), sizes: sz(["wtile", "small", "medium", "large"], [4, 2]) },
@@ -570,7 +573,7 @@
 
   // before launch (WIDGET-SETTINGS-SPEC.md section 2, the P items)
   var SETTINGS = {
-    clock: [CLOCK_FMT()], tallclock: [CLOCK_FMT()], glassclock: [CLOCK_FMT()], flipclock: [CLOCK_FMT()],
+    clock: [CLOCK_FMT()], tallclock: [CLOCK_FMT()], glassclock: [CLOCK_FMT()], flipclock: [CLOCK_FMT()], nixie: [CLOCK_FMT()],
     countdown: [
       st("label", "Name", "text", "", "What you are counting down to, like Ella's birthday.", "design", ALL, true, { max: 40 }),
       st("day", "Day", "number", 25, "The day of the month.", "design", ALL, true, { min: 1, max: 31, step: 1 }),

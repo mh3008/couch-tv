@@ -16,7 +16,7 @@
 
   // which layer each widget kind opens ("setup" is its setup record)
   var LAYER = {
-    clock: "timers", tallclock: "timers", glassclock: "timers", analog: "timers", flipclock: "timers", wordclock: "timers", timer: "timers",
+    clock: "timers", tallclock: "timers", glassclock: "timers", analog: "timers", flipclock: "timers", nixie: "timers", wordclock: "timers", timer: "timers",
     solar: "forecast", worldclock: "world", date: "calendar", month: "calendar", agenda: "calendar",
     weather: "forecast", bigtemp: "forecast", hourly: "forecast", week: "forecast", rain: "forecast", uv: "forecast", sun: "forecast",
     moon: "moon", air: "air", surf: "surf",
