@@ -25,11 +25,14 @@ const host = (body) => body.childNodes.find((n) => n.className && n.className.in
 const num = (css, k) => +(new RegExp("(?:^|;)" + k + ":(-?[\\d.]+)").exec(css) || [0, NaN])[1];
 const kids = (h, tag) => h.childNodes.filter((n) => String(n.tagName).toLowerCase() === tag);
 
-for (const [amount, n, m] of [["few", 30, 2], ["some", 50, 3], ["many", 80, 4]]) {
+for (const [amount, n, m, tw] of [["few", 30, 2, 12], ["some", 50, 3, 16], ["many", 80, 4, 20]]) {
   const { S, body, head } = load(false);
   S.set(amount, false);
   const h = host(body), stars = kids(h, "i"), shoot = kids(h, "s");
-  check(stars.length === n && shoot.length === m, amount + ": " + n + " stars, " + m + " shooting stars");
+  check(stars.length === tw && shoot.length === m, amount + ": " + tw + " twinkling stars (of " + n + "), " + m + " shooting stars");
+  const skyEl = kids(h, "b");
+  check(skyEl.length === 1 && skyEl[0].className === "fx-stars-sky" && !/animation/.test(skyEl[0].style.cssText), amount + ": the other " + (n - tw) + " stars in ONE still picture (never animated)");
+  check(tw + m <= 30, amount + ": at most 30 animated layers (" + (tw + m) + "): the 22 Nov stick bench missed 24.8 % with 84");
   check(body.childNodes.indexOf(h) === 1, amount + ": right after the weather layer (under the cards)");
   const area = stars.reduce((a, t) => { const s = num(t.style.cssText, "width"); check(s >= 6 && s <= 16, "a star is 6-16 px"); return a + s * s; }, 0);
   check(area / (1920 * 1080) < 0.01, amount + ": all stars under 1 % of the screen (" + (100 * area / (1920 * 1080)).toFixed(2) + " %)");

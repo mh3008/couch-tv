@@ -12,6 +12,9 @@
   "use strict";
   var doc = root.document, host = null, style = null, want = "off", off = false, paused = false;
   var COUNT = { few: [30, 2], some: [50, 3], many: [80, 4] };
+  // only these twinkle (one layer each); the rest are painted into ONE still sky picture. The 22 Nov stick bench: 80 twinkling layers
+  // + 4 streaks missed 24.8 % of frames (bar 10 %): on the stick the cost was the number of animated layers, not their area
+  var TWINKLE = { few: 12, some: 16, many: 20 };
   // ?fxloop=1 (showcase videos only): twinkles of 2 / 4 s and shooting stars on an 8 s cycle, so an 8 s clip loops without a jump
   var LOOP = /[?&]fxloop=1(?:&|$)/.test((root.location && root.location.search) || "");
 
@@ -35,6 +38,19 @@
     return c.toDataURL("image/png");
   }
   function rnd(a, b) { return a + Math.random() * (b - a); }
+  // the still part of the sky: m small soft stars painted once on a 960 x 384 canvas that covers the top 62 % of the screen
+  function sky(m) {
+    var c = doc.createElement("canvas"); c.width = 960; c.height = 384;
+    var g = c.getContext("2d");
+    for (var k = 0; k < m; k++) {
+      var x = rnd(8, 952), y = rnd(4, 380), r = Math.random() < 0.8 ? rnd(1.6, 2.8) : rnd(2.8, 4.2), a = rnd(0.45, 0.9);
+      var o = g.createRadialGradient(x, y, 0, x, y, r * 2);
+      o.addColorStop(0, "rgba(255,255,255," + a.toFixed(2) + ")"); o.addColorStop(0.35, "rgba(225,235,255," + (a * 0.55).toFixed(2) + ")"); o.addColorStop(1, "rgba(200,215,255,0)");
+      g.fillStyle = o; g.beginPath(); g.arc(x, y, r * 2, 0, Math.PI * 2); g.fill();
+    }
+    var b = doc.createElement("b"); b.className = "fx-stars-sky"; b.style.cssText = "background-image:url(" + c.toDataURL("image/png") + ")";
+    return b;
+  }
   function css(angles) {
     if (!style) { style = doc.createElement("style"); doc.head.appendChild(style); }
     var kf = function (name, body) { return "@-webkit-keyframes " + name + "{" + body.replace(/transform:/g, "-webkit-transform:") + "}@keyframes " + name + "{" + body + "}"; };
@@ -45,6 +61,7 @@
       ".fx-stars s{position:absolute;display:block;width:360px;height:16px;background-size:100% 100%;opacity:0;will-change:opacity,transform;" +
       "-webkit-transform-origin:100% 50%;transform-origin:100% 50%;-webkit-animation-timing-function:linear;animation-timing-function:linear;-webkit-animation-iteration-count:infinite;animation-iteration-count:infinite}" +
       ".fx-stars.fx-paused i,.fx-stars.fx-paused s{-webkit-animation-play-state:paused;animation-play-state:paused}" +
+      ".fx-stars .fx-stars-sky{position:absolute;left:0;top:0;width:100%;height:62%;display:block;background-size:100% 100%}" +
       ".lighter .fx-stars,.old-engine .fx-stars{display:none!important}" +
       kf("fx-twinkle", "0%,100%{opacity:.25;transform:scale(.7)}50%{opacity:1;transform:scale(1.15)}") +
       // one keyframe set per shooting star, its angle written in (no CSS variables: an old TV WebView may not have them in keyframes)
@@ -60,9 +77,10 @@
     var angles = [];
     for (var q = 0; q < n[1]; q++) angles.push(q % 2 === 0 ? rnd(18, 32) : 180 - rnd(18, 32));   // even: falls to the right, odd: to the left
     css(angles);
-    var pics = [star(32), star(48)], tail = streak(360, 16);
+    var pics = [star(32), star(48)], tail = streak(360, 16), tw = TWINKLE[want];
     host = doc.createElement("div"); host.className = "fx-stars" + (paused ? " fx-paused" : ""); host.setAttribute("aria-hidden", "true");
-    for (var i = 0; i < n[0]; i++) {
+    host.appendChild(sky(n[0] - tw));   // the still stars: one picture, never animated
+    for (var i = 0; i < tw; i++) {
       var t = doc.createElement("i"), s = Math.round(Math.random() < 0.75 ? rnd(6, 10) : rnd(11, 16)), d = LOOP ? (i % 2 ? 2 : 4) : rnd(2, 5.5);
       t.style.cssText = "left:" + rnd(1, 98).toFixed(1) + "%;top:" + rnd(1, 62).toFixed(1) + "%;width:" + s + "px;height:" + s + "px;background-image:url(" + pics[s < 11 ? 0 : 1] + ");" +
         "-webkit-animation-duration:" + d.toFixed(1) + "s;animation-duration:" + d.toFixed(1) + "s;-webkit-animation-delay:-" + rnd(0, d).toFixed(2) + "s;animation-delay:-" + rnd(0, d).toFixed(2) + "s";
